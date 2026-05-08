@@ -13,7 +13,7 @@ public sealed class AttendanceLog : AggregateRoot
     private AttendanceLog(
         Guid id,
         Guid employeeId,
-        Instant occurredAtUtc,
+        Instant punchedAtUtc,
         AttendanceSource source,
         PunchType punchType,
         string? deviceId,
@@ -22,7 +22,7 @@ public sealed class AttendanceLog : AggregateRoot
         : base(id)
     {
         EmployeeId = employeeId;
-        OccurredAtUtc = occurredAtUtc;
+        PunchedAtUtc = punchedAtUtc;
         Source = source;
         PunchType = punchType;
         DeviceId = deviceId;
@@ -32,7 +32,8 @@ public sealed class AttendanceLog : AggregateRoot
 
     public Guid EmployeeId { get; private set; }
 
-    public Instant OccurredAtUtc { get; private set; }
+    /// <summary>UTC instant of the actual punch (business fact, may be backfilled).</summary>
+    public Instant PunchedAtUtc { get; private set; }
 
     public AttendanceSource Source { get; private set; }
 
@@ -46,7 +47,7 @@ public sealed class AttendanceLog : AggregateRoot
 
     public static AttendanceLog FromDevice(
         Guid employeeId,
-        Instant occurredAtUtc,
+        Instant punchedAtUtc,
         PunchType punchType,
         string deviceId)
     {
@@ -63,7 +64,7 @@ public sealed class AttendanceLog : AggregateRoot
         var log = new AttendanceLog(
             Guid.NewGuid(),
             employeeId,
-            occurredAtUtc,
+            punchedAtUtc,
             AttendanceSource.Device,
             punchType,
             deviceId.Trim(),
@@ -73,16 +74,19 @@ public sealed class AttendanceLog : AggregateRoot
         log.RaiseDomainEvent(new AttendanceLogRecorded(
             log.Id,
             log.EmployeeId,
-            log.OccurredAtUtc,
+            log.PunchedAtUtc,
             log.Source,
-            log.PunchType));
+            log.PunchType,
+            log.DeviceId,
+            log.RecordedByUserId,
+            log.Note));
 
         return log;
     }
 
     public static AttendanceLog Manual(
         Guid employeeId,
-        Instant occurredAtUtc,
+        Instant punchedAtUtc,
         PunchType punchType,
         Guid recordedByUserId,
         string? note = null)
@@ -102,7 +106,7 @@ public sealed class AttendanceLog : AggregateRoot
         var log = new AttendanceLog(
             Guid.NewGuid(),
             employeeId,
-            occurredAtUtc,
+            punchedAtUtc,
             AttendanceSource.Manual,
             punchType,
             null,
@@ -112,9 +116,12 @@ public sealed class AttendanceLog : AggregateRoot
         log.RaiseDomainEvent(new AttendanceLogRecorded(
             log.Id,
             log.EmployeeId,
-            log.OccurredAtUtc,
+            log.PunchedAtUtc,
             log.Source,
-            log.PunchType));
+            log.PunchType,
+            log.DeviceId,
+            log.RecordedByUserId,
+            log.Note));
 
         return log;
     }
