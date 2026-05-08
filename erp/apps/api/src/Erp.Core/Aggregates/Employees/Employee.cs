@@ -100,7 +100,15 @@ public sealed class Employee : AggregateRoot
             role,
             parentId);
 
-        employee.RaiseDomainEvent(new EmployeeCreated(employee.Id, nik.Value, role));
+        employee.RaiseDomainEvent(new EmployeeCreated(
+            employee.Id,
+            employee.FullName,
+            nik.Value,
+            npwp?.Value,
+            role,
+            parentId,
+            monthlyWage,
+            effectiveSalaryFrom));
         return employee;
     }
 
@@ -119,9 +127,11 @@ public sealed class Employee : AggregateRoot
                 "Effective date cannot be earlier than current effective date.");
         }
 
+        var oldWage = MonthlyWage;
+        var oldEffective = EffectiveSalaryFrom;
         MonthlyWage = newWage;
         EffectiveSalaryFrom = effectiveFrom;
-        RaiseDomainEvent(new EmployeeSalaryChanged(Id, newWage, effectiveFrom));
+        RaiseDomainEvent(new EmployeeSalaryChanged(Id, oldWage, oldEffective, newWage, effectiveFrom));
     }
 
     public void AssignParent(Guid? newParentId)
