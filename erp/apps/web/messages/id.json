@@ -1,0 +1,15 @@
+{
+  "common": {
+    "appName": "ERP UFT Davis",
+    "loading": "Memuat...",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "search": "Cari",
+    "actions": "Aksi",
+    "logout": "Keluar"
+  },
+  "home": {
+    "title": "Selamat datang",
+    "subtitle": "Sistem ERP internal UFT Davis."
+  }
+}

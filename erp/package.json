@@ -1,0 +1,12 @@
+{
+  "name": "erp-uft-davis",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build",
+    "lint:web": "pnpm --filter web lint",
+    "typecheck:web": "pnpm --filter web typecheck"
+  },
+  "packageManager": "pnpm@10.33.0"
+}

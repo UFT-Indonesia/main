@@ -1,0 +1,15 @@
+{
+  "common": {
+    "appName": "ERP UFT Davis",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "search": "Search",
+    "actions": "Actions",
+    "logout": "Log out"
+  },
+  "home": {
+    "title": "Welcome",
+    "subtitle": "Internal ERP system for UFT Davis."
+  }
+}

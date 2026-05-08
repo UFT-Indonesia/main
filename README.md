@@ -27,12 +27,26 @@ workforce management all the way through to financial control and reporting.
 
 ## 🏗️ Tech Stack
 
-- **Backend** — .NET 10 (ASP.NET Core)
-- **Frontend** — Next.js (React)
+- **Backend**: .NET 10, FastEndpoints, EF Core 10, PostgreSQL, ASP.NET Identity + JWT, Hangfire, FluentValidation, Serilog, MailKit, MinIO
+- **Frontend**: Next.js 15 (App Router), TypeScript strict, Tailwind, shadcn/ui, TanStack Query/Table, Zod, react-hook-form, next-intl
+- **Locale**: id-ID (Asia/Jakarta), Currency IDR
+- **Hardware**: ESP32-S3 + R503 fingerprint (HMAC-signed HTTP push)
+
+## 🧱 Architecture
+
+- **Outside Core** — Clean Architecture (Ardalis): `Erp.Web` → `Erp.Infrastructure` → `Erp.UseCases` → `Erp.Core` → `Erp.SharedKernel`
+- **Inside Core** — DDD tactical (aggregates, VOs, domain events, specs)
+- **Approvals** — generic `ApprovalEngine` + `IApprovalStrategy<T>` per module (Strategy Pattern, no MediatR)
 
 ## 📋 Getting Started
 
-Documentation and setup guides will be added as each module reaches its initial release.
+```bash
+docker compose up -d                         # postgres, smtp4dev, minio
+dotnet restore Erp.sln
+dotnet ef database update -p apps/api/src/Erp.Infrastructure -s apps/api/src/Erp.Web
+dotnet run --project apps/api/src/Erp.Web
+pnpm --filter web dev
+```
 
 ## 📄 License
 

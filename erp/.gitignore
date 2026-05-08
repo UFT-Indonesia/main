@@ -1,0 +1,37 @@
+# Node
+node_modules/
+.next/
+.turbo/
+out/
+dist/
+.pnpm-store/
+*.tsbuildinfo
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Logs
+logs/
+*.log
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tooling
+.tool-versions

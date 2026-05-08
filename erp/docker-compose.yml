@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: erp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: erp
+      POSTGRES_PASSWORD: erp_dev
+      POSTGRES_DB: erp
+      TZ: Asia/Jakarta
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp -d erp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    container_name: erp-smtp4dev
+    restart: unless-stopped
+    ports:
+      - "5000:80"
+      - "2525:25"
+    environment:
+      ServerOptions__HostName: smtp4dev
+    volumes:
+      - smtp4dev-data:/smtp4dev
+
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    container_name: erp-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: erp_minio
+      MINIO_ROOT_PASSWORD: erp_minio_dev
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+volumes:
+  postgres-data:
+  smtp4dev-data:
+  minio-data:

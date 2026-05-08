@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/apps/" />
+  <Folder Name="/apps/api/" />
+  <Folder Name="/apps/api/src/">
+    <Project Path="apps/api/src/Erp.Core/Erp.Core.csproj" />
+    <Project Path="apps/api/src/Erp.Infrastructure/Erp.Infrastructure.csproj" />
+    <Project Path="apps/api/src/Erp.SharedKernel/Erp.SharedKernel.csproj" />
+    <Project Path="apps/api/src/Erp.UseCases/Erp.UseCases.csproj" />
+    <Project Path="apps/api/src/Erp.Web/Erp.Web.csproj" />
+  </Folder>
+  <Folder Name="/apps/api/tests/">
+    <Project Path="apps/api/tests/Erp.IntegrationTests/Erp.IntegrationTests.csproj" />
+    <Project Path="apps/api/tests/Erp.UnitTests/Erp.UnitTests.csproj" />
+  </Folder>
+</Solution>
