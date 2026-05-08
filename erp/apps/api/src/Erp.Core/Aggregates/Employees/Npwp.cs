@@ -22,6 +22,11 @@ public sealed class Npwp : ValueObject
             throw new DomainException("npwp.empty", "NPWP is required.");
         }
 
+        if (value.Any(c => !char.IsDigit(c) && c != '.' && c != '-' && !char.IsWhiteSpace(c)))
+        {
+            throw new DomainException("npwp.format", "NPWP contain only digits and separators(., -, whitespace).");
+        }
+
         // Strip common separators (".", "-", whitespace) before validating digit length.
         var digits = new string(value.Where(char.IsDigit).ToArray());
         if (digits.Length != LegacyLength && digits.Length != NewLength)
