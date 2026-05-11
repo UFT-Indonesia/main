@@ -26,6 +26,17 @@ public class NpwpTests
         act.Should().Throw<DomainException>().Where(e => e.Code == "npwp.length");
     }
 
+    [Theory]
+    [InlineData("12.345.678.9-012.A00")]
+    [InlineData("12345678901200/")]
+    [InlineData("12345678901200_")]
+    public void Create_rejects_invalid_format(string input)
+    {
+        var act = () => Npwp.Create(input);
+
+        act.Should().Throw<DomainException>().Where(e => e.Code == "npwp.format");
+    }
+
     [Fact]
     public void Create_rejects_empty()
     {

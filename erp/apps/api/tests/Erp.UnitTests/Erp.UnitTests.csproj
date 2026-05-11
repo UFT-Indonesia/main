@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Erp.Core\Erp.Core.csproj" />
+    <ProjectReference Include="..\..\src\Erp.Infrastructure\Erp.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Erp.UseCases\Erp.UseCases.csproj" />
     <ProjectReference Include="..\..\src\Erp.SharedKernel\Erp.SharedKernel.csproj" />
   </ItemGroup>
