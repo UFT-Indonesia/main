@@ -1,4 +1,7 @@
-using FastEndpoints;
+using Erp.Infrastructure;
+using Erp.Web.Endpoints.Attendance;
+using Erp.Web.Authentication;
+using Erp.Web.Endpoints.Auth;
 using FastEndpoints.Swagger;
 using Serilog;
 
@@ -16,13 +19,23 @@ try
            .Enrich.FromLogContext());
 
     builder.Services
-        .AddFastEndpoints()
+        .AddInfrastructure(builder.Configuration)
+        .AddConfiguredJwtBearer(builder.Configuration)
+        .AddCors(options =>
+            options.AddPolicy("Web", policy =>
+                policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()))
         .SwaggerDocument();
 
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
-    app.UseFastEndpoints();
+    app.UseCors("Web");
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapAuthEndpoints();
+    app.MapAttendanceEndpoints();
     app.UseSwaggerGen();
 
     app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
