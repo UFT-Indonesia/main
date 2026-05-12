@@ -28,6 +28,9 @@ public static class DependencyInjection
             .Validate(options => options.ToleranceSeconds > 0, "Device ingest tolerance must be positive.")
             .ValidateOnStart();
 
+        services.AddOptions<IdentitySeedOptions>()
+            .Bind(configuration.GetSection(IdentitySeedOptions.SectionName));
+
         services.AddSingleton<IClock>(SystemClock.Instance);
 
         services.AddDbContext<AppDbContext>(options =>
@@ -49,6 +52,7 @@ public static class DependencyInjection
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IDeviceIngestSignatureValidator, DeviceIngestSignatureValidator>();
+        services.AddScoped<IdentitySeeder>();
 
         return services;
     }

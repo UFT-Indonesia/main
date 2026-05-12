@@ -15,7 +15,8 @@
   <ItemGroup>
     <PackageReference Include="FastEndpoints" />
     <PackageReference Include="FastEndpoints.Security" />
-    <PackageReference Include="FastEndpoints.Swagger" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Serilog.AspNetCore" />
