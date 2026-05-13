@@ -32,7 +32,7 @@ public sealed class DeviceIngestSignatureValidator : IDeviceIngestSignatureValid
         timestamp = timestamp.Trim();
         signature = signature.Trim();
 
-        if (!long.TryParse(timestamp, CultureInfo.InvariantCulture, out var unixSeconds))
+        if (!long.TryParse(timestamp, NumberStyles.Integer, CultureInfo.InvariantCulture, out var unixSeconds))
         {
             return DeviceIngestSignatureResult.Invalid("device_ingest.timestamp_invalid");
         }

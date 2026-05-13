@@ -18,7 +18,21 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(JwtOptions.SectionName))
             .Validate(options => !string.IsNullOrWhiteSpace(options.Issuer), "Jwt issuer is required.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.Audience), "Jwt audience is required.")
-            .Validate(options => !string.IsNullOrWhiteSpace(options.SigningKey) && options.SigningKey.Length >= 32, "Jwt signing key must be at least 32 characters.")
+            .Validate(options =>
+            {
+                if (string.IsNullOrWhiteSpace(options.SigningKey))
+                {
+                    return false;
+                }
+                try
+                {
+                    return Convert.FromBase64String(options.SigningKey).Length >= 32;
+                }
+                catch
+                {
+                    return false;
+                }
+            }, "Jwt signing key must be a valid Base64 string decoding to at least 32 bytes.")
             .Validate(options => options.AccessTokenMinutes > 0, "Jwt access token lifetime must be positive.")
             .ValidateOnStart();
 

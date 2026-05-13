@@ -1,4 +1,3 @@
-using System.Text;
 using Erp.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -22,7 +21,7 @@ public static class JwtBearerServiceCollectionExtensions
                     ValidateAudience = true,
                     ValidAudience = jwtOptions.Audience,
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
+                    IssuerSigningKey = new SymmetricSecurityKey(JwtSigningKeyHelper.DecodeSigningKey(jwtOptions.SigningKey)),
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromMinutes(1),
                 };
