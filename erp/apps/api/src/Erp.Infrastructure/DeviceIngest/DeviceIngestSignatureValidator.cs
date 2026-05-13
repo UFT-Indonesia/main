@@ -29,6 +29,9 @@ public sealed class DeviceIngestSignatureValidator : IDeviceIngestSignatureValid
             return DeviceIngestSignatureResult.Invalid("device_ingest.signature_required");
         }
 
+        timestamp = timestamp.Trim();
+        signature = signature.Trim();
+
         if (!long.TryParse(timestamp, CultureInfo.InvariantCulture, out var unixSeconds))
         {
             return DeviceIngestSignatureResult.Invalid("device_ingest.timestamp_invalid");
@@ -47,9 +50,11 @@ public sealed class DeviceIngestSignatureValidator : IDeviceIngestSignatureValid
         }
 
         var expectedSignature = ComputeSignature(payload, timestamp, _options.HmacSecret);
+        var normalizedSignature = signature.Trim().ToLowerInvariant();
+        
         if (!CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(expectedSignature),
-            Encoding.UTF8.GetBytes(signature.Trim())))
+            Encoding.UTF8.GetBytes(normalizedSignature)))
         {
             return DeviceIngestSignatureResult.Invalid("device_ingest.signature_invalid");
         }
