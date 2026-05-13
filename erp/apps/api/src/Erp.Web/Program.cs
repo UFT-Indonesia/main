@@ -39,13 +39,9 @@ try
         options.InvokeTracing = InvokeTracingMode.Full;
         options.UseEntityFrameworkCoreTransactions();
 
-        var connectionStrings = Options.Create(builder.Configuration
-            .GetRequiredSection(ConnectionStringsOptions.SectionName)
-            .Get<ConnectionStringsOptions>() ?? new ConnectionStringsOptions());
-        if (!string.IsNullOrWhiteSpace(connectionStrings.Value.Default))
-        {
-            options.PersistMessagesWithPostgresql(connectionStrings.Value.Default);
-        }
+        var connectionString = builder.Configuration.GetConnectionString("Default")
+            ?? throw new InvalidOperationException("Failed to load connection string from configuration");
+        options.PersistMessagesWithPostgresql(connectionString);
     });
 
     builder.Services
