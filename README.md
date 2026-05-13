@@ -27,7 +27,7 @@ workforce management all the way through to financial control and reporting.
 
 ## 🏗️ Tech Stack
 
-- **Backend**: .NET 10, FastEndpoints, EF Core 10, PostgreSQL, ASP.NET Identity + JWT, Hangfire, FluentValidation, Serilog, MailKit, MinIO
+- **Backend**: .NET 10, FastEndpoints, EF Core 10, PostgreSQL, ASP.NET Identity + JWT, Hangfire, FluentValidation, Serilog, MailKit, MinIO, Wolverine, Specifications (Query)
 - **Frontend**: Next.js 15 (App Router), TypeScript strict, Tailwind, shadcn/ui, TanStack Query/Table, Zod, react-hook-form, next-intl
 - **Locale**: id-ID (Asia/Jakarta), Currency IDR
 - **Hardware**: ESP32-S3 + R503 fingerprint (HMAC-signed HTTP push)
