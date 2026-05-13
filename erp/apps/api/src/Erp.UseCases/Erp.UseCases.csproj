@@ -16,6 +16,7 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="NodaTime" />
+    <PackageReference Include="WolverineFx" />
   </ItemGroup>
 
 </Project>

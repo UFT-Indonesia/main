@@ -2,6 +2,7 @@ using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Employees.Events;
 using Erp.SharedKernel.Domain.Errors;
+using Erp.SharedKernel.Identity;
 using FluentAssertions;
 using NodaTime;
 
@@ -32,7 +33,7 @@ public class EmployeeTests
     [Fact]
     public void Create_owner_with_parent_throws()
     {
-        var parentId = Guid.NewGuid();
+        var parentId = EmployeeId.New();
 
         var act = () => Employee.Create(
             "Owner Salah",
@@ -121,7 +122,7 @@ public class EmployeeTests
     public void AssignParent_rejects_owner_with_parent()
     {
         var owner = NewOwner();
-        var act = () => owner.AssignParent(Guid.NewGuid());
+        var act = () => owner.AssignParent(EmployeeId.New());
 
         act.Should().Throw<DomainException>().Where(e => e.Code == "employee.owner_no_parent");
     }
@@ -140,7 +141,7 @@ public class EmployeeTests
     public void AssignParent_records_event_when_changed()
     {
         var manager = NewManager(out _);
-        var newParentId = Guid.NewGuid();
+        var newParentId = EmployeeId.New();
 
         manager.AssignParent(newParentId);
 
@@ -183,9 +184,9 @@ public class EmployeeTests
     private static Employee NewOwner() =>
         Employee.Create("Owner", SampleNik, Wage, EffectiveFrom, EmployeeRole.Owner);
 
-    private static Employee NewManager(out Guid ownerId)
+    private static Employee NewManager(out EmployeeId ownerId)
     {
-        ownerId = Guid.NewGuid();
+        ownerId = EmployeeId.New();
         return Employee.Create(
             "Manager",
             Nik.Create("3201234567890124"),

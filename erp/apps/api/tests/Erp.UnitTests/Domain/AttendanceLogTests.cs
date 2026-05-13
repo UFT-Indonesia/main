@@ -1,6 +1,7 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Attendance.Events;
 using Erp.SharedKernel.Domain.Errors;
+using Erp.SharedKernel.Identity;
 using FluentAssertions;
 using NodaTime;
 
@@ -13,7 +14,7 @@ public class AttendanceLogTests
     [Fact]
     public void FromDevice_records_log_and_event()
     {
-        var employeeId = Guid.NewGuid();
+        var employeeId = EmployeeId.New();
 
         var log = AttendanceLog.FromDevice(employeeId, Now, PunchType.In, "esp32-1");
 
@@ -28,7 +29,7 @@ public class AttendanceLogTests
     [Fact]
     public void FromDevice_requires_employee_id()
     {
-        var act = () => AttendanceLog.FromDevice(Guid.Empty, Now, PunchType.In, "esp32-1");
+        var act = () => AttendanceLog.FromDevice(EmployeeId.Empty, Now, PunchType.In, "esp32-1");
 
         act.Should().Throw<DomainException>().Where(e => e.Code == "attendance.employee_id");
     }
@@ -36,7 +37,7 @@ public class AttendanceLogTests
     [Fact]
     public void FromDevice_requires_device_id()
     {
-        var act = () => AttendanceLog.FromDevice(Guid.NewGuid(), Now, PunchType.In, "  ");
+        var act = () => AttendanceLog.FromDevice(EmployeeId.New(), Now, PunchType.In, "  ");
 
         act.Should().Throw<DomainException>().Where(e => e.Code == "attendance.device_id");
     }
@@ -44,7 +45,7 @@ public class AttendanceLogTests
     [Fact]
     public void Manual_records_recorder_and_note()
     {
-        var employeeId = Guid.NewGuid();
+        var employeeId = EmployeeId.New();
         var userId = Guid.NewGuid();
 
         var log = AttendanceLog.Manual(employeeId, Now, PunchType.Out, userId, " lupa absen ");
@@ -60,7 +61,7 @@ public class AttendanceLogTests
     public void Manual_requires_recorder()
     {
         var act = () => AttendanceLog.Manual(
-            Guid.NewGuid(),
+            EmployeeId.New(),
             Now,
             PunchType.In,
             Guid.Empty);

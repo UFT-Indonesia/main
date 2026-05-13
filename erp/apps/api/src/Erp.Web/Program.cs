@@ -1,10 +1,15 @@
 using Erp.Infrastructure;
 using Erp.Infrastructure.Identity;
-using Erp.Web.Endpoints.Attendance;
+using Erp.Infrastructure.Persistence;
+using Erp.UseCases.Attendance;
 using Erp.Web.Middleware.Authentication;
-using Erp.Web.Endpoints.Auth;
+using FastEndpoints;
+using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using Serilog;
+using Wolverine;
+using Wolverine.EntityFrameworkCore;
+using Wolverine.Postgresql;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -31,6 +36,21 @@ try
            .ReadFrom.Services(services)
            .Enrich.FromLogContext());
 
+    builder.Host.UseWolverine(options =>
+    {
+        options.Discovery.IncludeAssembly(typeof(AttendanceResult).Assembly);
+        options.InvokeTracing = InvokeTracingMode.Full;
+        options.UseEntityFrameworkCoreTransactions();
+
+        var connectionStrings = Options.Create(builder.Configuration
+            .GetRequiredSection(ConnectionStringsOptions.SectionName)
+            .Get<ConnectionStringsOptions>() ?? new ConnectionStringsOptions());
+        if (!string.IsNullOrWhiteSpace(connectionStrings.Value.Default))
+        {
+            options.PersistMessagesWithPostgresql(connectionStrings.Value.Default);
+        }
+    });
+
     builder.Services
         .AddInfrastructure(builder.Configuration)
         .AddConfiguredJwtBearer(builder.Configuration)
@@ -39,6 +59,7 @@ try
                 policy.WithOrigins(corsAllowedOrigins)
                     .AllowAnyHeader()
                     .AllowAnyMethod()))
+        .AddFastEndpoints()
         .AddOpenApi(options =>
         {
             options.AddDocumentTransformer((document, context, cancellationToken) =>
@@ -61,16 +82,13 @@ try
     app.UseCors("Web");
     app.UseAuthentication();
     app.UseAuthorization();
-    app.MapAuthEndpoints();
-    app.MapAttendanceEndpoints();
+    app.UseFastEndpoints();
     app.MapOpenApi();
     app.MapScalarApiReference(options =>
     {
         options.Title = "UFT Davis ERP API";
         options.Theme = ScalarTheme.Kepler;
     });
-
-    app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
     app.Run();
 }
