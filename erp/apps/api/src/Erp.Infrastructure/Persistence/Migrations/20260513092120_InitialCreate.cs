@@ -5,7 +5,6 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 #nullable disable
 
 namespace Erp.Infrastructure.Persistence.Migrations;
-
     /// <inheritdoc />
     public partial class InitialCreate : Migration
     {
@@ -13,7 +12,7 @@ namespace Erp.Infrastructure.Persistence.Migrations;
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "attendance_logs",
+                name: "AttendanceLogs",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -27,11 +26,11 @@ namespace Erp.Infrastructure.Persistence.Migrations;
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_attendance_logs", x => x.Id);
+                    table.PrimaryKey("PK_AttendanceLogs", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "auth_roles",
+                name: "AuthRoles",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -41,11 +40,11 @@ namespace Erp.Infrastructure.Persistence.Migrations;
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_auth_roles", x => x.Id);
+                    table.PrimaryKey("PK_AuthRoles", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "auth_users",
+                name: "AuthUsers",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -68,11 +67,11 @@ namespace Erp.Infrastructure.Persistence.Migrations;
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_auth_users", x => x.Id);
+                    table.PrimaryKey("PK_AuthUsers", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "employees",
+                name: "Employees",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -89,11 +88,11 @@ namespace Erp.Infrastructure.Persistence.Migrations;
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_employees", x => x.Id);
+                    table.PrimaryKey("PK_Employees", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "auth_role_claims",
+                name: "AuthRoleClaims",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
@@ -104,17 +103,17 @@ namespace Erp.Infrastructure.Persistence.Migrations;
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_auth_role_claims", x => x.Id);
+                    table.PrimaryKey("PK_AuthRoleClaims", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_auth_role_claims_auth_roles_RoleId",
+                        name: "FK_AuthRoleClaims_AuthRoles_RoleId",
                         column: x => x.RoleId,
-                        principalTable: "auth_roles",
+                        principalTable: "AuthRoles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "auth_user_claims",
+                name: "AuthUserClaims",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
@@ -125,17 +124,17 @@ namespace Erp.Infrastructure.Persistence.Migrations;
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_auth_user_claims", x => x.Id);
+                    table.PrimaryKey("PK_AuthUserClaims", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_auth_user_claims_auth_users_UserId",
+                        name: "FK_AuthUserClaims_AuthUsers_UserId",
                         column: x => x.UserId,
-                        principalTable: "auth_users",
+                        principalTable: "AuthUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "auth_user_logins",
+                name: "AuthUserLogins",
                 columns: table => new
                 {
                     LoginProvider = table.Column<string>(type: "text", nullable: false),
@@ -145,17 +144,17 @@ namespace Erp.Infrastructure.Persistence.Migrations;
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_auth_user_logins", x => new { x.LoginProvider, x.ProviderKey });
+                    table.PrimaryKey("PK_AuthUserLogins", x => new { x.LoginProvider, x.ProviderKey });
                     table.ForeignKey(
-                        name: "FK_auth_user_logins_auth_users_UserId",
+                        name: "FK_AuthUserLogins_AuthUsers_UserId",
                         column: x => x.UserId,
-                        principalTable: "auth_users",
+                        principalTable: "AuthUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "auth_user_roles",
+                name: "AuthUserRoles",
                 columns: table => new
                 {
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
@@ -163,23 +162,23 @@ namespace Erp.Infrastructure.Persistence.Migrations;
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_auth_user_roles", x => new { x.UserId, x.RoleId });
+                    table.PrimaryKey("PK_AuthUserRoles", x => new { x.UserId, x.RoleId });
                     table.ForeignKey(
-                        name: "FK_auth_user_roles_auth_roles_RoleId",
+                        name: "FK_AuthUserRoles_AuthRoles_RoleId",
                         column: x => x.RoleId,
-                        principalTable: "auth_roles",
+                        principalTable: "AuthRoles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_auth_user_roles_auth_users_UserId",
+                        name: "FK_AuthUserRoles_AuthUsers_UserId",
                         column: x => x.UserId,
-                        principalTable: "auth_users",
+                        principalTable: "AuthUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "auth_user_tokens",
+                name: "AuthUserTokens",
                 columns: table => new
                 {
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
@@ -189,71 +188,71 @@ namespace Erp.Infrastructure.Persistence.Migrations;
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_auth_user_tokens", x => new { x.UserId, x.LoginProvider, x.Name });
+                    table.PrimaryKey("PK_AuthUserTokens", x => new { x.UserId, x.LoginProvider, x.Name });
                     table.ForeignKey(
-                        name: "FK_auth_user_tokens_auth_users_UserId",
+                        name: "FK_AuthUserTokens_AuthUsers_UserId",
                         column: x => x.UserId,
-                        principalTable: "auth_users",
+                        principalTable: "AuthUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_attendance_logs_employee_id_punched_at_utc",
-                table: "attendance_logs",
+                name: "IX_AttendanceLogs_employee_id_punched_at_utc",
+                table: "AttendanceLogs",
                 columns: new[] { "employee_id", "punched_at_utc" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_auth_role_claims_RoleId",
-                table: "auth_role_claims",
+                name: "IX_AuthRoleClaims_RoleId",
+                table: "AuthRoleClaims",
                 column: "RoleId");
 
             migrationBuilder.CreateIndex(
                 name: "RoleNameIndex",
-                table: "auth_roles",
+                table: "AuthRoles",
                 column: "NormalizedName",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_auth_user_claims_UserId",
-                table: "auth_user_claims",
+                name: "IX_AuthUserClaims_UserId",
+                table: "AuthUserClaims",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_auth_user_logins_UserId",
-                table: "auth_user_logins",
+                name: "IX_AuthUserLogins_UserId",
+                table: "AuthUserLogins",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_auth_user_roles_RoleId",
-                table: "auth_user_roles",
+                name: "IX_AuthUserRoles_RoleId",
+                table: "AuthUserRoles",
                 column: "RoleId");
 
             migrationBuilder.CreateIndex(
                 name: "EmailIndex",
-                table: "auth_users",
+                table: "AuthUsers",
                 column: "NormalizedEmail");
 
             migrationBuilder.CreateIndex(
-                name: "IX_auth_users_EmployeeId",
-                table: "auth_users",
+                name: "IX_AuthUsers_EmployeeId",
+                table: "AuthUsers",
                 column: "EmployeeId");
 
             migrationBuilder.CreateIndex(
                 name: "UserNameIndex",
-                table: "auth_users",
+                table: "AuthUsers",
                 column: "NormalizedUserName",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_employees_nik",
-                table: "employees",
+                name: "IX_Employees_nik",
+                table: "Employees",
                 column: "nik",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_employees_parent_id",
-                table: "employees",
+                name: "IX_Employees_parent_id",
+                table: "Employees",
                 column: "parent_id");
         }
 
@@ -261,30 +260,30 @@ namespace Erp.Infrastructure.Persistence.Migrations;
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "attendance_logs");
+                name: "AttendanceLogs");
 
             migrationBuilder.DropTable(
-                name: "auth_role_claims");
+                name: "AuthRoleClaims");
 
             migrationBuilder.DropTable(
-                name: "auth_user_claims");
+                name: "AuthUserClaims");
 
             migrationBuilder.DropTable(
-                name: "auth_user_logins");
+                name: "AuthUserLogins");
 
             migrationBuilder.DropTable(
-                name: "auth_user_roles");
+                name: "AuthUserRoles");
 
             migrationBuilder.DropTable(
-                name: "auth_user_tokens");
+                name: "AuthUserTokens");
 
             migrationBuilder.DropTable(
-                name: "employees");
+                name: "Employees");
 
             migrationBuilder.DropTable(
-                name: "auth_roles");
+                name: "AuthRoles");
 
             migrationBuilder.DropTable(
-                name: "auth_users");
+                name: "AuthUsers");
         }
-    }
+}
