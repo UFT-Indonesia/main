@@ -3,7 +3,7 @@ using Erp.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Erp.Web.Authentication;
+namespace Erp.Web.Middleware.Authentication;
 
 public static class JwtBearerServiceCollectionExtensions
 {

@@ -1,7 +1,7 @@
 using Erp.Infrastructure;
 using Erp.Infrastructure.Identity;
 using Erp.Web.Endpoints.Attendance;
-using Erp.Web.Authentication;
+using Erp.Web.Middleware.Authentication;
 using Erp.Web.Endpoints.Auth;
 using Scalar.AspNetCore;
 using Serilog;
