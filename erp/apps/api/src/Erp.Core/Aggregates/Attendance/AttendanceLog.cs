@@ -1,18 +1,19 @@
 using Erp.Core.Aggregates.Attendance.Events;
 using Erp.SharedKernel.Domain;
 using Erp.SharedKernel.Domain.Errors;
+using Erp.SharedKernel.Identity;
 using NodaTime;
 
 namespace Erp.Core.Aggregates.Attendance;
 
-public sealed class AttendanceLog : AggregateRoot
+public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
 {
     // EF Core constructor.
     private AttendanceLog() { }
 
     private AttendanceLog(
-        Guid id,
-        Guid employeeId,
+        AttendanceLogId id,
+        EmployeeId employeeId,
         Instant punchedAtUtc,
         AttendanceSource source,
         PunchType punchType,
@@ -30,7 +31,7 @@ public sealed class AttendanceLog : AggregateRoot
         RecordedByUserId = recordedByUserId;
     }
 
-    public Guid EmployeeId { get; private set; }
+    public EmployeeId EmployeeId { get; private set; }
 
     /// <summary>UTC instant of the actual punch (business fact, may be backfilled).</summary>
     public Instant PunchedAtUtc { get; private set; }
@@ -46,12 +47,12 @@ public sealed class AttendanceLog : AggregateRoot
     public Guid? RecordedByUserId { get; private set; }
 
     public static AttendanceLog FromDevice(
-        Guid employeeId,
+        EmployeeId employeeId,
         Instant punchedAtUtc,
         PunchType punchType,
         string deviceId)
     {
-        if (employeeId == Guid.Empty)
+        if (employeeId == EmployeeId.Empty)
         {
             throw new DomainException("attendance.employee_id", "Employee id is required.");
         }
@@ -62,7 +63,7 @@ public sealed class AttendanceLog : AggregateRoot
         }
 
         var log = new AttendanceLog(
-            Guid.NewGuid(),
+            AttendanceLogId.New(),
             employeeId,
             punchedAtUtc,
             AttendanceSource.Device,
@@ -72,8 +73,8 @@ public sealed class AttendanceLog : AggregateRoot
             null);
 
         log.RaiseDomainEvent(new AttendanceLogRecorded(
-            log.Id,
-            log.EmployeeId,
+            log.Id.Value,
+            log.EmployeeId.Value,
             log.PunchedAtUtc,
             log.Source,
             log.PunchType,
@@ -85,13 +86,13 @@ public sealed class AttendanceLog : AggregateRoot
     }
 
     public static AttendanceLog Manual(
-        Guid employeeId,
+        EmployeeId employeeId,
         Instant punchedAtUtc,
         PunchType punchType,
         Guid recordedByUserId,
         string? note = null)
     {
-        if (employeeId == Guid.Empty)
+        if (employeeId == EmployeeId.Empty)
         {
             throw new DomainException("attendance.employee_id", "Employee id is required.");
         }
@@ -104,7 +105,7 @@ public sealed class AttendanceLog : AggregateRoot
         }
 
         var log = new AttendanceLog(
-            Guid.NewGuid(),
+            AttendanceLogId.New(),
             employeeId,
             punchedAtUtc,
             AttendanceSource.Manual,
@@ -114,8 +115,8 @@ public sealed class AttendanceLog : AggregateRoot
             recordedByUserId);
 
         log.RaiseDomainEvent(new AttendanceLogRecorded(
-            log.Id,
-            log.EmployeeId,
+            log.Id.Value,
+            log.EmployeeId.Value,
             log.PunchedAtUtc,
             log.Source,
             log.PunchType,

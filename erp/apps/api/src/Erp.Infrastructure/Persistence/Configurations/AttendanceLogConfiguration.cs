@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Infrastructure.Persistence.ValueConverters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -14,14 +15,18 @@ public sealed class AttendanceLogConfiguration : IEntityTypeConfiguration<Attend
 
     public void Configure(EntityTypeBuilder<AttendanceLog> builder)
     {
-        builder.ToTable("attendance_logs");
+        builder.ToTable("AttendanceLogs");
 
         builder.HasKey(log => log.Id);
 
         builder.Ignore(log => log.DomainEvents);
 
+        builder.Property(log => log.Id)
+            .HasConversion(new AttendanceLogIdConverter());
+
         builder.Property(log => log.EmployeeId)
             .HasColumnName("employee_id")
+            .HasConversion(new EmployeeIdConverter())
             .IsRequired();
 
         builder.Property(log => log.PunchedAtUtc)

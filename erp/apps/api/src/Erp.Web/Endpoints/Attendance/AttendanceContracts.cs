@@ -1,15 +1,29 @@
 namespace Erp.Web.Endpoints.Attendance;
 
-public sealed record DeviceAttendanceLogRequest(Guid EmployeeId, DateTimeOffset PunchedAtUtc, string PunchType, string DeviceId);
+public sealed class DeviceAttendanceLogRequest
+{
+    public Guid EmployeeId { get; init; }
+    public DateTimeOffset PunchedAtUtc { get; init; }
+    public string PunchType { get; init; } = default!;
+    public string DeviceId { get; init; } = default!;
+}
 
-public sealed record ManualAttendanceLogRequest(Guid EmployeeId, DateTimeOffset PunchedAtUtc, string PunchType, string? Note);
+public sealed class ManualAttendanceLogRequest
+{
+    public Guid EmployeeId { get; init; }
+    public DateTimeOffset PunchedAtUtc { get; init; }
+    public string PunchType { get; init; } = default!;
+    public string? Note { get; init; }
+}
 
-public sealed record AttendanceLogResponse(
-    Guid Id,
-    Guid EmployeeId,
-    DateTimeOffset PunchedAtUtc,
-    string Source,
-    string PunchType,
-    string? DeviceId,
-    Guid? RecordedByUserId,
-    string? Note);
+public sealed class AttendanceLogResponse
+{
+    public Guid Id { get; init; }
+    public Guid EmployeeId { get; init; }
+    public DateTimeOffset PunchedAtUtc { get; init; }
+    public string Source { get; init; } = default!;
+    public string PunchType { get; init; } = default!;
+    public string? DeviceId { get; init; }
+    public Guid? RecordedByUserId { get; init; }
+    public string? Note { get; init; }
+}
