@@ -7,7 +7,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
-public sealed class RecordDeviceLogEndpoint : Endpoint<DeviceAttendanceLogRequest, AttendanceLogResponse>
+public sealed class RecordDeviceLogEndpoint : EndpointWithoutRequest<AttendanceLogResponse>
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -29,11 +29,8 @@ public sealed class RecordDeviceLogEndpoint : Endpoint<DeviceAttendanceLogReques
         Group<AttendanceGroup>();
     }
 
-    public override async Task HandleAsync(DeviceAttendanceLogRequest req, CancellationToken ct)
+    public override async Task HandleAsync(CancellationToken ct)
     {
-        HttpContext.Request.EnableBuffering();
-        HttpContext.Request.Body.Position = 0;
-
         using var reader = new StreamReader(HttpContext.Request.Body);
         var payload = await reader.ReadToEndAsync(ct);
 
