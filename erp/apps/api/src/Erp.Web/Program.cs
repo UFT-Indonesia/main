@@ -20,6 +20,12 @@ try
         builder.Configuration.AddEnvironmentVariables();
     }
 
+    var corsAllowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    if (corsAllowedOrigins is null || corsAllowedOrigins.Length == 0)
+    {
+        throw new InvalidOperationException("Configuration value 'Cors:AllowedOrigins' must specify at least one origin.");
+    }
+
     builder.Host.UseSerilog((ctx, services, cfg) =>
         cfg.ReadFrom.Configuration(ctx.Configuration)
            .ReadFrom.Services(services)
@@ -30,7 +36,7 @@ try
         .AddConfiguredJwtBearer(builder.Configuration)
         .AddCors(options =>
             options.AddPolicy("Web", policy =>
-                policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
+                policy.WithOrigins(corsAllowedOrigins)
                     .AllowAnyHeader()
                     .AllowAnyMethod()))
         .AddOpenApi(options =>
