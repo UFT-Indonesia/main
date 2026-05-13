@@ -118,8 +118,22 @@ public static class AttendanceEndpoints
         }
     }
 
-    private static bool TryParsePunchType(string value, out PunchType punchType) =>
-        Enum.TryParse(value, ignoreCase: true, out punchType);
+    private static bool TryParsePunchType(string value, out PunchType punchType)
+    {
+        punchType = default;
+ 
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+    
+        if (int.TryParse(value, out var _))
+        {
+            return false;
+        }
+    
+        return Enum.TryParse(value, ignoreCase: true, out punchType);
+    }
 
     private static AttendanceLogResponse ToResponse(AttendanceLog log) =>
         new(
