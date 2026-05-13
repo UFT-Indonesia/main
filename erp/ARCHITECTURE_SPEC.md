@@ -20,8 +20,8 @@ Erp.Web                   → FastEndpoints (dispatch to Wolverine), Program.cs 
 
 ### Directory.Packages.props additions:
 ```xml
-<PackageVersion Include="Wolverine" Version="3.8.1" />
-<PackageVersion Include="Wolverine.EntityFrameworkCore" Version="3.8.1" />
+<PackageVersion Include="Wolverine" Version="5.39.0" />
+<PackageVersion Include="Wolverine.EntityFrameworkCore" Version="5.39.0" />
 <PackageVersion Include="Ardalis.Specification" Version="9.0.1" />
 <PackageVersion Include="Ardalis.Specification.EntityFrameworkCore" Version="9.0.1" />
 ```
