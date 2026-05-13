@@ -1,5 +1,9 @@
-using FastEndpoints;
-using FastEndpoints.Swagger;
+using Erp.Infrastructure;
+using Erp.Infrastructure.Identity;
+using Erp.Web.Endpoints.Attendance;
+using Erp.Web.Middleware.Authentication;
+using Erp.Web.Endpoints.Auth;
+using Scalar.AspNetCore;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -10,20 +14,61 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    if (!builder.Environment.IsDevelopment())
+    {
+        AddDotEnvFile(builder.Configuration, builder.Environment.ContentRootPath);
+        builder.Configuration.AddEnvironmentVariables();
+    }
+
+    var corsAllowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    if (corsAllowedOrigins is null || corsAllowedOrigins.Length == 0)
+    {
+        throw new InvalidOperationException("Configuration value 'Cors:AllowedOrigins' must specify at least one origin.");
+    }
+
     builder.Host.UseSerilog((ctx, services, cfg) =>
         cfg.ReadFrom.Configuration(ctx.Configuration)
            .ReadFrom.Services(services)
            .Enrich.FromLogContext());
 
     builder.Services
-        .AddFastEndpoints()
-        .SwaggerDocument();
+        .AddInfrastructure(builder.Configuration)
+        .AddConfiguredJwtBearer(builder.Configuration)
+        .AddCors(options =>
+            options.AddPolicy("Web", policy =>
+                policy.WithOrigins(corsAllowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()))
+        .AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer((document, context, cancellationToken) =>
+            {
+                document.Info.Title = "UFT Davis ERP API";
+                document.Info.Version = "v1";
+                return Task.CompletedTask;
+            });
+        });
 
     var app = builder.Build();
 
+    using (var scope = app.Services.CreateScope())
+    {
+        var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
+        await seeder.SeedAsync();
+    }
+
     app.UseSerilogRequestLogging();
-    app.UseFastEndpoints();
-    app.UseSwaggerGen();
+    app.UseCors("Web");
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapAuthEndpoints();
+    app.MapAttendanceEndpoints();
+    app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "UFT Davis ERP API";
+        options.Theme = ScalarTheme.Kepler;
+    });
 
     app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
@@ -36,6 +81,42 @@ catch (Exception ex) when (ex is not HostAbortedException)
 finally
 {
     Log.CloseAndFlush();
+}
+
+static void AddDotEnvFile(ConfigurationManager configuration, string contentRootPath)
+{
+    var path = Path.Combine(contentRootPath, ".env");
+    if (!File.Exists(path))
+    {
+        return;
+    }
+
+    var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+    foreach (var line in File.ReadAllLines(path))
+    {
+        var trimmedLine = line.Trim();
+        if (trimmedLine.Length == 0 || trimmedLine.StartsWith('#'))
+        {
+            continue;
+        }
+
+        if (trimmedLine.StartsWith("export ", StringComparison.Ordinal))
+        {
+            trimmedLine = trimmedLine["export ".Length..].TrimStart();
+        }
+
+        var separatorIndex = trimmedLine.IndexOf('=');
+        if (separatorIndex <= 0)
+        {
+            continue;
+        }
+
+        var key = trimmedLine[..separatorIndex].Trim().Replace("__", ":");
+        var value = trimmedLine[(separatorIndex + 1)..].Trim().Trim('"', '\'');
+        values[key] = value;
+    }
+
+    configuration.AddInMemoryCollection(values);
 }
 
 public partial class Program;
