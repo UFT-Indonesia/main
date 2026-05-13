@@ -19,11 +19,8 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    if (!builder.Environment.IsDevelopment())
-    {
-        AddDotEnvFile(builder.Configuration, builder.Environment.ContentRootPath);
-        builder.Configuration.AddEnvironmentVariables();
-    }
+    AddDotEnvFile(builder.Configuration, builder.Environment.ContentRootPath);
+    builder.Configuration.AddEnvironmentVariables();
 
     var corsAllowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
     if (corsAllowedOrigins is null || corsAllowedOrigins.Length == 0)
