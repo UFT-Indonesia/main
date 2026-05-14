@@ -165,6 +165,29 @@ public static class CreateEmployeeHandler
 - Keep call stacks short — handler calls repository + domain logic, nothing deeper
 - For fire-and-forget commands that don't need a response, return `Task` (no return type)
 
+**Checkpoint (2026-05-14)**: Actual implementation uses instance classes with constructor injection instead of static classes with method injection. Example:
+```csharp
+public sealed class RecordManualLogHandler
+{
+    private readonly IReadRepository<Employee> _employees;
+    private readonly IRepository<AttendanceLog> _attendanceLogs;
+
+    public RecordManualLogHandler(
+        IReadRepository<Employee> employees,
+        IRepository<AttendanceLog> attendanceLogs)
+    {
+        _employees = employees;
+        _attendanceLogs = attendanceLogs;
+    }
+
+    public Task<Result<AttendanceResult>> Handle(
+        RecordManualLogCommand command,
+        CancellationToken ct) =>
+        AttendanceLogService.RecordAsync(...);
+}
+```
+Rationale: Constructor injection provides better testability and aligns with Wolverine's support for both patterns. Future handlers should follow this instance class pattern.
+
 ## 8. Endpoint Refactor (FastEndpoints → Wolverine)
 
 Each endpoint becomes a thin HTTP shell that dispatches to Wolverine.
