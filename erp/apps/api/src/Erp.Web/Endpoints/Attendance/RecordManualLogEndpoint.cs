@@ -1,5 +1,7 @@
 using System.Security.Claims;
-using Erp.UseCases.Attendance;
+using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Attendance.Common;
+using Erp.UseCases.Attendance.RecordManualLog;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
 using Wolverine;
@@ -31,23 +33,32 @@ public sealed class RecordManualLogEndpoint : Endpoint<ManualAttendanceLogReques
             return;
         }
 
-        try
-        {
-            var result = await _bus.InvokeAsync<AttendanceResult>(new RecordManualAttendanceLog(
-                req.EmployeeId,
-                req.PunchedAtUtc,
-                req.PunchType,
-                userId,
-                req.Note), ct);
+        var result = await _bus.InvokeAsync<Result<AttendanceResult>>(new RecordManualLogCommand(
+            req.EmployeeId,
+            req.PunchedAtUtc,
+            req.PunchType,
+            userId,
+            req.Note), ct);
 
+        if (result is Result<AttendanceResult>.Success s)
+        {
             await SendCreatedAtAsync<RecordManualLogEndpoint>(
                 null,
-                ToResponse(result),
+                ToResponse(s.Value),
                 cancellation: ct);
+            return;
         }
-        catch (KeyNotFoundException)
+
+        if (result is Result<AttendanceResult>.NotFound)
         {
             await SendNotFoundAsync(ct);
+            return;
+        }
+
+        if (result is Result<AttendanceResult>.Error e)
+        {
+            HttpContext.Response.StatusCode = 400;
+            await HttpContext.Response.WriteAsJsonAsync(new { code = e.Code, message = e.Message }, ct);
         }
     }
 

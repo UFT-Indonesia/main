@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Erp.Infrastructure.DeviceIngest;
-using Erp.UseCases.Attendance;
+using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Attendance.Common;
+using Erp.UseCases.Attendance.RecordDeviceLog;
 using FastEndpoints;
 using Wolverine;
 
@@ -50,22 +52,31 @@ public sealed class RecordDeviceLogEndpoint : EndpointWithoutRequest<AttendanceL
             ThrowError("Invalid attendance payload.", 400);
         }
 
-        try
-        {
-            var result = await _bus.InvokeAsync<AttendanceResult>(new RecordDeviceAttendanceLog(
-                parsed.EmployeeId,
-                parsed.PunchedAtUtc,
-                parsed.PunchType,
-                parsed.DeviceId), ct);
+        var result = await _bus.InvokeAsync<Result<AttendanceResult>>(new RecordDeviceLogCommand(
+            parsed.EmployeeId,
+            parsed.PunchedAtUtc,
+            parsed.PunchType,
+            parsed.DeviceId), ct);
 
+        if (result is Result<AttendanceResult>.Success s)
+        {
             await SendCreatedAtAsync<RecordDeviceLogEndpoint>(
                 null,
-                ToResponse(result),
+                ToResponse(s.Value),
                 cancellation: ct);
+            return;
         }
-        catch (KeyNotFoundException)
+
+        if (result is Result<AttendanceResult>.NotFound)
         {
             await SendNotFoundAsync(ct);
+            return;
+        }
+
+        if (result is Result<AttendanceResult>.Error e)
+        {
+            HttpContext.Response.StatusCode = 400;
+            await HttpContext.Response.WriteAsJsonAsync(new { code = e.Code, message = e.Message }, ct);
         }
     }
 

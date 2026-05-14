@@ -2,7 +2,7 @@ using Erp.Infrastructure;
 using Erp.Infrastructure.Exceptions;
 using Erp.Infrastructure.Identity;
 using Erp.Infrastructure.Persistence;
-using Erp.UseCases.Attendance;
+using Erp.UseCases.Attendance.Common;
 using Erp.Web.Middleware.Authentication;
 using FastEndpoints;
 using Microsoft.Extensions.Options;
