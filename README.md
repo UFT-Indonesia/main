@@ -43,7 +43,7 @@ workforce management all the way through to financial control and reporting.
 ⚠️ Make sure `.env` file is setup before implementing. Please use the `.env.example` file for reference.
 
 ```bash
-docker compose up -d                         # postgres, smtp4dev, minio
+docker compose up -d                         # postgres, smtp4dev, minio; soon to be added. Currently there are no docker configurations setup
 dotnet restore Erp.sln
 dotnet ef database update -p apps/api/src/Erp.Infrastructure -s apps/api/src/Erp.Web
 dotnet run --project apps/api/src/Erp.Web
