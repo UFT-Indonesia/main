@@ -3,6 +3,7 @@ using Erp.Core.Aggregates.Attendance.Events;
 using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Employees.Events;
+using Erp.SharedKernel.Identity;
 using FluentAssertions;
 using NodaTime;
 
@@ -33,13 +34,13 @@ public class DomainEventEnvelopeTests
 
         ev.EventType.Should().Be("employee.created");
         ev.AggregateType.Should().Be(nameof(Employee));
-        ev.AggregateId.Should().Be(owner.Id);
+        ev.AggregateId.Should().Be(owner.Id.Value);
     }
 
     [Fact]
     public void EmployeeCreated_payload_contains_full_initial_snapshot()
     {
-        var parentId = Guid.NewGuid();
+        var parentId = EmployeeId.New();
         var manager = Employee.Create(
             "Manager Satu",
             Nik.Create("3201234567890124"),
@@ -55,7 +56,7 @@ public class DomainEventEnvelopeTests
         ev.Nik.Should().Be("3201234567890124");
         ev.Npwp.Should().Be("123456789012000");
         ev.Role.Should().Be(EmployeeRole.Manager);
-        ev.ParentId.Should().Be(parentId);
+        ev.ParentId.Should().Be(parentId.Value);
         ev.MonthlyWage.Should().Be(Wage);
         ev.EffectiveSalaryFrom.Should().Be(EffectiveFrom);
     }
@@ -75,7 +76,7 @@ public class DomainEventEnvelopeTests
         ev.OldEffectiveFrom.Should().Be(EffectiveFrom);
         ev.NewMonthlyWage.Should().Be(newWage);
         ev.NewEffectiveFrom.Should().Be(newEffective);
-        ev.AggregateId.Should().Be(owner.Id);
+        ev.AggregateId.Should().Be(owner.Id.Value);
         ev.EventType.Should().Be("employee.salary_changed");
     }
 
@@ -86,7 +87,7 @@ public class DomainEventEnvelopeTests
         // is raised now. Consumers must be able to tell them apart.
         var twoDaysAgoPunch = SystemClock.Instance.GetCurrentInstant() - Duration.FromDays(2);
         var log = AttendanceLog.Manual(
-            Guid.NewGuid(),
+            EmployeeId.New(),
             twoDaysAgoPunch,
             PunchType.In,
             Guid.NewGuid(),
@@ -103,7 +104,7 @@ public class DomainEventEnvelopeTests
     public void AttendanceLogRecorded_envelope_targets_log_aggregate()
     {
         var log = AttendanceLog.FromDevice(
-            Guid.NewGuid(),
+            EmployeeId.New(),
             SystemClock.Instance.GetCurrentInstant(),
             PunchType.In,
             "esp32-1");
@@ -112,15 +113,15 @@ public class DomainEventEnvelopeTests
 
         ev.EventType.Should().Be("attendance.recorded");
         ev.AggregateType.Should().Be(nameof(AttendanceLog));
-        ev.AggregateId.Should().Be(log.Id);
-        ev.LogId.Should().Be(log.Id);
+        ev.AggregateId.Should().Be(log.Id.Value);
+        ev.LogId.Should().Be(log.Id.Value);
     }
 
     [Fact]
     public void AttendanceLogRecorded_payload_carries_device_context_for_device_source()
     {
         var log = AttendanceLog.FromDevice(
-            Guid.NewGuid(),
+            EmployeeId.New(),
             SystemClock.Instance.GetCurrentInstant(),
             PunchType.Out,
             "esp32-7");
@@ -138,7 +139,7 @@ public class DomainEventEnvelopeTests
     {
         var userId = Guid.NewGuid();
         var log = AttendanceLog.Manual(
-            Guid.NewGuid(),
+            EmployeeId.New(),
             SystemClock.Instance.GetCurrentInstant(),
             PunchType.In,
             userId,

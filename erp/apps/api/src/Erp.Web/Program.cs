@@ -1,10 +1,14 @@
 using Erp.Infrastructure;
+using Erp.Infrastructure.Configuration;
+using Erp.Infrastructure.Exceptions;
 using Erp.Infrastructure.Identity;
-using Erp.Web.Endpoints.Attendance;
+using Erp.UseCases.Attendance.Common;
 using Erp.Web.Middleware.Authentication;
-using Erp.Web.Endpoints.Auth;
+using FastEndpoints;
 using Scalar.AspNetCore;
 using Serilog;
+using Wolverine;
+using Wolverine.EntityFrameworkCore;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -13,11 +17,14 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    
+    builder.Configuration.AddDotEnvFile(builder.Environment.ContentRootPath);
+    builder.Configuration.AddEnvironmentVariables();
 
-    if (!builder.Environment.IsDevelopment())
+    var connectionString = builder.Configuration.GetConnectionString("Default");
+    if (string.IsNullOrWhiteSpace(connectionString))
     {
-        AddDotEnvFile(builder.Configuration, builder.Environment.ContentRootPath);
-        builder.Configuration.AddEnvironmentVariables();
+        throw new InvalidOperationException("Failed to load connection string from configuration");
     }
 
     var corsAllowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
@@ -31,7 +38,19 @@ try
            .ReadFrom.Services(services)
            .Enrich.FromLogContext());
 
+    builder.Host.UseWolverine(options =>
+    {
+        options.Discovery.IncludeAssembly(typeof(AttendanceResult).Assembly);
+        options.InvokeTracing = builder.Environment.IsDevelopment()
+            ? InvokeTracingMode.Full
+            : InvokeTracingMode.Lightweight;
+
+        options.UseEntityFrameworkCoreTransactions();
+
+    });
+
     builder.Services
+        .AddExceptionHandler<DomainExceptionHandler>()
         .AddInfrastructure(builder.Configuration)
         .AddConfiguredJwtBearer(builder.Configuration)
         .AddCors(options =>
@@ -39,6 +58,7 @@ try
                 policy.WithOrigins(corsAllowedOrigins)
                     .AllowAnyHeader()
                     .AllowAnyMethod()))
+        .AddFastEndpoints()
         .AddOpenApi(options =>
         {
             options.AddDocumentTransformer((document, context, cancellationToken) =>
@@ -61,16 +81,14 @@ try
     app.UseCors("Web");
     app.UseAuthentication();
     app.UseAuthorization();
-    app.MapAuthEndpoints();
-    app.MapAttendanceEndpoints();
+    app.UseExceptionHandler();
+    app.UseFastEndpoints();
     app.MapOpenApi();
     app.MapScalarApiReference(options =>
     {
         options.Title = "UFT Davis ERP API";
         options.Theme = ScalarTheme.Kepler;
     });
-
-    app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
     app.Run();
 }
@@ -81,42 +99,6 @@ catch (Exception ex) when (ex is not HostAbortedException)
 finally
 {
     Log.CloseAndFlush();
-}
-
-static void AddDotEnvFile(ConfigurationManager configuration, string contentRootPath)
-{
-    var path = Path.Combine(contentRootPath, ".env");
-    if (!File.Exists(path))
-    {
-        return;
-    }
-
-    var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-    foreach (var line in File.ReadAllLines(path))
-    {
-        var trimmedLine = line.Trim();
-        if (trimmedLine.Length == 0 || trimmedLine.StartsWith('#'))
-        {
-            continue;
-        }
-
-        if (trimmedLine.StartsWith("export ", StringComparison.Ordinal))
-        {
-            trimmedLine = trimmedLine["export ".Length..].TrimStart();
-        }
-
-        var separatorIndex = trimmedLine.IndexOf('=');
-        if (separatorIndex <= 0)
-        {
-            continue;
-        }
-
-        var key = trimmedLine[..separatorIndex].Trim().Replace("__", ":");
-        var value = trimmedLine[(separatorIndex + 1)..].Trim().Trim('"', '\'');
-        values[key] = value;
-    }
-
-    configuration.AddInMemoryCollection(values);
 }
 
 public partial class Program;

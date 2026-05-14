@@ -1,0 +1,12 @@
+using Erp.SharedKernel.Identity;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
+namespace Erp.Infrastructure.Persistence.ValueConverters;
+
+public sealed class AttendanceLogIdConverter : ValueConverter<AttendanceLogId, Guid>
+{
+    public AttendanceLogIdConverter()
+        : base(id => id.Value, value => new AttendanceLogId(value))
+    {
+    }
+}

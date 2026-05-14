@@ -26,16 +26,16 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
 
         builder.Entity<ApplicationUser>(entity =>
         {
-            entity.ToTable("auth_users");
+            entity.ToTable("AuthUsers");
             entity.Property(user => user.FullName).HasMaxLength(200).IsRequired();
             entity.HasIndex(user => user.EmployeeId);
         });
 
-        builder.Entity<IdentityRole<Guid>>().ToTable("auth_roles");
-        builder.Entity<IdentityUserRole<Guid>>().ToTable("auth_user_roles");
-        builder.Entity<IdentityUserClaim<Guid>>().ToTable("auth_user_claims");
-        builder.Entity<IdentityUserLogin<Guid>>().ToTable("auth_user_logins");
-        builder.Entity<IdentityRoleClaim<Guid>>().ToTable("auth_role_claims");
-        builder.Entity<IdentityUserToken<Guid>>().ToTable("auth_user_tokens");
+        builder.Entity<IdentityRole<Guid>>().ToTable("AuthRoles");
+        builder.Entity<IdentityUserRole<Guid>>().ToTable("AuthUserRoles");
+        builder.Entity<IdentityUserClaim<Guid>>().ToTable("AuthUserClaims");
+        builder.Entity<IdentityUserLogin<Guid>>().ToTable("AuthUserLogins");
+        builder.Entity<IdentityRoleClaim<Guid>>().ToTable("AuthRoleClaims");
+        builder.Entity<IdentityUserToken<Guid>>().ToTable("AuthUserTokens");
     }
 }

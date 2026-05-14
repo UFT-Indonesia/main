@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Erp.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Erp.Core\Erp.Core.csproj" />
   </ItemGroup>
 
@@ -16,6 +20,7 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="NodaTime" />
+    <PackageReference Include="WolverineFx" />
   </ItemGroup>
 
 </Project>

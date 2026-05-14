@@ -2,24 +2,25 @@ using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees.Events;
 using Erp.SharedKernel.Domain;
 using Erp.SharedKernel.Domain.Errors;
+using Erp.SharedKernel.Identity;
 using NodaTime;
 
 namespace Erp.Core.Aggregates.Employees;
 
-public sealed class Employee : AggregateRoot
+public sealed class Employee : AggregateRoot<EmployeeId>
 {
     // EF Core constructor.
     private Employee() { }
 
     private Employee(
-        Guid id,
+        EmployeeId id,
         string fullName,
         Nik nik,
         Npwp? npwp,
         Money monthlyWage,
         LocalDate effectiveSalaryFrom,
         EmployeeRole role,
-        Guid? parentId)
+        EmployeeId? parentId)
         : base(id)
     {
         FullName = fullName;
@@ -46,7 +47,7 @@ public sealed class Employee : AggregateRoot
 
     public EmployeeStatus Status { get; private set; }
 
-    public Guid? ParentId { get; private set; }
+    public EmployeeId? ParentId { get; private set; }
 
     public LocalDate? TerminationDate { get; private set; }
 
@@ -56,9 +57,9 @@ public sealed class Employee : AggregateRoot
         Money monthlyWage,
         LocalDate effectiveSalaryFrom,
         EmployeeRole role,
-        Guid? parentId = null,
+        EmployeeId? parentId = null,
         Npwp? npwp = null,
-        Guid? id = null)
+        EmployeeId? id = null)
     {
         if (string.IsNullOrWhiteSpace(fullName))
         {
@@ -70,7 +71,12 @@ public sealed class Employee : AggregateRoot
             throw new DomainException("employee.wage", "Monthly wage must be positive.");
         }
 
-        var employeeId = id ?? Guid.NewGuid();
+        var employeeId = id ?? EmployeeId.New();
+        if (parentId.HasValue && parentId.Value == EmployeeId.Empty)
+        {
+            throw new DomainException("employee.parent_empty", "Parent ID cannot be empty.");
+        }
+
         if (parentId.HasValue && parentId.Value == employeeId)
         {
             throw new DomainException("employee.parent_self", "Employee cannot be its own parent.");
@@ -101,12 +107,12 @@ public sealed class Employee : AggregateRoot
             parentId);
 
         employee.RaiseDomainEvent(new EmployeeCreated(
-            employee.Id,
+            employee.Id.Value,
             employee.FullName,
             nik.Value,
             npwp?.Value,
             role,
-            parentId,
+            parentId?.Value,
             monthlyWage,
             effectiveSalaryFrom));
         return employee;
@@ -131,12 +137,17 @@ public sealed class Employee : AggregateRoot
         var oldEffective = EffectiveSalaryFrom;
         MonthlyWage = newWage;
         EffectiveSalaryFrom = effectiveFrom;
-        RaiseDomainEvent(new EmployeeSalaryChanged(Id, oldWage, oldEffective, newWage, effectiveFrom));
+        RaiseDomainEvent(new EmployeeSalaryChanged(Id.Value, oldWage, oldEffective, newWage, effectiveFrom));
     }
 
-    public void AssignParent(Guid? newParentId)
+    public void AssignParent(EmployeeId? newParentId)
     {
         EnsureActive();
+        if (newParentId.HasValue && newParentId.Value == EmployeeId.Empty)
+        {
+            throw new DomainException("employee.parent_empty", "Parent ID cannot be empty.");
+        }
+
         if (newParentId.HasValue && newParentId.Value == Id)
         {
             throw new DomainException("employee.parent_self", "Employee cannot be its own parent.");
@@ -163,7 +174,7 @@ public sealed class Employee : AggregateRoot
 
         var old = ParentId;
         ParentId = newParentId;
-        RaiseDomainEvent(new EmployeeParentChanged(Id, old, newParentId));
+        RaiseDomainEvent(new EmployeeParentChanged(Id.Value, old?.Value, newParentId?.Value));
     }
 
     public void ChangeRole(EmployeeRole newRole)
@@ -190,7 +201,7 @@ public sealed class Employee : AggregateRoot
 
         var old = Role;
         Role = newRole;
-        RaiseDomainEvent(new EmployeeRoleChanged(Id, old, newRole));
+        RaiseDomainEvent(new EmployeeRoleChanged(Id.Value, old, newRole));
     }
 
     public void Terminate(LocalDate terminationDate)
@@ -211,7 +222,7 @@ public sealed class Employee : AggregateRoot
 
         Status = EmployeeStatus.Terminated;
         TerminationDate = terminationDate;
-        RaiseDomainEvent(new EmployeeTerminated(Id, terminationDate));
+        RaiseDomainEvent(new EmployeeTerminated(Id.Value, terminationDate));
     }
 
     private void EnsureActive()

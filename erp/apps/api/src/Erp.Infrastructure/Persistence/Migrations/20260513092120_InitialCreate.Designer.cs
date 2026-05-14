@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Erp.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260511080745_InitialCreate")]
+    [Migration("20260513092120_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -28,7 +28,6 @@ namespace Erp.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendanceLog", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("DeviceId")
@@ -69,13 +68,12 @@ namespace Erp.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("EmployeeId", "PunchedAtUtc");
 
-                    b.ToTable("attendance_logs", (string)null);
+                    b.ToTable("AttendanceLogs", (string)null);
                 });
 
             modelBuilder.Entity("Erp.Core.Aggregates.Employees.Employee", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateOnly>("EffectiveSalaryFrom")
@@ -126,7 +124,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ParentId");
 
-                    b.ToTable("employees", (string)null);
+                    b.ToTable("Employees", (string)null);
                 });
 
             modelBuilder.Entity("Erp.Infrastructure.Identity.ApplicationUser", b =>
@@ -201,7 +199,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
-                    b.ToTable("auth_users", (string)null);
+                    b.ToTable("AuthUsers", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
@@ -228,7 +226,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("RoleNameIndex");
 
-                    b.ToTable("auth_roles", (string)null);
+                    b.ToTable("AuthRoles", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -252,7 +250,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("auth_role_claims", (string)null);
+                    b.ToTable("AuthRoleClaims", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
@@ -276,7 +274,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("auth_user_claims", (string)null);
+                    b.ToTable("AuthUserClaims", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
@@ -297,7 +295,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("auth_user_logins", (string)null);
+                    b.ToTable("AuthUserLogins", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
@@ -312,7 +310,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("auth_user_roles", (string)null);
+                    b.ToTable("AuthUserRoles", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
@@ -331,7 +329,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 
-                    b.ToTable("auth_user_tokens", (string)null);
+                    b.ToTable("AuthUserTokens", (string)null);
                 });
 
             modelBuilder.Entity("Erp.Core.Aggregates.Employees.Employee", b =>
@@ -354,7 +352,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
 
                             b1.HasKey("EmployeeId");
 
-                            b1.ToTable("employees");
+                            b1.ToTable("Employees");
 
                             b1.WithOwner()
                                 .HasForeignKey("EmployeeId");

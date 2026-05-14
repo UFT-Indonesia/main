@@ -1,3 +1,4 @@
+using Erp.Core.Interfaces;
 using Erp.Infrastructure.Authentication;
 using Erp.Infrastructure.DeviceIngest;
 using Erp.Infrastructure.Identity;
@@ -6,7 +7,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NodaTime;
+using Wolverine.EntityFrameworkCore;
 
 namespace Erp.Infrastructure;
 
@@ -45,10 +48,21 @@ public static class DependencyInjection
         services.AddOptions<IdentitySeedOptions>()
             .Bind(configuration.GetSection(IdentitySeedOptions.SectionName));
 
+        services.AddOptions<ConnectionStringsOptions>()
+            .Bind(configuration.GetSection(ConnectionStringsOptions.SectionName))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.Default), "Default connection string is required.")
+            .ValidateOnStart();
+
         services.AddSingleton<IClock>(SystemClock.Instance);
 
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("Default")));
+        services.AddDbContextWithWolverineIntegration<AppDbContext>((serviceProvider, options) =>
+        {
+            var connectionStrings = serviceProvider.GetRequiredService<IOptions<ConnectionStringsOptions>>();
+            options.UseNpgsql(connectionStrings.Value.Default);
+        });
+
+        services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
+        services.AddScoped(typeof(IReadRepository<>), typeof(EfRepository<>));
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {
