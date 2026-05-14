@@ -1,6 +1,6 @@
-namespace Erp.UseCases.Attendance;
+namespace Erp.UseCases.Attendance.RecordDeviceLog;
 
-public sealed record RecordDeviceAttendanceLog(
+public sealed record RecordDeviceLogCommand(
     Guid EmployeeId,
     DateTimeOffset PunchedAtUtc,
     string PunchType,

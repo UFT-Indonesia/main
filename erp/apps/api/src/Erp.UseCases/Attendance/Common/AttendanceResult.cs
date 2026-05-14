@@ -1,4 +1,4 @@
-namespace Erp.UseCases.Attendance;
+namespace Erp.UseCases.Attendance.Common;
 
 public sealed class AttendanceResult
 {

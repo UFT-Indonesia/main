@@ -1,47 +1,15 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
-using Erp.SharedKernel.Domain.Errors;
+using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using NodaTime;
 
-namespace Erp.UseCases.Attendance;
+namespace Erp.UseCases.Attendance.Common;
 
-public sealed class AttendanceLogHandler
+internal static class AttendanceLogDomainService
 {
-    public static Task<AttendanceResult> Handle(
-        RecordManualAttendanceLog command,
-        IReadRepository<Employee> employees,
-        IRepository<AttendanceLog> attendanceLogs,
-        CancellationToken ct) =>
-        RecordAsync(
-            command.EmployeeId,
-            command.PunchedAtUtc,
-            command.PunchType,
-            command.RecordedByUserId,
-            null,
-            command.Note,
-            employees,
-            attendanceLogs,
-            ct);
-
-    public static Task<AttendanceResult> Handle(
-        RecordDeviceAttendanceLog command,
-        IReadRepository<Employee> employees,
-        IRepository<AttendanceLog> attendanceLogs,
-        CancellationToken ct) =>
-        RecordAsync(
-            command.EmployeeId,
-            command.PunchedAtUtc,
-            command.PunchType,
-            null,
-            command.DeviceId,
-            null,
-            employees,
-            attendanceLogs,
-            ct);
-
-    private static async Task<AttendanceResult> RecordAsync(
+    internal static async Task<Result<AttendanceResult>> RecordAsync(
         Guid employeeId,
         DateTimeOffset punchedAtUtc,
         string punchTypeValue,
@@ -56,12 +24,12 @@ public sealed class AttendanceLogHandler
         var employee = await employees.GetByIdAsync(typedEmployeeId, ct);
         if (employee is null)
         {
-            throw new KeyNotFoundException("Employee was not found.");
+            return new Result<AttendanceResult>.NotFound("Employee was not found.");
         }
 
         if (!TryParsePunchType(punchTypeValue, out var punchType))
         {
-            throw new DomainException("attendance.punch_type", "Punch type must be In or Out.");
+            return new Result<AttendanceResult>.Error("attendance.punch_type", "Punch type must be In or Out.");
         }
 
         var log = recordedByUserId.HasValue
@@ -71,7 +39,7 @@ public sealed class AttendanceLogHandler
         await attendanceLogs.AddAsync(log, ct);
         await attendanceLogs.SaveChangesAsync(ct);
 
-        return ToResult(log);
+        return new Result<AttendanceResult>.Success(ToResult(log));
     }
 
     private static bool TryParsePunchType(string value, out PunchType punchType)
