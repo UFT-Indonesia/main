@@ -19,6 +19,7 @@ public sealed class DesignTimeAppDbContextFactory : IDesignTimeDbContextFactory<
             .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: false);
 
         AddDotEnvFile(configurationBuilder, contentRootPath);
+        configurationBuilder.AddEnvironmentVariables();
 
         var configuration = configurationBuilder.Build();
         var services = new ServiceCollection()
