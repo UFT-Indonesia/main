@@ -29,8 +29,6 @@
     <PackageReference Include="Minio" />
     <PackageReference Include="RazorLight" />
     <PackageReference Include="Hangfire.PostgreSql" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" />
   </ItemGroup>
 
   <ItemGroup>
