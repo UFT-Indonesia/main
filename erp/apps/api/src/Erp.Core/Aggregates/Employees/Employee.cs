@@ -72,6 +72,11 @@ public sealed class Employee : AggregateRoot<EmployeeId>
         }
 
         var employeeId = id ?? EmployeeId.New();
+        if (parentId.HasValue && parentId.Value == EmployeeId.Empty)
+        {
+            throw new DomainException("employee.parent_empty", "Parent ID cannot be empty.");
+        }
+
         if (parentId.HasValue && parentId.Value == employeeId)
         {
             throw new DomainException("employee.parent_self", "Employee cannot be its own parent.");
@@ -138,6 +143,11 @@ public sealed class Employee : AggregateRoot<EmployeeId>
     public void AssignParent(EmployeeId? newParentId)
     {
         EnsureActive();
+        if (newParentId.HasValue && newParentId.Value == EmployeeId.Empty)
+        {
+            throw new DomainException("employee.parent_empty", "Parent ID cannot be empty.");
+        }
+
         if (newParentId.HasValue && newParentId.Value == Id)
         {
             throw new DomainException("employee.parent_self", "Employee cannot be its own parent.");
