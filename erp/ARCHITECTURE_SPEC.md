@@ -20,28 +20,29 @@ Erp.Web                   → FastEndpoints (dispatch to Wolverine), Program.cs 
 
 ### Directory.Packages.props additions:
 ```xml
-<PackageVersion Include="Wolverine" Version="5.39.0" />
-<PackageVersion Include="Wolverine.EntityFrameworkCore" Version="5.39.0" />
-<PackageVersion Include="Ardalis.Specification" Version="9.0.1" />
-<PackageVersion Include="Ardalis.Specification.EntityFrameworkCore" Version="9.0.1" />
+<PackageVersion Include="WolverineFx" Version="5.39.0" />
+<PackageVersion Include="WolverineFx.EntityFrameworkCore" Version="5.39.0" />
+<PackageVersion Include="WolverineFx.Postgresql" Version="5.39.0" />
+<PackageVersion Include="Ardalis.Specification" Version="9.1.0" />
+<PackageVersion Include="Ardalis.Specification.EntityFrameworkCore" Version="9.1.0" />
 ```
 
 ### Erp.UseCases.csproj:
 ```xml
-<PackageReference Include="Wolverine" />
+<PackageReference Include="WolverineFx" />
 ```
 
 ### Erp.Infrastructure.csproj:
 ```xml
-<PackageReference Include="Wolverine" />
-<PackageReference Include="Wolverine.EntityFrameworkCore" />
+<PackageReference Include="WolverineFx" />
+<PackageReference Include="WolverineFx.EntityFrameworkCore" />
 <PackageReference Include="Ardalis.Specification.EntityFrameworkCore" />
 ```
 
 ### Erp.Web.csproj:
 ```xml
-<!-- Wolverine included via UseCases ref chain, but add explicitly for IMessageBus usage -->
-<PackageReference Include="Wolverine" />
+<!-- WolverineFx included via UseCases ref chain, but add explicitly for IMessageBus usage -->
+<PackageReference Include="WolverineFx" />
 ```
 
 ## 2. Strongly-Typed IDs
