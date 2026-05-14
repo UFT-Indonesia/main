@@ -40,6 +40,8 @@ workforce management all the way through to financial control and reporting.
 
 ## 📋 Getting Started
 
+⚠️ Make sure `.env` file is setup before implementing. Please use the `.env.example` file for reference.
+
 ```bash
 docker compose up -d                         # postgres, smtp4dev, minio
 dotnet restore Erp.sln
