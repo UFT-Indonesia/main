@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Erp.Infrastructure.DeviceIngest;
+using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Attendance.Common;
 using Erp.UseCases.Attendance.RecordDeviceLog;
@@ -46,10 +47,19 @@ public sealed class RecordDeviceLogEndpoint : EndpointWithoutRequest<AttendanceL
             return;
         }
 
-        var parsed = JsonSerializer.Deserialize<DeviceAttendanceLogRequest>(payload, JsonOptions);
+        DeviceAttendanceLogRequest? parsed;
+        try
+        {
+            parsed = JsonSerializer.Deserialize<DeviceAttendanceLogRequest>(payload, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            throw new DomainException("attendance.invalid_json", "Attendance payload is not valid JSON.");
+        }
+
         if (parsed is null)
         {
-            ThrowError("Invalid attendance payload.", 400);
+            throw new DomainException("attendance.invalid_payload", "Attendance payload must not be null.");
         }
 
         var result = await _bus.InvokeAsync<Result<AttendanceResult>>(new RecordDeviceLogCommand(
@@ -60,10 +70,7 @@ public sealed class RecordDeviceLogEndpoint : EndpointWithoutRequest<AttendanceL
 
         if (result is Result<AttendanceResult>.Success s)
         {
-            await SendCreatedAtAsync<RecordDeviceLogEndpoint>(
-                null,
-                ToResponse(s.Value),
-                cancellation: ct);
+            await SendAsync(ToResponse(s.Value), 201, cancellation: ct);
             return;
         }
 
@@ -75,9 +82,10 @@ public sealed class RecordDeviceLogEndpoint : EndpointWithoutRequest<AttendanceL
 
         if (result is Result<AttendanceResult>.Error e)
         {
-            HttpContext.Response.StatusCode = 400;
-            await HttpContext.Response.WriteAsJsonAsync(new { code = e.Code, message = e.Message }, ct);
+            throw new DomainException(e.Code, e.Message);
         }
+
+        throw new InvalidOperationException($"Unexpected result type: {result.GetType().Name}");
     }
 
     private static AttendanceLogResponse ToResponse(AttendanceResult result) => new()

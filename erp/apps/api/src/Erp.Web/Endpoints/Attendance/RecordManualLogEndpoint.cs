@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Attendance.Common;
 using Erp.UseCases.Attendance.RecordManualLog;
@@ -57,9 +58,10 @@ public sealed class RecordManualLogEndpoint : Endpoint<ManualAttendanceLogReques
 
         if (result is Result<AttendanceResult>.Error e)
         {
-            HttpContext.Response.StatusCode = 400;
-            await HttpContext.Response.WriteAsJsonAsync(new { code = e.Code, message = e.Message }, ct);
+            throw new DomainException(e.Code, e.Message);
         }
+
+        throw new InvalidOperationException($"Unexpected result type: {result.GetType().Name}");
     }
 
     private static AttendanceLogResponse ToResponse(AttendanceResult result) => new()
