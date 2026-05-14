@@ -1,6 +1,7 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
+using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using NodaTime;
@@ -32,12 +33,19 @@ internal static class AttendanceLogService
             return new Result<AttendanceResult>.NotFound("Employee was not found.");
         }
 
-        var log = recordedByUserId.HasValue
-            ? AttendanceLog.Manual(typedEmployeeId, Instant.FromDateTimeOffset(punchedAtUtc), punchType, recordedByUserId.Value, note)
-            : AttendanceLog.FromDevice(typedEmployeeId, Instant.FromDateTimeOffset(punchedAtUtc), punchType, deviceId ?? string.Empty);
+        AttendanceLog log;
+        try
+        {
+            log = recordedByUserId.HasValue
+                ? AttendanceLog.Manual(typedEmployeeId, Instant.FromDateTimeOffset(punchedAtUtc), punchType, recordedByUserId.Value, note)
+                : AttendanceLog.FromDevice(typedEmployeeId, Instant.FromDateTimeOffset(punchedAtUtc), punchType, deviceId ?? string.Empty);
+        }
+        catch (DomainException ex)
+        {
+            return new Result<AttendanceResult>.Error(ex.Code ?? "attendance.validation", ex.Message);
+        }
 
         await attendanceLogs.AddAsync(log, ct);
-        await attendanceLogs.SaveChangesAsync(ct);
 
         return new Result<AttendanceResult>.Success(ToResult(log));
     }
