@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using Erp.Infrastructure.Identity;
 using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 
 namespace Erp.Web.Endpoints.Auth;
 
+[Authorize]
 public sealed class MeEndpoint : EndpointWithoutRequest<AuthUserResponse>
 {
     private readonly UserManager<ApplicationUser> _userManager;
