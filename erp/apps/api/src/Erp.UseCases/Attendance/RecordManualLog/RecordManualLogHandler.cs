@@ -22,6 +22,7 @@ public sealed class RecordManualLogHandler
     public Task<Result<AttendanceResult>> Handle(
         RecordManualLogCommand command,
         CancellationToken ct) =>
+        // TODO: Enforce RBS permission check — only authorized roles should be able to record manual logs for arbitrary employees.
         AttendanceLogService.RecordAsync(
             command.EmployeeId,
             command.PunchedAtUtc,
