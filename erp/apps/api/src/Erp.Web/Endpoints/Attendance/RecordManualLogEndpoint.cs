@@ -25,9 +25,12 @@ public sealed class RecordManualLogEndpoint : Endpoint<ManualAttendanceLogReques
 
     public override async Task HandleAsync(ManualAttendanceLogRequest req, CancellationToken ct)
     {
-        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? throw new InvalidOperationException("Identifier claim is missing.");
-        var userId = Guid.Parse(userIdValue);
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdValue, out var userId))
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
 
         try
         {
