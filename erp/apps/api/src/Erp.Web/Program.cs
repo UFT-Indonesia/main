@@ -1,4 +1,5 @@
 using Erp.Infrastructure;
+using Erp.Infrastructure.Exceptions;
 using Erp.Infrastructure.Identity;
 using Erp.Infrastructure.Persistence;
 using Erp.UseCases.Attendance;
@@ -18,6 +19,11 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    
+    if (builder.Environment.IsDevelopment() && !File.Exists(Path.Combine(builder.Environment.ContentRootPath, ".env")))
+    {
+        throw new InvalidOperationException("Missing environment variables.");
+    }
 
     AddDotEnvFile(builder.Configuration, builder.Environment.ContentRootPath);
     builder.Configuration.AddEnvironmentVariables();
@@ -36,7 +42,10 @@ try
     builder.Host.UseWolverine(options =>
     {
         options.Discovery.IncludeAssembly(typeof(AttendanceResult).Assembly);
-        options.InvokeTracing = InvokeTracingMode.Full;
+        options.InvokeTracing = builder.Environment.IsDevelopment()
+            ? InvokeTracingMode.Full
+            : InvokeTracingMode.Lightweight;
+
         options.UseEntityFrameworkCoreTransactions();
 
         var connectionString = builder.Configuration.GetConnectionString("Default")
@@ -45,6 +54,7 @@ try
     });
 
     builder.Services
+        .AddExceptionHandler<DomainExceptionHandler>()
         .AddInfrastructure(builder.Configuration)
         .AddConfiguredJwtBearer(builder.Configuration)
         .AddCors(options =>
@@ -75,6 +85,7 @@ try
     app.UseCors("Web");
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseExceptionHandler();
     app.UseFastEndpoints();
     app.MapOpenApi();
     app.MapScalarApiReference(options =>

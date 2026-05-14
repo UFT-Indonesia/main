@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Erp.Infrastructure.DeviceIngest;
-using Erp.SharedKernel.Domain.Errors;
 using Erp.UseCases.Attendance;
 using FastEndpoints;
 using Wolverine;
@@ -67,10 +66,6 @@ public sealed class RecordDeviceLogEndpoint : EndpointWithoutRequest<AttendanceL
         catch (KeyNotFoundException)
         {
             await SendNotFoundAsync(ct);
-        }
-        catch (DomainException ex)
-        {
-            ThrowError(ex.Message, 400);
         }
     }
 

@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Erp.UseCases.Attendance;
-using Erp.SharedKernel.Domain.Errors;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
 using Wolverine;
@@ -49,10 +48,6 @@ public sealed class RecordManualLogEndpoint : Endpoint<ManualAttendanceLogReques
         catch (KeyNotFoundException)
         {
             await SendNotFoundAsync(ct);
-        }
-        catch (DomainException ex)
-        {
-            ThrowError(ex.Message, 400);
         }
     }
 
