@@ -22,7 +22,7 @@ public sealed class RecordManualLogHandler
     public Task<Result<AttendanceResult>> Handle(
         RecordManualLogCommand command,
         CancellationToken ct) =>
-        AttendanceLogDomainService.RecordAsync(
+        AttendanceLogService.RecordAsync(
             command.EmployeeId,
             command.PunchedAtUtc,
             command.PunchType,

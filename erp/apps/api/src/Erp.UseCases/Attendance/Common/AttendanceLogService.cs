@@ -7,7 +7,7 @@ using NodaTime;
 
 namespace Erp.UseCases.Attendance.Common;
 
-internal static class AttendanceLogDomainService
+internal static class AttendanceLogService
 {
     internal static async Task<Result<AttendanceResult>> RecordAsync(
         Guid employeeId,
