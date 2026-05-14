@@ -17,13 +17,14 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
     
-    if (builder.Environment.IsDevelopment() && !File.Exists(Path.Combine(builder.Environment.ContentRootPath, ".env")))
-    {
-        throw new InvalidOperationException("Missing environment variables.");
-    }
-
     AddDotEnvFile(builder.Configuration, builder.Environment.ContentRootPath);
     builder.Configuration.AddEnvironmentVariables();
+
+    var connectionString = builder.Configuration.GetConnectionString("Default");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("Failed to load connection string from configuration");
+    }
 
     var corsAllowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
     if (corsAllowedOrigins is null || corsAllowedOrigins.Length == 0)
