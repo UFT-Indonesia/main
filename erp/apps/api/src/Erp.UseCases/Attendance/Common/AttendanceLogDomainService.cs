@@ -20,16 +20,16 @@ internal static class AttendanceLogDomainService
         IRepository<AttendanceLog> attendanceLogs,
         CancellationToken ct)
     {
+        if (!TryParsePunchType(punchTypeValue, out var punchType))
+        {
+            return new Result<AttendanceResult>.Error("attendance.punch_type", "Punch type must be In or Out.");
+        }
+
         var typedEmployeeId = new EmployeeId(employeeId);
         var employee = await employees.GetByIdAsync(typedEmployeeId, ct);
         if (employee is null)
         {
             return new Result<AttendanceResult>.NotFound("Employee was not found.");
-        }
-
-        if (!TryParsePunchType(punchTypeValue, out var punchType))
-        {
-            return new Result<AttendanceResult>.Error("attendance.punch_type", "Punch type must be In or Out.");
         }
 
         var log = recordedByUserId.HasValue
