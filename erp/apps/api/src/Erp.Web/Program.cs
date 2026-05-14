@@ -1,16 +1,13 @@
 using Erp.Infrastructure;
 using Erp.Infrastructure.Exceptions;
 using Erp.Infrastructure.Identity;
-using Erp.Infrastructure.Persistence;
 using Erp.UseCases.Attendance.Common;
 using Erp.Web.Middleware.Authentication;
 using FastEndpoints;
-using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using Serilog;
 using Wolverine;
 using Wolverine.EntityFrameworkCore;
-using Wolverine.Postgresql;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -48,9 +45,6 @@ try
 
         options.UseEntityFrameworkCoreTransactions();
 
-        var connectionString = builder.Configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Failed to load connection string from configuration");
-        options.PersistMessagesWithPostgresql(connectionString);
     });
 
     builder.Services
