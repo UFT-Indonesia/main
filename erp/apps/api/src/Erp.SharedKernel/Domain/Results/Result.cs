@@ -26,4 +26,39 @@ public abstract class Result<T>
             Message = message;
         }
     }
+
+    public TResult Match<TResult>(
+        Func<T, TResult> onSuccess,
+        Func<string, TResult> onNotFound,
+        Func<string, string, TResult> onError)
+    {
+        return this switch
+        {
+            Success s => onSuccess(s.Value),
+            NotFound n => onNotFound(n.Message),
+            Error e => onError(e.Code, e.Message),
+            _ => throw new InvalidOperationException($"Unexpected result type: {GetType().Name}")
+        };
+    }
+
+    public void Switch(
+        Action<T> onSuccess,
+        Action<string> onNotFound,
+        Action<string, string> onError)
+    {
+        switch (this)
+        {
+            case Success s:
+                onSuccess(s.Value);
+                break;
+            case NotFound n:
+                onNotFound(n.Message);
+                break;
+            case Error e:
+                onError(e.Code, e.Message);
+                break;
+            default:
+                throw new InvalidOperationException($"Unexpected result type: {GetType().Name}");
+        }
+    }
 }
