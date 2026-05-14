@@ -1,3 +1,4 @@
+using Erp.Infrastructure.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
@@ -18,7 +19,7 @@ public sealed class DesignTimeAppDbContextFactory : IDesignTimeDbContextFactory<
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
             .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: false);
 
-        AddDotEnvFile(configurationBuilder, contentRootPath);
+        configurationBuilder.AddDotEnvFile(contentRootPath);
         configurationBuilder.AddEnvironmentVariables();
 
         var configuration = configurationBuilder.Build();
@@ -64,39 +65,4 @@ public sealed class DesignTimeAppDbContextFactory : IDesignTimeDbContextFactory<
         throw new InvalidOperationException("⚠️ Could not locate `appsettings.json`");
     }
 
-    private static void AddDotEnvFile(IConfigurationBuilder configuration, string contentRootPath)
-    {
-        var path = Path.Combine(contentRootPath, ".env");
-        if (!File.Exists(path))
-        {
-            return;
-        }
-
-        var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-        foreach (var line in File.ReadAllLines(path))
-        {
-            var trimmedLine = line.Trim();
-            if (trimmedLine.Length == 0 || trimmedLine.StartsWith('#'))
-            {
-                continue;
-            }
-
-            if (trimmedLine.StartsWith("export ", StringComparison.Ordinal))
-            {
-                trimmedLine = trimmedLine["export ".Length..].TrimStart();
-            }
-
-            var separatorIndex = trimmedLine.IndexOf('=');
-            if (separatorIndex <= 0)
-            {
-                continue;
-            }
-
-            var key = trimmedLine[..separatorIndex].Trim().Replace("__", ":");
-            var value = trimmedLine[(separatorIndex + 1)..].Trim().Trim('"', '\'');
-            values[key] = value;
-        }
-
-        configuration.AddInMemoryCollection(values);
-    }
 }
