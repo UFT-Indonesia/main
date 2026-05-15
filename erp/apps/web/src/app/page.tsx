@@ -1,15 +1,41 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useAuthStore } from '@/lib/auth/store';
+import { AppShell } from '@/components/layout/app-shell';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function HomePage() {
-  return <Welcome />;
-}
+  const router = useRouter();
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const token = useAuthStore((s) => s.token);
 
-function Welcome() {
-  const t = useTranslations('home');
+  useEffect(() => {
+    if (hydrated && !token) {
+      router.replace('/login');
+    }
+  }, [hydrated, token, router]);
+
+  const tHome = useTranslations('home');
+  const tNav = useTranslations('nav');
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-2 p-8">
-      <h1 className="text-3xl font-semibold">{t('title')}</h1>
-      <p className="text-muted-foreground">{t('subtitle')}</p>
-    </main>
+    <AppShell>
+      <div className="space-y-4">
+        <header>
+          <h1 className="text-2xl font-semibold tracking-tight">{tNav('dashboard')}</h1>
+          <p className="text-sm text-muted-foreground">{tHome('subtitle')}</p>
+        </header>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{tHome('title')}</CardTitle>
+            <CardDescription>{tHome('subtitle')}</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    </AppShell>
   );
 }
