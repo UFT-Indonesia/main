@@ -9,6 +9,7 @@ using Scalar.AspNetCore;
 using Serilog;
 using Wolverine;
 using Wolverine.EntityFrameworkCore;
+using Wolverine.Postgresql;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -44,9 +45,9 @@ try
         options.InvokeTracing = builder.Environment.IsDevelopment()
             ? InvokeTracingMode.Full
             : InvokeTracingMode.Lightweight;
-
+            
+        options.PersistMessagesWithPostgresql(connectionString);
         options.UseEntityFrameworkCoreTransactions();
-
     });
 
     builder.Services
