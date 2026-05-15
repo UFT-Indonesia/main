@@ -295,3 +295,32 @@ Erp.Web/Endpoints/
 - Background job processing (Wolverine local queues + durable inbox)
 - Sagas / long-running workflows
 - Event sourcing with Marten/Polecat
+
+## 14. Checkpoints
+
+### 2026-05-14 — Employee CRUD landed
+
+**Delivered**:
+- Domain: `Employee.UpdateBasicInfo(string fullName, Npwp? npwp)` + `EmployeeBasicInfoChanged` domain event. Idempotent when nothing changes; rejects blank name and terminated employees. Trims input.
+- Use cases (instance handlers, folder-per-use-case under `Erp.UseCases/Employees/`):
+  - `Common/EmployeeResult.cs`, `Common/EmployeeMapper.cs` (internal mapper)
+  - `CreateEmployee/{CreateEmployeeCommand, CreateEmployeeHandler}`
+  - `GetEmployeeById/{GetEmployeeByIdQuery, GetEmployeeByIdHandler}`
+  - `ListEmployees/{ListEmployeesQuery, ListEmployeesResult, ListEmployeesHandler, EmployeeListSpec}` — Ardalis specs with paging (default 20, max 100), case-insensitive search on `FullName`/`Nik`, role + status filters
+  - `UpdateEmployee/{UpdateEmployeeCommand, UpdateEmployeeHandler}` — full-state PUT, dispatches to `UpdateBasicInfo` + `ChangeSalary` + `ChangeRole` + `AssignParent`, ordering tuned for invariants (Owner-target sets parent first; non-Owner-target sets role first)
+  - `DeleteEmployee/{DeleteEmployeeCommand, DeleteEmployeeHandler}` — semantic delete = `Employee.Terminate()`; uses NodaTime `IClock` when termination date omitted
+- FastEndpoints under `Erp.Web/Endpoints/Employees/`: `EmployeeGroup` (`/api/employees`), Create (POST), Get (GET `/{id}`), List (GET), Update (PUT `/{id}`), Delete (DELETE `/{id}`). All `[Authorize]` with `// TODO: Enforce RBS permission check` markers on mutating endpoints.
+- Specs spec `EmployeeListSpec` lives in `Erp.UseCases` and uses `e.FullName.ToLower().Contains(...)` instead of `EF.Functions.ILike` to keep UseCases provider-agnostic.
+- Tests: +44 unit tests (52 → 96, all passing) covering domain `UpdateBasicInfo` and all five handlers (success, validation errors, not-found, role/status/wage edge cases).
+
+**Incidental cleanup**:
+- Removed redundant `Microsoft.Extensions.Hosting` and `Microsoft.Extensions.Options.ConfigurationExtensions` from `Erp.Infrastructure.csproj` (NU1510 — covered by `Microsoft.AspNetCore.App` framework reference; was blocking restore under .NET 10 SDK).
+
+**Known gaps surfaced during CRUD work** (not addressed — out of scope):
+- **RBS permission checks**: Create/Update/Delete endpoints carry TODO markers; no role-based gating yet beyond `[Authorize]`.
+- **Role transition Owner ↔ non-Owner**: `Employee.ChangeRole` requires invariant satisfied at call time, but cannot atomically change role + parent. Cross-tier transitions surface as `Result.Error` with the relevant domain code. Future work: add an atomic `Employee.PromoteToOwner()` / `Demote(parent)` API or relax `ChangeRole` to accept a parent argument.
+- **NIK changes**: NIK is immutable post-creation (no domain method). Update endpoint does not expose it.
+- **Hard delete**: Not supported. Aggregate exposes only `Terminate`. Add a separate command if hard-delete is ever required.
+- **Employee parent depth ≤ 2 + cycle detection**: Not enforced anywhere; pre-existing gap noted in roadmap.
+- **List query**: No `IncludeTerminated` flag yet — callers must pass `Status=Active` explicitly to exclude terminated employees.
+- **Pagination**: Returns `TotalCount` but no `HasMore`/cursor; offset-based only.

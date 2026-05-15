@@ -86,6 +86,60 @@ public class EmployeeTests
     }
 
     [Fact]
+    public void UpdateBasicInfo_records_event_when_full_name_changes()
+    {
+        var employee = NewOwner();
+
+        employee.UpdateBasicInfo("Owner Baru", null);
+
+        employee.FullName.Should().Be("Owner Baru");
+        employee.DomainEvents.OfType<EmployeeBasicInfoChanged>().Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void UpdateBasicInfo_assigns_npwp_when_provided()
+    {
+        var employee = NewOwner();
+        var npwp = Npwp.Create("123456789012345");
+
+        employee.UpdateBasicInfo(employee.FullName, npwp);
+
+        employee.Npwp.Should().Be(npwp);
+        employee.DomainEvents.OfType<EmployeeBasicInfoChanged>().Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void UpdateBasicInfo_idempotent_when_unchanged()
+    {
+        var employee = NewOwner();
+
+        employee.UpdateBasicInfo(employee.FullName, employee.Npwp);
+
+        employee.DomainEvents.OfType<EmployeeBasicInfoChanged>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UpdateBasicInfo_rejects_blank_name()
+    {
+        var employee = NewOwner();
+
+        var act = () => employee.UpdateBasicInfo("  ", null);
+
+        act.Should().Throw<DomainException>().Where(e => e.Code == "employee.full_name");
+    }
+
+    [Fact]
+    public void UpdateBasicInfo_rejects_terminated_employee()
+    {
+        var manager = NewManager(out _);
+        manager.Terminate(EffectiveFrom.PlusDays(10));
+
+        var act = () => manager.UpdateBasicInfo("Nama Baru", null);
+
+        act.Should().Throw<DomainException>().Where(e => e.Code == "employee.terminated");
+    }
+
+    [Fact]
     public void ChangeSalary_records_event_and_updates_state()
     {
         var employee = NewOwner();

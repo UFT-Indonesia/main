@@ -118,6 +118,34 @@ public sealed class Employee : AggregateRoot<EmployeeId>
         return employee;
     }
 
+    public void UpdateBasicInfo(string fullName, Npwp? npwp)
+    {
+        EnsureActive();
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            throw new DomainException("employee.full_name", "Full name is required.");
+        }
+
+        var trimmed = fullName.Trim();
+        var oldFullName = FullName;
+        var oldNpwp = Npwp;
+
+        if (string.Equals(oldFullName, trimmed, StringComparison.Ordinal)
+            && Equals(oldNpwp, npwp))
+        {
+            return;
+        }
+
+        FullName = trimmed;
+        Npwp = npwp;
+        RaiseDomainEvent(new EmployeeBasicInfoChanged(
+            Id.Value,
+            oldFullName,
+            FullName,
+            oldNpwp?.Value,
+            Npwp?.Value));
+    }
+
     public void ChangeSalary(Money newWage, LocalDate effectiveFrom)
     {
         EnsureActive();
