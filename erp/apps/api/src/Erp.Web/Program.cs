@@ -51,6 +51,7 @@ try
     });
 
     builder.Services
+        .AddProblemDetails()
         .AddExceptionHandler<DomainExceptionHandler>()
         .AddInfrastructure(builder.Configuration)
         .AddConfiguredJwtBearer(builder.Configuration)
