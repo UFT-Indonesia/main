@@ -6,10 +6,86 @@
     "cancel": "Cancel",
     "search": "Search",
     "actions": "Actions",
-    "logout": "Log out"
+    "logout": "Log out",
+    "back": "Back",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "employees": "Employees"
   },
   "home": {
     "title": "Welcome",
     "subtitle": "Internal ERP system for UFT Davis."
+  },
+  "login": {
+    "subtitle": "Sign in to continue",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "successTitle": "Signed in",
+    "successDescription": "Welcome back.",
+    "errorTitle": "Sign-in failed"
+  },
+  "employees": {
+    "title": "Employees",
+    "subtitle": "Manage organisation employees.",
+    "addNew": "Add employee",
+    "details": "Employee details",
+    "empty": "No employees yet.",
+    "searchPlaceholder": "Search by name or NIK...",
+    "filters": {
+      "allRoles": "All roles",
+      "allStatuses": "All statuses"
+    },
+    "form": {
+      "fullName": "Full name",
+      "nik": "NIK",
+      "npwp": "NPWP",
+      "monthlyWage": "Monthly wage",
+      "effectiveSalaryFrom": "Effective from",
+      "role": "Role",
+      "status": "Status",
+      "parentId": "Parent ID",
+      "roleOptions": {
+        "Owner": "Owner",
+        "Manager": "Manager",
+        "Staff": "Staff"
+      },
+      "statusOptions": {
+        "Active": "Active",
+        "OnLeave": "On leave",
+        "Terminated": "Terminated"
+      }
+    },
+    "create": {
+      "title": "Add employee",
+      "subtitle": "Create a new employee record.",
+      "hint": "NIK cannot be changed after the employee is created.",
+      "successTitle": "Employee added",
+      "successDescription": "Employee record saved successfully.",
+      "errorTitle": "Failed to add employee"
+    },
+    "detail": {
+      "title": "Employee details",
+      "hint": "Changes are saved when you press save.",
+      "terminate": "Terminate",
+      "updateSuccessTitle": "Changes saved",
+      "updateSuccessDescription": "Employee record updated successfully.",
+      "updateErrorTitle": "Update failed"
+    },
+    "delete": {
+      "title": "Terminate employee",
+      "description": "{name} will be marked as terminated. This stops all related activity.",
+      "terminationDate": "Termination date",
+      "confirm": "Terminate",
+      "successTitle": "Employee terminated",
+      "successDescription": "Employee status set to terminated.",
+      "errorTitle": "Termination failed"
+    },
+    "pagination": {
+      "summary": "Showing {from}-{to} of {total}"
+    }
   }
 }
