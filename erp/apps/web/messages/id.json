@@ -6,10 +6,86 @@
     "cancel": "Batal",
     "search": "Cari",
     "actions": "Aksi",
-    "logout": "Keluar"
+    "logout": "Keluar",
+    "back": "Kembali",
+    "previous": "Sebelumnya",
+    "next": "Berikutnya"
+  },
+  "nav": {
+    "dashboard": "Dasbor",
+    "employees": "Karyawan"
   },
   "home": {
     "title": "Selamat datang",
     "subtitle": "Sistem ERP internal UFT Davis."
+  },
+  "login": {
+    "subtitle": "Masuk untuk melanjutkan",
+    "email": "Email",
+    "password": "Kata sandi",
+    "submit": "Masuk",
+    "successTitle": "Berhasil masuk",
+    "successDescription": "Selamat datang kembali.",
+    "errorTitle": "Gagal masuk"
+  },
+  "employees": {
+    "title": "Karyawan",
+    "subtitle": "Kelola data karyawan organisasi.",
+    "addNew": "Tambah karyawan",
+    "details": "Detail karyawan",
+    "empty": "Belum ada data karyawan.",
+    "searchPlaceholder": "Cari nama atau NIK...",
+    "filters": {
+      "allRoles": "Semua peran",
+      "allStatuses": "Semua status"
+    },
+    "form": {
+      "fullName": "Nama lengkap",
+      "nik": "NIK",
+      "npwp": "NPWP",
+      "monthlyWage": "Gaji bulanan",
+      "effectiveSalaryFrom": "Berlaku sejak",
+      "role": "Peran",
+      "status": "Status",
+      "parentId": "ID atasan",
+      "roleOptions": {
+        "Owner": "Pemilik",
+        "Manager": "Manajer",
+        "Staff": "Staf"
+      },
+      "statusOptions": {
+        "Active": "Aktif",
+        "OnLeave": "Cuti",
+        "Terminated": "Berhenti"
+      }
+    },
+    "create": {
+      "title": "Tambah karyawan",
+      "subtitle": "Buat data karyawan baru.",
+      "hint": "NIK tidak dapat diubah setelah karyawan dibuat.",
+      "successTitle": "Karyawan ditambahkan",
+      "successDescription": "Data karyawan berhasil disimpan.",
+      "errorTitle": "Gagal menambah karyawan"
+    },
+    "detail": {
+      "title": "Detail karyawan",
+      "hint": "Perubahan akan langsung tersimpan ketika tombol simpan ditekan.",
+      "terminate": "Berhentikan",
+      "updateSuccessTitle": "Perubahan tersimpan",
+      "updateSuccessDescription": "Data karyawan berhasil diperbarui.",
+      "updateErrorTitle": "Gagal memperbarui"
+    },
+    "delete": {
+      "title": "Berhentikan karyawan",
+      "description": "{name} akan ditandai sebagai berhenti. Tindakan ini akan menghentikan semua aktivitas terkait.",
+      "terminationDate": "Tanggal berhenti",
+      "confirm": "Berhentikan",
+      "successTitle": "Karyawan diberhentikan",
+      "successDescription": "Status karyawan diubah menjadi berhenti.",
+      "errorTitle": "Gagal memberhentikan"
+    },
+    "pagination": {
+      "summary": "Menampilkan {from}-{to} dari {total}"
+    }
   }
 }

@@ -295,6 +295,11 @@ Erp.Web/Endpoints/
 - Background job processing (Wolverine local queues + durable inbox)
 - Sagas / long-running workflows
 - Event sourcing with Marten/Polecat
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
 
 ## 14. Checkpoints
 
@@ -324,3 +329,61 @@ Erp.Web/Endpoints/
 - **Employee parent depth ≤ 2 + cycle detection**: Not enforced anywhere; pre-existing gap noted in roadmap.
 - **List query**: No `IncludeTerminated` flag yet — callers must pass `Status=Active` explicitly to exclude terminated employees.
 - **Pagination**: Returns `TotalCount` but no `HasMore`/cursor; offset-based only.
+<<<<<<< Updated upstream
+=======
+
+### 2026-05-15 — Frontend phase landed (P0.2 + P1a.5)
+
+**Stack confirmed in `apps/web/`** (Next.js 15, React 19, Tailwind v4):
+- Routing: App Router with `typedRoutes: true`
+- Data: TanStack Query v5
+- Forms: React Hook Form + Zod
+- Auth state: Zustand with `persist` middleware (localStorage, key `erp-auth`)
+- HTTP: Axios with bearer-token interceptor + 401 auto-logout redirect
+- i18n: next-intl (id default, en alt; cookie-driven `NEXT_LOCALE`)
+- Icons: lucide-react
+- UI: hand-rolled shadcn-style primitives (no Radix dep) — `Button`, `Input`, `Label`, `Card`, `Badge`, `Skeleton`, `Table`, `Select`, `Dialog`, `Toaster`
+
+**Delivered**:
+- Theme: extended `src/styles/globals.css` with full shadcn-equivalent CSS variable set (`card`, `secondary`, `accent`, `destructive`, `success`, `warning`, `input`, `ring`, `radius`) and `@theme inline` exposure for Tailwind v4 utilities.
+- API layer (`src/lib/api/`): `client.ts` (axios instance + request/response interceptors + `extractApiError` normaliser), `auth.ts` (`login`, `fetchMe`), `employees.ts` (`listEmployees`, `getEmployee`, `createEmployee`, `updateEmployee`, `deleteEmployee`), `types.ts` (DTOs mirroring backend contracts).
+- Auth (`src/lib/auth/`): `store.ts` (zustand persisted store with `hydrated` flag), `use-auth.ts` (`useAuth`, `useRequireAuth`, `useRedirectIfAuthenticated`).
+- Hooks (`src/hooks/`): `use-employees.ts` (5 react-query hooks with proper cache invalidation), `use-toast.ts` (zustand-backed toast store with `success`/`error`/`info` shorthands).
+- UI primitives (`src/components/ui/`): 10 components, all CVA-driven where applicable, fully typed, ref-forwarded where needed.
+- Layout (`src/components/layout/`): `Sidebar` (client-side active-route highlighting), `Topbar` (user info + logout), `AppShell` (wraps protected routes with `useRequireAuth` guard + skeleton fallback).
+- Employee components (`src/components/employees/`): `EmployeeForm` (RHF + Zod, role/parent invariant validation matching backend), `EmployeeTable` (status badges, IDR formatting via `Intl.NumberFormat`, edit/delete actions), `EmployeeFilters` (search + role + status, debounce-friendly), `DeleteEmployeeDialog` (confirmation with optional termination date).
+- Pages:
+  - `app/login/page.tsx` — public, redirects authenticated users to `/`
+  - `app/page.tsx` — protected dashboard placeholder
+  - `app/employees/page.tsx` — list + filters + paging (default 20/page, server-side filtering)
+  - `app/employees/new/page.tsx` — create form
+  - `app/employees/[id]/page.tsx` — detail/edit + inline terminate
+- i18n: `messages/en.json` and `messages/id.json` extended with `nav`, `login`, `employees.*` (form, create, detail, delete, filters, pagination) and `common` (back, previous, next).
+- Toaster mounted globally in `app/layout.tsx`.
+
+**Verification**:
+- `pnpm --filter web typecheck`: ✅ 0 errors
+- `pnpm --filter web build`: ✅ all 6 routes compile (`/`, `/login`, `/employees`, `/employees/new`, `/employees/[id]`, `/_not-found`); first-load JS 105 kB shared, largest page 196 kB.
+- `pnpm --filter web lint`: ❌ pre-existing failure — `eslint-plugin-react-hooks` missing from lockfile (config references it but package not installed). Not introduced by this phase. Fix in a future devx pass.
+
+**Frontend conventions established** (apply to all future modules):
+- Pages: client-side, `'use client'` at top; protected pages render inside `<AppShell>` which gates on token + hydration.
+- Server state: react-query keys namespaced per resource (`employeeKeys.all/list/detail`); mutations invalidate `lists()` and update `detail(id)` cache.
+- Forms: zod schema + RHF; submit handlers use `mutateAsync` with toast on success/error and use `extractApiError` to normalize backend `{ code, message }` payloads.
+- Auth: token+user+expiry in `useAuthStore`; axios interceptor injects bearer; 401 triggers `clear()` + hard redirect to `/login`.
+- Routes: typed via `next` `Route` import; `Link` cast as `Route` for dynamic paths.
+- i18n: namespace per page (`employees`, `login`, `nav`); options dictionaries (`roleOptions`, `statusOptions`) keyed by backend enum values.
+
+**Known gaps surfaced during frontend work** (out of scope):
+- **Refresh token flow**: backend has no refresh endpoint; FE just hard-logs-out on 401. Address with future Refresh phase.
+- **Server actions / SSR data**: all FE pages are client-rendered; no Next.js server actions or RSC data fetching yet. Acceptable for internal ERP.
+- **RBAC UI**: no role-gated rendering (e.g. hiding "Add employee" for Staff). Wire up after backend RBS lands.
+- **Eslint plugin missing**: `eslint-plugin-react-hooks` referenced by `eslint-config-next` but not in `package.json`. Lint command broken until added.
+- **Locale switcher**: no UI toggle yet; locale only switchable via cookie manually.
+- **Dark mode**: theme CSS vars defined but no `.dark` overrides or toggle.
+- **E2E tests**: `tests/e2e/` empty — Playwright config exists but no spec files.
+- **Employee list UX**: no debounce on search input (every keystroke fires query); no column sort; no parent-name resolution (only shows parent ID).
+- **Employee form**: parent picker is a free-text UUID field — should become a typeahead picker pulling from `listEmployees`.
+- **Optimistic updates**: mutations rely on invalidation only; consider optimistic UI for create/update.
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
