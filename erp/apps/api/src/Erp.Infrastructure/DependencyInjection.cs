@@ -3,6 +3,7 @@ using Erp.Infrastructure.Authentication;
 using Erp.Infrastructure.DeviceIngest;
 using Erp.Infrastructure.Identity;
 using Erp.Infrastructure.Persistence;
+using Erp.Infrastructure.Persistence.Hierarchy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -63,6 +64,7 @@ public static class DependencyInjection
 
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
         services.AddScoped(typeof(IReadRepository<>), typeof(EfRepository<>));
+        services.AddScoped<IEmployeeHierarchyLookup, PgEmployeeHierarchyLookup>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {
