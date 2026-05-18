@@ -14,8 +14,6 @@ public class ListEmployeesHandlerTests
 {
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
 
-    private ListEmployeesHandler Sut() => new(_employees);
-
     [Fact]
     public async Task Handle_returns_paged_results()
     {
@@ -31,8 +29,9 @@ public class ListEmployeesHandlerTests
         _employees.ListAsync(Arg.Any<ISpecification<Employee>>(), Arg.Any<CancellationToken>())
             .Returns(new List<Employee> { owner });
 
-        var result = await Sut().Handle(
+        var result = await ListEmployeesHandler.Handle(
             new ListEmployeesQuery(Page: 1, PageSize: 20, Search: null, Role: null, Status: null),
+            _employees,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<ListEmployeesResult>.Success>().Subject;
@@ -50,8 +49,9 @@ public class ListEmployeesHandlerTests
         _employees.ListAsync(Arg.Any<ISpecification<Employee>>(), Arg.Any<CancellationToken>())
             .Returns(new List<Employee>());
 
-        var result = await Sut().Handle(
+        var result = await ListEmployeesHandler.Handle(
             new ListEmployeesQuery(Page: 1, PageSize: 1000, Search: null, Role: null, Status: null),
+            _employees,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<ListEmployeesResult>.Success>().Subject;
@@ -66,8 +66,9 @@ public class ListEmployeesHandlerTests
         _employees.ListAsync(Arg.Any<ISpecification<Employee>>(), Arg.Any<CancellationToken>())
             .Returns(new List<Employee>());
 
-        var result = await Sut().Handle(
+        var result = await ListEmployeesHandler.Handle(
             new ListEmployeesQuery(Page: 0, PageSize: 0, Search: null, Role: null, Status: null),
+            _employees,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<ListEmployeesResult>.Success>().Subject;
@@ -78,8 +79,9 @@ public class ListEmployeesHandlerTests
     [Fact]
     public async Task Handle_returns_error_for_invalid_role_filter()
     {
-        var result = await Sut().Handle(
+        var result = await ListEmployeesHandler.Handle(
             new ListEmployeesQuery(1, 20, null, "Boss", null),
+            _employees,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<ListEmployeesResult>.Error>()
@@ -89,8 +91,9 @@ public class ListEmployeesHandlerTests
     [Fact]
     public async Task Handle_returns_error_for_invalid_status_filter()
     {
-        var result = await Sut().Handle(
+        var result = await ListEmployeesHandler.Handle(
             new ListEmployeesQuery(1, 20, null, null, "Vacation"),
+            _employees,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<ListEmployeesResult>.Error>()

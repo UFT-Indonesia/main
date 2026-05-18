@@ -16,8 +16,6 @@ public class UpdateEmployeeHandlerTests
 {
     private readonly IRepository<Employee> _employees = Substitute.For<IRepository<Employee>>();
 
-    private UpdateEmployeeHandler Sut() => new(_employees);
-
     private static Employee NewOwner()
     {
         return Employee.Create(
@@ -34,7 +32,7 @@ public class UpdateEmployeeHandlerTests
         _employees.GetByIdAsync(Arg.Any<EmployeeId>(), Arg.Any<CancellationToken>())
             .Returns((Employee?)null);
 
-        var result = await Sut().Handle(
+        var result = await UpdateEmployeeHandler.Handle(
             new UpdateEmployeeCommand(
                 Guid.NewGuid(),
                 "Owner Baru",
@@ -43,6 +41,7 @@ public class UpdateEmployeeHandlerTests
                 new DateOnly(2025, 1, 1),
                 "Owner",
                 null),
+            _employees,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.NotFound>();
@@ -51,7 +50,7 @@ public class UpdateEmployeeHandlerTests
     [Fact]
     public async Task Handle_returns_error_for_invalid_role()
     {
-        var result = await Sut().Handle(
+        var result = await UpdateEmployeeHandler.Handle(
             new UpdateEmployeeCommand(
                 Guid.NewGuid(),
                 "Owner",
@@ -60,6 +59,7 @@ public class UpdateEmployeeHandlerTests
                 new DateOnly(2025, 1, 1),
                 "Boss",
                 null),
+            _employees,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
@@ -72,7 +72,7 @@ public class UpdateEmployeeHandlerTests
         var owner = NewOwner();
         _employees.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(owner);
 
-        var result = await Sut().Handle(
+        var result = await UpdateEmployeeHandler.Handle(
             new UpdateEmployeeCommand(
                 owner.Id.Value,
                 "Owner Baru",
@@ -81,6 +81,7 @@ public class UpdateEmployeeHandlerTests
                 new DateOnly(2025, 1, 1),
                 "Owner",
                 null),
+            _employees,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
@@ -95,7 +96,7 @@ public class UpdateEmployeeHandlerTests
         var owner = NewOwner();
         _employees.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(owner);
 
-        var result = await Sut().Handle(
+        var result = await UpdateEmployeeHandler.Handle(
             new UpdateEmployeeCommand(
                 owner.Id.Value,
                 owner.FullName,
@@ -104,6 +105,7 @@ public class UpdateEmployeeHandlerTests
                 new DateOnly(2025, 6, 1),
                 "Owner",
                 null),
+            _employees,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Success>();
@@ -116,7 +118,7 @@ public class UpdateEmployeeHandlerTests
         var owner = NewOwner();
         _employees.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(owner);
 
-        var result = await Sut().Handle(
+        var result = await UpdateEmployeeHandler.Handle(
             new UpdateEmployeeCommand(
                 owner.Id.Value,
                 owner.FullName,
@@ -125,6 +127,7 @@ public class UpdateEmployeeHandlerTests
                 new DateOnly(2024, 12, 1),
                 "Owner",
                 null),
+            _employees,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()

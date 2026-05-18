@@ -15,8 +15,6 @@ public class GetEmployeeByIdHandlerTests
 {
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
 
-    private GetEmployeeByIdHandler Sut() => new(_employees);
-
     [Fact]
     public async Task Handle_returns_success_when_employee_exists()
     {
@@ -30,8 +28,9 @@ public class GetEmployeeByIdHandlerTests
 
         _employees.GetByIdAsync(typedId, Arg.Any<CancellationToken>()).Returns(employee);
 
-        var result = await Sut().Handle(
+        var result = await GetEmployeeByIdHandler.Handle(
             new GetEmployeeByIdQuery(typedId.Value),
+            _employees,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
@@ -45,8 +44,9 @@ public class GetEmployeeByIdHandlerTests
         _employees.GetByIdAsync(Arg.Any<EmployeeId>(), Arg.Any<CancellationToken>())
             .Returns((Employee?)null);
 
-        var result = await Sut().Handle(
+        var result = await GetEmployeeByIdHandler.Handle(
             new GetEmployeeByIdQuery(Guid.NewGuid()),
+            _employees,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.NotFound>();
