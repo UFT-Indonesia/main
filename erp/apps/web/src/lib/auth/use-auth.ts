@@ -5,13 +5,18 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from './store';
 
 export function useAuth() {
-  return useAuthStore((s) => ({
-    token: s.token,
-    user: s.user,
-    isAuthenticated: !!s.token,
-    hydrated: s.hydrated,
-    clear: s.clear,
-  }));
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const clear = useAuthStore((s) => s.clear);
+
+  return {
+    token,
+    user,
+    isAuthenticated: !!token,
+    hydrated,
+    clear,
+  };
 }
 
 export function useRequireAuth(redirectTo: string = '/login') {
