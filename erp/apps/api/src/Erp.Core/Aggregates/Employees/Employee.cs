@@ -59,7 +59,8 @@ public sealed class Employee : AggregateRoot<EmployeeId>
         EmployeeRole role,
         EmployeeId? parentId = null,
         Npwp? npwp = null,
-        EmployeeId? id = null)
+        EmployeeId? id = null,
+        IReadOnlyCollection<EmployeeId>? parentAncestors = null)
     {
         if (string.IsNullOrWhiteSpace(fullName))
         {
@@ -95,6 +96,8 @@ public sealed class Employee : AggregateRoot<EmployeeId>
                 "employee.parent_required",
                 "Non-owner employee must have a parent.");
         }
+
+        ValidateParentChain(employeeId, parentId, parentAncestors ?? Array.Empty<EmployeeId>());
 
         var employee = new Employee(
             employeeId,
@@ -168,7 +171,9 @@ public sealed class Employee : AggregateRoot<EmployeeId>
         RaiseDomainEvent(new EmployeeSalaryChanged(Id.Value, oldWage, oldEffective, newWage, effectiveFrom));
     }
 
-    public void AssignParent(EmployeeId? newParentId)
+    public void AssignParent(
+        EmployeeId? newParentId,
+        IReadOnlyCollection<EmployeeId>? newParentAncestors = null)
     {
         EnsureActive();
         if (newParentId.HasValue && newParentId.Value == EmployeeId.Empty)
@@ -195,6 +200,8 @@ public sealed class Employee : AggregateRoot<EmployeeId>
                 "Non-owner employee must have a parent.");
         }
 
+        ValidateParentChain(Id, newParentId, newParentAncestors ?? Array.Empty<EmployeeId>());
+
         if (ParentId == newParentId)
         {
             return;
@@ -203,6 +210,35 @@ public sealed class Employee : AggregateRoot<EmployeeId>
         var old = ParentId;
         ParentId = newParentId;
         RaiseDomainEvent(new EmployeeParentChanged(Id.Value, old?.Value, newParentId?.Value));
+    }
+
+    private static void ValidateParentChain(
+        EmployeeId selfId,
+        EmployeeId? parentId,
+        IReadOnlyCollection<EmployeeId> parentAncestors)
+    {
+        if (!parentId.HasValue)
+        {
+            return;
+        }
+
+        foreach (var ancestor in parentAncestors)
+        {
+            if (ancestor == selfId)
+            {
+                throw new DomainException(
+                    "employee.parent_cycle",
+                    "Assigning this parent would create a cycle in the hierarchy.");
+            }
+        }
+
+        var depth = parentAncestors.Count + 1;
+        if (depth > EmployeeHierarchyPolicy.MaxDepth)
+        {
+            throw new DomainException(
+                "employee.depth_exceeded",
+                $"Employee hierarchy depth cannot exceed {EmployeeHierarchyPolicy.MaxDepth}.");
+        }
     }
 
     public void ChangeRole(EmployeeRole newRole)
