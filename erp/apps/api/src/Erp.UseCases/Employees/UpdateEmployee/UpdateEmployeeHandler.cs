@@ -9,17 +9,11 @@ using NodaTime;
 
 namespace Erp.UseCases.Employees.UpdateEmployee;
 
-public sealed class UpdateEmployeeHandler
+public static class UpdateEmployeeHandler
 {
-    private readonly IRepository<Employee> _employees;
-
-    public UpdateEmployeeHandler(IRepository<Employee> employees)
-    {
-        _employees = employees;
-    }
-
-    public async Task<Result<EmployeeResult>> Handle(
+    public static async Task<Result<EmployeeResult>> Handle(
         UpdateEmployeeCommand command,
+        IRepository<Employee> employees,
         CancellationToken ct)
     {
         if (!Enum.TryParse<EmployeeRole>(command.Role, ignoreCase: true, out var role))
@@ -29,7 +23,7 @@ public sealed class UpdateEmployeeHandler
                 "Role must be Owner, Manager, or Staff.");
         }
 
-        var employee = await _employees.GetByIdAsync(new EmployeeId(command.EmployeeId), ct);
+        var employee = await employees.GetByIdAsync(new EmployeeId(command.EmployeeId), ct);
         if (employee is null)
         {
             return new Result<EmployeeResult>.NotFound("Employee was not found.");
@@ -84,7 +78,7 @@ public sealed class UpdateEmployeeHandler
             return new Result<EmployeeResult>.Error(ex.Code ?? "employee.validation", ex.Message);
         }
 
-        await _employees.UpdateAsync(employee, ct);
+        await employees.UpdateAsync(employee, ct);
         return new Result<EmployeeResult>.Success(EmployeeMapper.ToResult(employee));
     }
 }

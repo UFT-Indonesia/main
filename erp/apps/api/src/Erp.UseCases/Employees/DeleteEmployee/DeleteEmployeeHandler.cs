@@ -8,22 +8,15 @@ using NodaTime;
 
 namespace Erp.UseCases.Employees.DeleteEmployee;
 
-public sealed class DeleteEmployeeHandler
+public static class DeleteEmployeeHandler
 {
-    private readonly IRepository<Employee> _employees;
-    private readonly IClock _clock;
-
-    public DeleteEmployeeHandler(IRepository<Employee> employees, IClock clock)
-    {
-        _employees = employees;
-        _clock = clock;
-    }
-
-    public async Task<Result<EmployeeResult>> Handle(
+    public static async Task<Result<EmployeeResult>> Handle(
         DeleteEmployeeCommand command,
+        IRepository<Employee> employees,
+        IClock clock,
         CancellationToken ct)
     {
-        var employee = await _employees.GetByIdAsync(new EmployeeId(command.EmployeeId), ct);
+        var employee = await employees.GetByIdAsync(new EmployeeId(command.EmployeeId), ct);
         if (employee is null)
         {
             return new Result<EmployeeResult>.NotFound("Employee was not found.");
@@ -31,7 +24,7 @@ public sealed class DeleteEmployeeHandler
 
         var terminationDate = command.TerminationDate.HasValue
             ? LocalDate.FromDateTime(command.TerminationDate.Value.ToDateTime(TimeOnly.MinValue))
-            : _clock.GetCurrentInstant().InUtc().Date;
+            : clock.GetCurrentInstant().InUtc().Date;
 
         try
         {
@@ -42,7 +35,7 @@ public sealed class DeleteEmployeeHandler
             return new Result<EmployeeResult>.Error(ex.Code ?? "employee.validation", ex.Message);
         }
 
-        await _employees.UpdateAsync(employee, ct);
+        await employees.UpdateAsync(employee, ct);
         return new Result<EmployeeResult>.Success(EmployeeMapper.ToResult(employee));
     }
 }

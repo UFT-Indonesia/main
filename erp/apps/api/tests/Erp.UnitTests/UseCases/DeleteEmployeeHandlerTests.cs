@@ -17,8 +17,6 @@ public class DeleteEmployeeHandlerTests
     private readonly IRepository<Employee> _employees = Substitute.For<IRepository<Employee>>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
-    private DeleteEmployeeHandler Sut() => new(_employees, _clock);
-
     private static Employee NewOwner()
     {
         return Employee.Create(
@@ -35,8 +33,10 @@ public class DeleteEmployeeHandlerTests
         _employees.GetByIdAsync(Arg.Any<EmployeeId>(), Arg.Any<CancellationToken>())
             .Returns((Employee?)null);
 
-        var result = await Sut().Handle(
+        var result = await DeleteEmployeeHandler.Handle(
             new DeleteEmployeeCommand(Guid.NewGuid(), null),
+            _employees,
+            _clock,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.NotFound>();
@@ -48,8 +48,10 @@ public class DeleteEmployeeHandlerTests
         var owner = NewOwner();
         _employees.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(owner);
 
-        var result = await Sut().Handle(
+        var result = await DeleteEmployeeHandler.Handle(
             new DeleteEmployeeCommand(owner.Id.Value, new DateOnly(2025, 6, 1)),
+            _employees,
+            _clock,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
@@ -67,8 +69,10 @@ public class DeleteEmployeeHandlerTests
         _clock.GetCurrentInstant().Returns(
             Instant.FromUtc(2025, 7, 15, 0, 0));
 
-        var result = await Sut().Handle(
+        var result = await DeleteEmployeeHandler.Handle(
             new DeleteEmployeeCommand(owner.Id.Value, null),
+            _employees,
+            _clock,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
@@ -82,8 +86,10 @@ public class DeleteEmployeeHandlerTests
         owner.Terminate(new LocalDate(2025, 5, 1));
         _employees.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(owner);
 
-        var result = await Sut().Handle(
+        var result = await DeleteEmployeeHandler.Handle(
             new DeleteEmployeeCommand(owner.Id.Value, new DateOnly(2025, 6, 1)),
+            _employees,
+            _clock,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()

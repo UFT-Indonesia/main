@@ -12,8 +12,6 @@ public class CreateEmployeeHandlerTests
 {
     private readonly IRepository<Employee> _employees = Substitute.For<IRepository<Employee>>();
 
-    private CreateEmployeeHandler Sut() => new(_employees);
-
     [Fact]
     public async Task Handle_creates_owner_employee()
     {
@@ -26,7 +24,7 @@ public class CreateEmployeeHandlerTests
             Role: "Owner",
             ParentId: null);
 
-        var result = await Sut().Handle(command, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
         success.Value.FullName.Should().Be("Owner Satu");
@@ -47,7 +45,7 @@ public class CreateEmployeeHandlerTests
             "Boss",
             null);
 
-        var result = await Sut().Handle(command, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
             .Which.Code.Should().Be("employee.role_invalid");
@@ -66,7 +64,7 @@ public class CreateEmployeeHandlerTests
             "Owner",
             null);
 
-        var result = await Sut().Handle(command, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
             .Which.Code.Should().Be("nik.length");
@@ -84,7 +82,7 @@ public class CreateEmployeeHandlerTests
             "Owner",
             Guid.NewGuid());
 
-        var result = await Sut().Handle(command, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
             .Which.Code.Should().Be("employee.owner_no_parent");
@@ -102,7 +100,7 @@ public class CreateEmployeeHandlerTests
             "Manager",
             null);
 
-        var result = await Sut().Handle(command, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
             .Which.Code.Should().Be("employee.parent_required");
@@ -120,7 +118,7 @@ public class CreateEmployeeHandlerTests
             "owner",
             null);
 
-        var result = await Sut().Handle(command, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
         success.Value.Npwp.Should().NotBeNullOrWhiteSpace();

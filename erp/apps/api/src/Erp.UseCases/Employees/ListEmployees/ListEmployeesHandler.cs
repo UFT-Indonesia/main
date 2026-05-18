@@ -5,20 +5,14 @@ using Erp.UseCases.Employees.Common;
 
 namespace Erp.UseCases.Employees.ListEmployees;
 
-public sealed class ListEmployeesHandler
+public static class ListEmployeesHandler
 {
     private const int DefaultPageSize = 20;
     private const int MaxPageSize = 100;
 
-    private readonly IReadRepository<Employee> _employees;
-
-    public ListEmployeesHandler(IReadRepository<Employee> employees)
-    {
-        _employees = employees;
-    }
-
-    public async Task<Result<ListEmployeesResult>> Handle(
+    public static async Task<Result<ListEmployeesResult>> Handle(
         ListEmployeesQuery query,
+        IReadRepository<Employee> employees,
         CancellationToken ct)
     {
         var page = query.Page <= 0 ? 1 : query.Page;
@@ -52,19 +46,19 @@ public sealed class ListEmployeesHandler
             statusFilter = parsedStatus;
         }
 
-        var totalCount = await _employees.CountAsync(
+        var totalCount = await employees.CountAsync(
             new EmployeeListCountSpec(query.Search, roleFilter, statusFilter),
             ct);
 
-        var employees = await _employees.ListAsync(
+        var items = await employees.ListAsync(
             new EmployeeListSpec(page, pageSize, query.Search, roleFilter, statusFilter),
             ct);
 
-        var items = employees.Select(EmployeeMapper.ToResult).ToList();
+        var resultItems = items.Select(EmployeeMapper.ToResult).ToList();
 
         return new Result<ListEmployeesResult>.Success(new ListEmployeesResult
         {
-            Items = items,
+            Items = resultItems,
             Page = page,
             PageSize = pageSize,
             TotalCount = totalCount,

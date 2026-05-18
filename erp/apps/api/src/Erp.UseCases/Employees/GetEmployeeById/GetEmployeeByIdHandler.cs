@@ -6,20 +6,14 @@ using Erp.UseCases.Employees.Common;
 
 namespace Erp.UseCases.Employees.GetEmployeeById;
 
-public sealed class GetEmployeeByIdHandler
+public static class GetEmployeeByIdHandler
 {
-    private readonly IReadRepository<Employee> _employees;
-
-    public GetEmployeeByIdHandler(IReadRepository<Employee> employees)
-    {
-        _employees = employees;
-    }
-
-    public async Task<Result<EmployeeResult>> Handle(
+    public static async Task<Result<EmployeeResult>> Handle(
         GetEmployeeByIdQuery query,
+        IReadRepository<Employee> employees,
         CancellationToken ct)
     {
-        var employee = await _employees.GetByIdAsync(new EmployeeId(query.EmployeeId), ct);
+        var employee = await employees.GetByIdAsync(new EmployeeId(query.EmployeeId), ct);
         if (employee is null)
         {
             return new Result<EmployeeResult>.NotFound("Employee was not found.");
