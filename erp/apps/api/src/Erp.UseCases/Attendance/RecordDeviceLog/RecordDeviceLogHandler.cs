@@ -6,21 +6,12 @@ using Erp.UseCases.Attendance.Common;
 
 namespace Erp.UseCases.Attendance.RecordDeviceLog;
 
-public sealed class RecordDeviceLogHandler
+public static class RecordDeviceLogHandler
 {
-    private readonly IReadRepository<Employee> _employees;
-    private readonly IRepository<AttendanceLog> _attendanceLogs;
-
-    public RecordDeviceLogHandler(
-        IReadRepository<Employee> employees,
-        IRepository<AttendanceLog> attendanceLogs)
-    {
-        _employees = employees;
-        _attendanceLogs = attendanceLogs;
-    }
-
-    public Task<Result<AttendanceResult>> Handle(
+    public static Task<Result<AttendanceResult>> Handle(
         RecordDeviceLogCommand command,
+        IReadRepository<Employee> employees,
+        IRepository<AttendanceLog> attendanceLogs,
         CancellationToken ct) =>
         AttendanceLogService.RecordAsync(
             command.EmployeeId,
@@ -29,7 +20,7 @@ public sealed class RecordDeviceLogHandler
             null,
             command.DeviceId,
             null,
-            _employees,
-            _attendanceLogs,
+            employees,
+            attendanceLogs,
             ct);
 }

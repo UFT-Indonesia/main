@@ -9,17 +9,11 @@ using NodaTime;
 
 namespace Erp.UseCases.Employees.CreateEmployee;
 
-public sealed class CreateEmployeeHandler
+public static class CreateEmployeeHandler
 {
-    private readonly IRepository<Employee> _employees;
-
-    public CreateEmployeeHandler(IRepository<Employee> employees)
-    {
-        _employees = employees;
-    }
-
-    public async Task<Result<EmployeeResult>> Handle(
+    public static async Task<Result<EmployeeResult>> Handle(
         CreateEmployeeCommand command,
+        IRepository<Employee> employees,
         CancellationToken ct)
     {
         if (!Enum.TryParse<EmployeeRole>(command.Role, ignoreCase: true, out var role))
@@ -55,7 +49,7 @@ public sealed class CreateEmployeeHandler
             return new Result<EmployeeResult>.Error(ex.Code ?? "employee.validation", ex.Message);
         }
 
-        await _employees.AddAsync(employee, ct);
+        await employees.AddAsync(employee, ct);
         return new Result<EmployeeResult>.Success(EmployeeMapper.ToResult(employee));
     }
 }
