@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth/use-auth';
 
 export function Topbar() {
   const router = useRouter();
-  const { user, clear } = useAuth();
+  const { user, hydrated, clear } = useAuth();
   const t = useTranslations('common');
 
   const handleLogout = () => {
@@ -19,7 +19,7 @@ export function Topbar() {
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-card px-6">
       <div className="text-sm text-muted-foreground">
-        {user ? (
+        {hydrated && user ? (
           <span>
             {user.fullName} <span className="text-xs">({user.email})</span>
           </span>
