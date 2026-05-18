@@ -14,6 +14,7 @@ public static class CreateEmployeeHandler
     public static async Task<Result<EmployeeResult>> Handle(
         CreateEmployeeCommand command,
         IRepository<Employee> employees,
+        IEmployeeHierarchyLookup hierarchy,
         CancellationToken ct)
     {
         if (!Enum.TryParse<EmployeeRole>(command.Role, ignoreCase: true, out var role))
@@ -35,6 +36,9 @@ public static class CreateEmployeeHandler
                 ? new EmployeeId(command.ParentId.Value)
                 : (EmployeeId?)null;
 
+            var parentAncestors = await EmployeeHierarchyService.ResolveAncestorsForParentAsync(
+                parentId, hierarchy, ct);
+
             employee = Employee.Create(
                 command.FullName,
                 nik,
@@ -42,7 +46,8 @@ public static class CreateEmployeeHandler
                 effectiveFrom,
                 role,
                 parentId,
-                npwp);
+                npwp,
+                parentAncestors: parentAncestors);
         }
         catch (DomainException ex)
         {

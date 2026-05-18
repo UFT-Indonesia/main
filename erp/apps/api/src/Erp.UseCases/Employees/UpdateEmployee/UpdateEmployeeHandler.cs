@@ -14,6 +14,7 @@ public static class UpdateEmployeeHandler
     public static async Task<Result<EmployeeResult>> Handle(
         UpdateEmployeeCommand command,
         IRepository<Employee> employees,
+        IEmployeeHierarchyLookup hierarchy,
         CancellationToken ct)
     {
         if (!Enum.TryParse<EmployeeRole>(command.Role, ignoreCase: true, out var role))
@@ -47,6 +48,14 @@ public static class UpdateEmployeeHandler
                 employee.ChangeSalary(newWage, newEffectiveFrom);
             }
 
+            // Resolve ancestors only when parent actually changes; skip lock acquisition otherwise.
+            IReadOnlyList<EmployeeId>? parentAncestors = null;
+            if (employee.ParentId != newParentId)
+            {
+                parentAncestors = await EmployeeHierarchyService.ResolveAncestorsForParentAsync(
+                    newParentId, hierarchy, ct);
+            }
+
             // Handle role/parent transitions in an order that satisfies invariants
             // for the simple cases. Cross-tier transitions (Owner <-> non-Owner)
             // may surface as DomainException due to current aggregate constraints.
@@ -54,7 +63,7 @@ public static class UpdateEmployeeHandler
             {
                 if (employee.ParentId != newParentId)
                 {
-                    employee.AssignParent(newParentId);
+                    employee.AssignParent(newParentId, parentAncestors);
                 }
                 if (employee.Role != role)
                 {
@@ -69,7 +78,7 @@ public static class UpdateEmployeeHandler
                 }
                 if (employee.ParentId != newParentId)
                 {
-                    employee.AssignParent(newParentId);
+                    employee.AssignParent(newParentId, parentAncestors);
                 }
             }
         }
