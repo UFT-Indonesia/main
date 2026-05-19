@@ -31,6 +31,12 @@ public sealed class PgEmployeeHierarchyLookup : IEmployeeHierarchyLookup
             ct);
     }
 
+    public Task<bool> ExistsAsync(EmployeeId employeeId, CancellationToken ct)
+    {
+        return _db.Set<Employee>()
+            .AnyAsync(e => e.Id == employeeId, ct);
+    }
+
     public async Task<IReadOnlyList<EmployeeId>> GetAncestorsAsync(EmployeeId employeeId, CancellationToken ct)
     {
         const string sql = """

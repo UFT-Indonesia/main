@@ -18,6 +18,14 @@ public static class EmployeeHierarchyService
         }
 
         await lookup.AcquireHierarchyLockAsync(ct);
+
+        if (!await lookup.ExistsAsync(parentId.Value, ct))
+        {
+            throw new DomainException(
+                "employee.parent_not_found",
+                "The specified parent employee does not exist.");
+        }
+
         var ancestors = await lookup.GetAncestorsAsync(parentId.Value, ct);
 
         if (ancestors.Count >= EmployeeHierarchyPolicy.MaxAncestryWalk)
