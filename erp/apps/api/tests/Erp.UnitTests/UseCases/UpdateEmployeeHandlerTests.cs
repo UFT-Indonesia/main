@@ -15,6 +15,15 @@ namespace Erp.UnitTests.UseCases;
 public class UpdateEmployeeHandlerTests
 {
     private readonly IRepository<Employee> _employees = Substitute.For<IRepository<Employee>>();
+    private readonly IEmployeeHierarchyLookup _hierarchy = Substitute.For<IEmployeeHierarchyLookup>();
+
+    public UpdateEmployeeHandlerTests()
+    {
+        _hierarchy.ExistsAsync(Arg.Any<EmployeeId>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _hierarchy.GetAncestorsAsync(Arg.Any<EmployeeId>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<EmployeeId>());
+    }
 
     private static Employee NewOwner()
     {
@@ -42,6 +51,7 @@ public class UpdateEmployeeHandlerTests
                 "Owner",
                 null),
             _employees,
+            _hierarchy,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.NotFound>();
@@ -60,6 +70,7 @@ public class UpdateEmployeeHandlerTests
                 "Boss",
                 null),
             _employees,
+            _hierarchy,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
@@ -82,6 +93,7 @@ public class UpdateEmployeeHandlerTests
                 "Owner",
                 null),
             _employees,
+            _hierarchy,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
@@ -106,6 +118,7 @@ public class UpdateEmployeeHandlerTests
                 "Owner",
                 null),
             _employees,
+            _hierarchy,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Success>();
@@ -128,10 +141,45 @@ public class UpdateEmployeeHandlerTests
                 "Owner",
                 null),
             _employees,
+            _hierarchy,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
             .Which.Code.Should().Be("employee.salary_backdated");
+        await _employees.DidNotReceive().UpdateAsync(Arg.Any<Employee>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_rejects_when_new_parent_chain_too_deep()
+    {
+        var manager = Employee.Create(
+            "Manager",
+            Nik.Create("3201234567890124"),
+            Money.Idr(8_000_000m),
+            new LocalDate(2025, 1, 1),
+            EmployeeRole.Manager,
+            parentId: EmployeeId.New());
+        _employees.GetByIdAsync(manager.Id, Arg.Any<CancellationToken>()).Returns(manager);
+
+        var newParentId = EmployeeId.New();
+        _hierarchy.GetAncestorsAsync(newParentId, Arg.Any<CancellationToken>())
+            .Returns(new[] { EmployeeId.New(), EmployeeId.New() });
+
+        var result = await UpdateEmployeeHandler.Handle(
+            new UpdateEmployeeCommand(
+                manager.Id.Value,
+                manager.FullName,
+                null,
+                manager.MonthlyWage.Amount,
+                new DateOnly(2025, 1, 1),
+                "Manager",
+                newParentId.Value),
+            _employees,
+            _hierarchy,
+            CancellationToken.None);
+
+        result.Should().BeOfType<Result<EmployeeResult>.Error>()
+            .Which.Code.Should().Be("employee.depth_exceeded");
         await _employees.DidNotReceive().UpdateAsync(Arg.Any<Employee>(), Arg.Any<CancellationToken>());
     }
 }

@@ -14,6 +14,7 @@ public static class UpdateEmployeeHandler
     public static async Task<Result<EmployeeResult>> Handle(
         UpdateEmployeeCommand command,
         IRepository<Employee> employees,
+        IEmployeeHierarchyLookup hierarchy,
         CancellationToken ct)
     {
         if (!Enum.TryParse<EmployeeRole>(command.Role, ignoreCase: true, out var role))
@@ -39,6 +40,13 @@ public static class UpdateEmployeeHandler
                 ? new EmployeeId(command.ParentId.Value)
                 : (EmployeeId?)null;
 
+            IReadOnlyList<EmployeeId>? parentAncestors = null;
+            if (employee.ParentId != newParentId)
+            {
+                parentAncestors = await EmployeeHierarchyService.ResolveAncestorsForParentAsync(
+                    newParentId, hierarchy, ct);
+            }
+
             employee.UpdateBasicInfo(command.FullName, npwp);
 
             if (!Equals(employee.MonthlyWage, newWage)
@@ -54,7 +62,7 @@ public static class UpdateEmployeeHandler
             {
                 if (employee.ParentId != newParentId)
                 {
-                    employee.AssignParent(newParentId);
+                    employee.AssignParent(newParentId, parentAncestors);
                 }
                 if (employee.Role != role)
                 {
@@ -69,7 +77,7 @@ public static class UpdateEmployeeHandler
                 }
                 if (employee.ParentId != newParentId)
                 {
-                    employee.AssignParent(newParentId);
+                    employee.AssignParent(newParentId, parentAncestors);
                 }
             }
         }

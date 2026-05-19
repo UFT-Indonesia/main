@@ -249,4 +249,100 @@ public class EmployeeTests
             EmployeeRole.Manager,
             parentId: ownerId);
     }
+
+    [Fact]
+    public void Create_rejects_depth_exceeded()
+    {
+        var ownerId = EmployeeId.New();
+        var managerId = EmployeeId.New();
+
+        var act = () => Employee.Create(
+            "Staff Too Deep",
+            Nik.Create("3201234567890125"),
+            Wage,
+            EffectiveFrom,
+            EmployeeRole.Staff,
+            parentId: managerId,
+            parentAncestors: new[] { ownerId, EmployeeId.New() });
+
+        act.Should().Throw<DomainException>()
+            .Which.Code.Should().Be("employee.depth_exceeded");
+    }
+
+    [Fact]
+    public void Create_rejects_cycle_when_self_in_ancestors()
+    {
+        var selfId = EmployeeId.New();
+        var parentId = EmployeeId.New();
+
+        var act = () => Employee.Create(
+            "Cyclical",
+            Nik.Create("3201234567890126"),
+            Wage,
+            EffectiveFrom,
+            EmployeeRole.Manager,
+            parentId: parentId,
+            id: selfId,
+            parentAncestors: new[] { selfId });
+
+        act.Should().Throw<DomainException>()
+            .Which.Code.Should().Be("employee.parent_cycle");
+    }
+
+    [Fact]
+    public void Create_allows_depth_two()
+    {
+        var ownerId = EmployeeId.New();
+        var managerId = EmployeeId.New();
+
+        var staff = Employee.Create(
+            "Staff",
+            Nik.Create("3201234567890127"),
+            Wage,
+            EffectiveFrom,
+            EmployeeRole.Staff,
+            parentId: managerId,
+            parentAncestors: new[] { ownerId });
+
+        staff.ParentId.Should().Be(managerId);
+    }
+
+    [Fact]
+    public void AssignParent_rejects_depth_exceeded()
+    {
+        var manager = NewManager(out _);
+        var newParentId = EmployeeId.New();
+
+        var act = () => manager.AssignParent(
+            newParentId,
+            new[] { EmployeeId.New(), EmployeeId.New() });
+
+        act.Should().Throw<DomainException>()
+            .Which.Code.Should().Be("employee.depth_exceeded");
+    }
+
+    [Fact]
+    public void AssignParent_rejects_cycle_when_parent_in_own_subtree()
+    {
+        var manager = NewManager(out _);
+        var newParentId = EmployeeId.New();
+
+        var act = () => manager.AssignParent(
+            newParentId,
+            new[] { manager.Id });
+
+        act.Should().Throw<DomainException>()
+            .Which.Code.Should().Be("employee.parent_cycle");
+    }
+
+    [Fact]
+    public void AssignParent_allows_lateral_move_within_depth()
+    {
+        var manager = NewManager(out _);
+        var newOwnerId = EmployeeId.New();
+
+        manager.AssignParent(newOwnerId, Array.Empty<EmployeeId>());
+
+        manager.ParentId.Should().Be(newOwnerId);
+    }
 }

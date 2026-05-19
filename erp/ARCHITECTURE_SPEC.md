@@ -387,3 +387,22 @@ Erp.Web/Endpoints/
 - **Optimistic updates**: mutations rely on invalidation only; consider optimistic UI for create/update.
 >>>>>>> Stashed changes
 >>>>>>> Stashed changes
+
+## 15. Known Scaling TODOs
+
+### Hierarchy mutation advisory lock (`Erp.Infrastructure/Persistence/Hierarchy/PgEmployeeHierarchyLookup.cs`)
+- **Current**: single global `pg_advisory_xact_lock(7_982_465_318_127_493_021)` for every employee Create/AssignParent that touches the parent chain. Held for the lifetime of the Wolverine handler transaction; auto-released on commit/rollback.
+- **Rationale**: ensures depth/cycle checks see a consistent ancestry snapshot. Acceptable at current scale (≪ 1 reparent/sec, single tenant).
+- **Triggers to revisit**:
+  - **Multi-tenancy**: shard key by tenant id, e.g. `hashtextextended('hier:' || tenantId, 0)`.
+  - **Sustained > 5 reparents/sec**: shard key by Owner-subtree root id so unrelated trees don't serialize.
+  - **Heavy subtree mutations**: switch to `ltree` materialized path; cycle becomes structurally impossible and the lock can be dropped entirely.
+- **Safety cap**: `EmployeeHierarchyPolicy.MaxAncestryWalk = 8`. CTE truncates ancestry chains beyond this; `EmployeeHierarchyService` raises `employee.hierarchy_corrupted` so corrupted/cyclic data fails loud instead of silently passing depth validation.
+
+### 2026-05-18 — RBS depth + cycle validation landed
+- Domain: `Employee.Create` and `Employee.AssignParent` now accept an optional `parentAncestors` collection and reject `employee.depth_exceeded` (depth > `MaxDepth = 2`) and `employee.parent_cycle` (self appears in chain).
+- Abstraction: `IEmployeeHierarchyLookup` in `Erp.Core/Interfaces` (lock + ancestor read).
+- Use case: `EmployeeHierarchyService.ResolveAncestorsForParentAsync` orchestrates lock-then-read, returns the candidate parent's ancestors only (not the parent itself), and surfaces `employee.hierarchy_corrupted` when the safety cap fires so callers pass the candidate parent separately to avoid over-counting depth.
+- Handlers: `CreateEmployeeHandler` and `UpdateEmployeeHandler` resolve ancestors via the service before calling the aggregate. Update skips the lock when parent is unchanged.
+- Infrastructure: `PgEmployeeHierarchyLookup` runs a recursive CTE bounded by `MaxAncestryWalk` and uses `pg_advisory_xact_lock` (see TODO above).
+- Tests: 96 → 108 unit tests; new coverage for depth/cycle on the aggregate, service ordering and corruption propagation, and handler-level depth rejection.
