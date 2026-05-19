@@ -40,20 +40,19 @@ public static class UpdateEmployeeHandler
                 ? new EmployeeId(command.ParentId.Value)
                 : (EmployeeId?)null;
 
+            IReadOnlyList<EmployeeId>? parentAncestors = null;
+            if (employee.ParentId != newParentId)
+            {
+                parentAncestors = await EmployeeHierarchyService.ResolveAncestorsForParentAsync(
+                    newParentId, hierarchy, ct);
+            }
+
             employee.UpdateBasicInfo(command.FullName, npwp);
 
             if (!Equals(employee.MonthlyWage, newWage)
                 || employee.EffectiveSalaryFrom != newEffectiveFrom)
             {
                 employee.ChangeSalary(newWage, newEffectiveFrom);
-            }
-
-            // Resolve ancestors only when parent actually changes; skip lock acquisition otherwise.
-            IReadOnlyList<EmployeeId>? parentAncestors = null;
-            if (employee.ParentId != newParentId)
-            {
-                parentAncestors = await EmployeeHierarchyService.ResolveAncestorsForParentAsync(
-                    newParentId, hierarchy, ct);
             }
 
             // Handle role/parent transitions in an order that satisfies invariants
