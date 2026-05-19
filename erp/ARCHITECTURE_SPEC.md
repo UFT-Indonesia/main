@@ -402,7 +402,7 @@ Erp.Web/Endpoints/
 ### 2026-05-18 — RBS depth + cycle validation landed
 - Domain: `Employee.Create` and `Employee.AssignParent` now accept an optional `parentAncestors` collection and reject `employee.depth_exceeded` (depth > `MaxDepth = 2`) and `employee.parent_cycle` (self appears in chain).
 - Abstraction: `IEmployeeHierarchyLookup` in `Erp.Core/Interfaces` (lock + ancestor read).
-- Use case: `EmployeeHierarchyService.ResolveAncestorsForParentAsync` orchestrates lock-then-read, prepends the candidate parent, and surfaces `employee.hierarchy_corrupted` when the safety cap fires.
+- Use case: `EmployeeHierarchyService.ResolveAncestorsForParentAsync` orchestrates lock-then-read, returns the candidate parent's ancestors only (not the parent itself), and surfaces `employee.hierarchy_corrupted` when the safety cap fires so callers pass the candidate parent separately to avoid over-counting depth.
 - Handlers: `CreateEmployeeHandler` and `UpdateEmployeeHandler` resolve ancestors via the service before calling the aggregate. Update skips the lock when parent is unchanged.
 - Infrastructure: `PgEmployeeHierarchyLookup` runs a recursive CTE bounded by `MaxAncestryWalk` and uses `pg_advisory_xact_lock` (see TODO above).
 - Tests: 96 → 108 unit tests; new coverage for depth/cycle on the aggregate, service ordering and corruption propagation, and handler-level depth rejection.
