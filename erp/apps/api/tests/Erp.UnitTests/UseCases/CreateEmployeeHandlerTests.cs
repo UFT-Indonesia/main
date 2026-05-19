@@ -16,6 +16,8 @@ public class CreateEmployeeHandlerTests
 
     public CreateEmployeeHandlerTests()
     {
+        _hierarchy.ExistsAsync(Arg.Any<EmployeeId>(), Arg.Any<CancellationToken>())
+            .Returns(true);
         _hierarchy.GetAncestorsAsync(Arg.Any<EmployeeId>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<EmployeeId>());
     }

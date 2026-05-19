@@ -29,13 +29,15 @@ public class EmployeeHierarchyServiceTests
         var calls = new List<string>();
         lookup.AcquireHierarchyLockAsync(Arg.Any<CancellationToken>())
             .Returns(_ => { calls.Add("lock"); return Task.CompletedTask; });
+        lookup.ExistsAsync(Arg.Any<EmployeeId>(), Arg.Any<CancellationToken>())
+            .Returns(_ => { calls.Add("exists"); return Task.FromResult(true); });
         lookup.GetAncestorsAsync(Arg.Any<EmployeeId>(), Arg.Any<CancellationToken>())
             .Returns(_ => { calls.Add("read"); return Task.FromResult<IReadOnlyList<EmployeeId>>(Array.Empty<EmployeeId>()); });
 
         var parentId = EmployeeId.New();
         await EmployeeHierarchyService.ResolveAncestorsForParentAsync(parentId, lookup, CancellationToken.None);
 
-        calls.Should().Equal("lock", "read");
+        calls.Should().Equal("lock", "exists", "read");
     }
 
     [Fact]
@@ -44,6 +46,7 @@ public class EmployeeHierarchyServiceTests
         var lookup = Substitute.For<IEmployeeHierarchyLookup>();
         var parentId = EmployeeId.New();
         var grandparentId = EmployeeId.New();
+        lookup.ExistsAsync(parentId, Arg.Any<CancellationToken>()).Returns(true);
         lookup.GetAncestorsAsync(parentId, Arg.Any<CancellationToken>())
             .Returns(new[] { grandparentId });
 
@@ -58,6 +61,7 @@ public class EmployeeHierarchyServiceTests
     {
         var lookup = Substitute.For<IEmployeeHierarchyLookup>();
         var parentId = EmployeeId.New();
+        lookup.ExistsAsync(parentId, Arg.Any<CancellationToken>()).Returns(true);
         var capped = Enumerable.Range(0, 8).Select(_ => EmployeeId.New()).ToArray();
         lookup.GetAncestorsAsync(parentId, Arg.Any<CancellationToken>())
             .Returns(capped);
@@ -67,5 +71,19 @@ public class EmployeeHierarchyServiceTests
 
         var ex = await act.Should().ThrowAsync<DomainException>();
         ex.Which.Code.Should().Be("employee.hierarchy_corrupted");
+    }
+
+    [Fact]
+    public async Task ResolveAncestors_throws_when_parent_does_not_exist()
+    {
+        var lookup = Substitute.For<IEmployeeHierarchyLookup>();
+        var parentId = EmployeeId.New();
+        lookup.ExistsAsync(parentId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var act = () => EmployeeHierarchyService.ResolveAncestorsForParentAsync(
+            parentId, lookup, CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<DomainException>();
+        ex.Which.Code.Should().Be("employee.parent_not_found");
     }
 }
