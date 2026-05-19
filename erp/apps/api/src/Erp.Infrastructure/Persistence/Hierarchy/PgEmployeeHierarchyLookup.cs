@@ -50,9 +50,9 @@ public sealed class PgEmployeeHierarchyLookup : IEmployeeHierarchyLookup
                 JOIN chain c ON e."Id" = c.parent_id
                 WHERE c.depth < @maxDepth
             )
-            SELECT id
+            CYCLE id SET is_cycle USING path
+            SELECT id, is_cycle
             FROM chain
-            WHERE id <> @id
             ORDER BY depth;
             """;
 
@@ -75,10 +75,28 @@ public sealed class PgEmployeeHierarchyLookup : IEmployeeHierarchyLookup
         command.Parameters.Add(depthParam);
 
         var ancestors = new List<EmployeeId>();
+        var cycleDetected = false;
         await using var reader = await command.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            ancestors.Add(new EmployeeId(reader.GetGuid(0)));
+            if (reader.GetBoolean(1))
+            {
+                cycleDetected = true;
+                break;
+            }
+
+            var id = new EmployeeId(reader.GetGuid(0));
+            if (id != employeeId)
+            {
+                ancestors.Add(id);
+            }
+        }
+
+        if (cycleDetected)
+        {
+            throw new Erp.SharedKernel.Domain.Errors.DomainException(
+                "employee.hierarchy_corrupted",
+                "Cycle detected in employee hierarchy.");
         }
 
         return ancestors;
