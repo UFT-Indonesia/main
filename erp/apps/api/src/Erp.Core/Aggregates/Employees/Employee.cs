@@ -222,6 +222,13 @@ public sealed class Employee : AggregateRoot<EmployeeId>
             return;
         }
 
+        if (parentId.Value == selfId)
+        {
+            throw new DomainException(
+                "employee.parent_cycle",
+                "Assigning this parent would create a cycle in the hierarchy.");
+        }
+
         foreach (var ancestor in parentAncestors)
         {
             if (ancestor == selfId)

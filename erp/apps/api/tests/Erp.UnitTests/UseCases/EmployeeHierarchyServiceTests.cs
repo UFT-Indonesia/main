@@ -39,7 +39,7 @@ public class EmployeeHierarchyServiceTests
     }
 
     [Fact]
-    public async Task ResolveAncestors_prepends_parent_to_chain()
+    public async Task ResolveAncestors_returns_parent_ancestors_only()
     {
         var lookup = Substitute.For<IEmployeeHierarchyLookup>();
         var parentId = EmployeeId.New();
@@ -50,7 +50,7 @@ public class EmployeeHierarchyServiceTests
         var chain = await EmployeeHierarchyService.ResolveAncestorsForParentAsync(
             parentId, lookup, CancellationToken.None);
 
-        chain.Should().Equal(parentId, grandparentId);
+        chain.Should().Equal(grandparentId);
     }
 
     [Fact]

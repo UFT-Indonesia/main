@@ -27,8 +27,6 @@ public static class EmployeeHierarchyService
                 "Ancestry chain exceeds safety limit; possible cycle in data.");
         }
 
-        var chain = new List<EmployeeId>(ancestors.Count + 1) { parentId.Value };
-        chain.AddRange(ancestors);
-        return chain;
+        return ancestors;
     }
 }
