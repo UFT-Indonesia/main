@@ -38,6 +38,7 @@ public static class DependencyInjection
                 }
             }, "Jwt signing key must be a valid Base64 string decoding to at least 32 bytes.")
             .Validate(options => options.AccessTokenMinutes > 0, "Jwt access token lifetime must be positive.")
+            .Validate(options => options.RefreshTokenDays > 0, "Jwt refresh token lifetime must be positive.")
             .ValidateOnStart();
 
         services.AddOptions<DeviceIngestOptions>()
@@ -81,6 +82,7 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<AppDbContext>();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IDeviceIngestSignatureValidator, DeviceIngestSignatureValidator>();
         services.AddScoped<IdentitySeeder>();
 
