@@ -80,6 +80,19 @@ public sealed class RefreshToken : Entity<RefreshTokenId>
             throw new DomainException("refresh_token.expiry", "Refresh token expiry must be after creation time.");
         }
 
+        var normalizedIp = Normalize(createdByIp);
+        var normalizedUserAgent = Normalize(createdByUserAgent);
+
+        if (normalizedIp?.Length > 64)
+        {
+            throw new DomainException("refresh_token.ip_too_long", "IP address exceeds maximum length of 64 characters.");
+        }
+
+        if (normalizedUserAgent?.Length > 512)
+        {
+            throw new DomainException("refresh_token.user_agent_too_long", "User agent exceeds maximum length of 512 characters.");
+        }
+
         return new RefreshToken(
             id ?? RefreshTokenId.New(),
             userId,
@@ -87,8 +100,8 @@ public sealed class RefreshToken : Entity<RefreshTokenId>
             familyId ?? Guid.NewGuid(),
             createdAtUtc,
             expiresAtUtc,
-            Normalize(createdByIp),
-            Normalize(createdByUserAgent));
+            normalizedIp,
+            normalizedUserAgent);
     }
 
     public void Revoke(Instant revokedAtUtc, string reason)

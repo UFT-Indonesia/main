@@ -49,8 +49,8 @@ public sealed class RefreshTokenService : IRefreshTokenService
             tokenHash,
             now,
             expiresAt,
-            ipAddress,
-            userAgent);
+            TruncateIpAddress(ipAddress),
+            TruncateUserAgent(userAgent));
 
         _db.RefreshTokens.Add(refreshToken);
         await _db.SaveChangesAsync(ct);
@@ -126,8 +126,8 @@ public sealed class RefreshTokenService : IRefreshTokenService
             HashToken(replacementPlainTextToken),
             now,
             token.ExpiresAtUtc,
-            ipAddress,
-            userAgent,
+            TruncateIpAddress(ipAddress),
+            TruncateUserAgent(userAgent),
             token.FamilyId);
 
         var revokedRows = await RevokeTokenAsync(token.Id, now, "rotated", replacement.Id, ct);
@@ -302,5 +302,25 @@ public sealed class RefreshTokenService : IRefreshTokenService
             .TrimEnd('=')
             .Replace('+', '-')
             .Replace('/', '_');
+    }
+
+    private static string? TruncateIpAddress(string? ipAddress)
+    {
+        if (string.IsNullOrWhiteSpace(ipAddress))
+        {
+            return ipAddress;
+        }
+
+        return ipAddress.Length <= 64 ? ipAddress : ipAddress[..64];
+    }
+
+    private static string? TruncateUserAgent(string? userAgent)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent))
+        {
+            return userAgent;
+        }
+
+        return userAgent.Length <= 512 ? userAgent : userAgent[..512];
     }
 }
