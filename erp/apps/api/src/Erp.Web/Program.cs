@@ -1,4 +1,5 @@
 using Erp.Infrastructure;
+using Erp.Infrastructure.Authentication;
 using Erp.Infrastructure.Configuration;
 using Erp.Infrastructure.Exceptions;
 using Erp.Infrastructure.Identity;
@@ -42,6 +43,7 @@ try
     builder.Host.UseWolverine(options =>
     {
         options.Discovery.IncludeAssembly(typeof(AttendanceResult).Assembly);
+        options.Discovery.IncludeAssembly(typeof(RefreshTokenService).Assembly);
         options.InvokeTracing = builder.Environment.IsDevelopment()
             ? InvokeTracingMode.Full
             : InvokeTracingMode.Lightweight;
@@ -59,7 +61,8 @@ try
             options.AddPolicy("Web", policy =>
                 policy.WithOrigins(corsAllowedOrigins)
                     .AllowAnyHeader()
-                    .AllowAnyMethod()))
+                    .AllowAnyMethod()
+                    .AllowCredentials()))
         .AddFastEndpoints()
         .AddOpenApi(options =>
         {
