@@ -3,6 +3,7 @@ using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Attendance.Common;
+using Wolverine;
 
 namespace Erp.UseCases.Attendance.RecordManualLog;
 
@@ -12,6 +13,7 @@ public static class RecordManualLogHandler
         RecordManualLogCommand command,
         IReadRepository<Employee> employees,
         IRepository<AttendanceLog> attendanceLogs,
+        IMessageBus bus,
         CancellationToken ct) =>
         // TODO: Enforce RBS permission check — only authorized roles should be able to record manual logs for arbitrary employees.
         AttendanceLogService.RecordAsync(
@@ -23,5 +25,6 @@ public static class RecordManualLogHandler
             command.Note,
             employees,
             attendanceLogs,
+            bus,
             ct);
 }

@@ -1,10 +1,12 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Attendance.Events;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using NodaTime;
+using Wolverine;
 
 namespace Erp.UseCases.Attendance.Common;
 
@@ -19,6 +21,7 @@ internal static class AttendanceLogService
         string? note,
         IReadRepository<Employee> employees,
         IRepository<AttendanceLog> attendanceLogs,
+        IMessageBus bus,
         CancellationToken ct)
     {
         if (!TryParsePunchType(punchTypeValue, out var punchType))
@@ -46,6 +49,10 @@ internal static class AttendanceLogService
         }
 
         await attendanceLogs.AddAsync(log, ct);
+        foreach (var domainEvent in log.DomainEvents.OfType<AttendanceLogRecorded>())
+        {
+            await bus.PublishAsync(domainEvent);
+        }
 
         return new Result<AttendanceResult>.Success(ToResult(log));
     }

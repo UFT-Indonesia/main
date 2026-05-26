@@ -233,6 +233,21 @@ public sealed class RefreshTokenService : IRefreshTokenService
     private async Task RevokeFamilyAsync(Guid familyId, string reason, CancellationToken ct)
     {
         var now = _clock.GetCurrentInstant();
+        if (_db.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            var tokens = await _db.RefreshTokens
+                .Where(token => token.FamilyId == familyId && token.RevokedAtUtc == null)
+                .ToListAsync(ct);
+
+            foreach (var token in tokens)
+            {
+                token.Revoke(now, reason);
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return;
+        }
+
         await _db.RefreshTokens
             .Where(token => token.FamilyId == familyId && token.RevokedAtUtc == null)
             .ExecuteUpdateAsync(
@@ -249,6 +264,29 @@ public sealed class RefreshTokenService : IRefreshTokenService
         RefreshTokenId? replacedByTokenId,
         CancellationToken ct)
     {
+        if (_db.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            var token = await _db.RefreshTokens
+                .SingleOrDefaultAsync(token => token.Id == tokenId && token.RevokedAtUtc == null, ct);
+
+            if (token is null)
+            {
+                return 0;
+            }
+
+            if (replacedByTokenId.HasValue)
+            {
+                token.MarkReplacedBy(replacedByTokenId.Value, revokedAtUtc);
+            }
+            else
+            {
+                token.Revoke(revokedAtUtc, reason);
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return 1;
+        }
+
         return await _db.RefreshTokens
             .Where(token => token.Id == tokenId && token.RevokedAtUtc == null)
             .ExecuteUpdateAsync(

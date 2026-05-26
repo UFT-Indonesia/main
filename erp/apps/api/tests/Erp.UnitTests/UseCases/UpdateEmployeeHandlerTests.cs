@@ -9,6 +9,7 @@ using Erp.UseCases.Employees.UpdateEmployee;
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
+using Wolverine;
 
 namespace Erp.UnitTests.UseCases;
 
@@ -16,6 +17,7 @@ public class UpdateEmployeeHandlerTests
 {
     private readonly IRepository<Employee> _employees = Substitute.For<IRepository<Employee>>();
     private readonly IEmployeeHierarchyLookup _hierarchy = Substitute.For<IEmployeeHierarchyLookup>();
+    private readonly IMessageBus _bus = Substitute.For<IMessageBus>();
 
     public UpdateEmployeeHandlerTests()
     {
@@ -52,6 +54,7 @@ public class UpdateEmployeeHandlerTests
                 null),
             _employees,
             _hierarchy,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.NotFound>();
@@ -71,6 +74,7 @@ public class UpdateEmployeeHandlerTests
                 null),
             _employees,
             _hierarchy,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
@@ -94,12 +98,14 @@ public class UpdateEmployeeHandlerTests
                 null),
             _employees,
             _hierarchy,
+            _bus,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
         success.Value.FullName.Should().Be("Owner Baru");
         owner.DomainEvents.OfType<EmployeeBasicInfoChanged>().Should().HaveCount(1);
         await _employees.Received(1).UpdateAsync(owner, Arg.Any<CancellationToken>());
+        await _bus.Received(1).PublishAsync(Arg.Any<EmployeeBasicInfoChanged>());
     }
 
     [Fact]
@@ -119,6 +125,7 @@ public class UpdateEmployeeHandlerTests
                 null),
             _employees,
             _hierarchy,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Success>();
@@ -142,6 +149,7 @@ public class UpdateEmployeeHandlerTests
                 null),
             _employees,
             _hierarchy,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
@@ -176,6 +184,7 @@ public class UpdateEmployeeHandlerTests
                 newParentId.Value),
             _employees,
             _hierarchy,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()

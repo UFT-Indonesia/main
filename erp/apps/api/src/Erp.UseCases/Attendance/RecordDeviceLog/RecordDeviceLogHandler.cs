@@ -3,6 +3,7 @@ using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Attendance.Common;
+using Wolverine;
 
 namespace Erp.UseCases.Attendance.RecordDeviceLog;
 
@@ -12,6 +13,7 @@ public static class RecordDeviceLogHandler
         RecordDeviceLogCommand command,
         IReadRepository<Employee> employees,
         IRepository<AttendanceLog> attendanceLogs,
+        IMessageBus bus,
         CancellationToken ct) =>
         AttendanceLogService.RecordAsync(
             command.EmployeeId,
@@ -22,5 +24,6 @@ public static class RecordDeviceLogHandler
             null,
             employees,
             attendanceLogs,
+            bus,
             ct);
 }
