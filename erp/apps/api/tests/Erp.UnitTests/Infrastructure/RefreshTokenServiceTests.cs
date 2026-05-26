@@ -1,8 +1,12 @@
 using Erp.Core.Aggregates.Auth;
 using Erp.Infrastructure.Authentication;
 using Erp.Infrastructure.Identity;
+using Erp.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.InMemory.Diagnostics.Internal;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
@@ -11,13 +15,21 @@ namespace Erp.UnitTests.Infrastructure;
 
 public class RefreshTokenServiceTests
 {
+    private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IClock _clock;
     private readonly JwtOptions _jwtOptions;
+    private readonly RefreshTokenService _service;
     private static readonly Instant Now = Instant.FromUtc(2026, 5, 26, 12, 0);
 
     public RefreshTokenServiceTests()
     {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        _db = new AppDbContext(options);
+
         _userManager = Substitute.For<UserManager<ApplicationUser>>(
             Substitute.For<IUserStore<ApplicationUser>>(),
             null, null, null, null, null, null, null, null);
@@ -26,6 +38,7 @@ public class RefreshTokenServiceTests
         _clock.GetCurrentInstant().Returns(Now);
 
         _jwtOptions = new JwtOptions { RefreshTokenDays = 14 };
+        _service = new RefreshTokenService(_db, _userManager, _clock, Options.Create(_jwtOptions));
     }
 
     [Fact]
