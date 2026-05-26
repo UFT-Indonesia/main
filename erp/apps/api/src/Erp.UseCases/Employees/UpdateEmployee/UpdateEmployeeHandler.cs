@@ -1,11 +1,13 @@
 using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
+using Erp.SharedKernel.Domain;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Employees.Common;
 using NodaTime;
+using Wolverine;
 
 namespace Erp.UseCases.Employees.UpdateEmployee;
 
@@ -15,6 +17,7 @@ public static class UpdateEmployeeHandler
         UpdateEmployeeCommand command,
         IRepository<Employee> employees,
         IEmployeeHierarchyLookup hierarchy,
+        IMessageBus bus,
         CancellationToken ct)
     {
         if (!Enum.TryParse<EmployeeRole>(command.Role, ignoreCase: true, out var role))
@@ -87,6 +90,11 @@ public static class UpdateEmployeeHandler
         }
 
         await employees.UpdateAsync(employee, ct);
+        foreach (var domainEvent in employee.DomainEvents)
+        {
+            await bus.PublishAsync(domainEvent);
+        }
+
         return new Result<EmployeeResult>.Success(EmployeeMapper.ToResult(employee));
     }
 }
