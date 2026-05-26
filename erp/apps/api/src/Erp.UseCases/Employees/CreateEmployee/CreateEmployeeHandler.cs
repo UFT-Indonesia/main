@@ -1,6 +1,5 @@
 using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees;
-using Erp.Core.Aggregates.Employees.Events;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
@@ -58,10 +57,7 @@ public static class CreateEmployeeHandler
         }
 
         await employees.AddAsync(employee, ct);
-        foreach (var domainEvent in employee.DomainEvents.OfType<EmployeeCreated>())
-        {
-            await bus.PublishAsync(domainEvent);
-        }
+        await EmployeeDomainEventPublisher.PublishAsync(employee.DomainEvents, bus);
 
         return new Result<EmployeeResult>.Success(EmployeeMapper.ToResult(employee));
     }
