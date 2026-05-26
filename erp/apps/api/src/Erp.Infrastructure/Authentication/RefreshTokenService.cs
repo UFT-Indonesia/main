@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Erp.Core.Aggregates.Auth;
 using Erp.Infrastructure.Identity;
 using Erp.Infrastructure.Persistence;
+using Erp.SharedKernel.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -69,7 +70,10 @@ public sealed class RefreshTokenService : IRefreshTokenService
         }
 
         var tokenHash = HashToken(plainTextToken);
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+
         var token = await _db.RefreshTokens
+            .AsNoTracking()
             .SingleOrDefaultAsync(refreshToken => refreshToken.TokenHash == tokenHash, ct);
 
         if (token is null)
@@ -81,20 +85,22 @@ public sealed class RefreshTokenService : IRefreshTokenService
         if (token.IsRevoked)
         {
             await RevokeFamilyAsync(token.FamilyId, "compromised", ct);
+            await transaction.CommitAsync(ct);
             return new RefreshTokenRotationResult.Compromised(
                 "Session revoked because the refresh token was reused. Please log in again.");
         }
 
         if (token.IsExpired(now))
         {
-            token.Revoke(now, "expired");
-            await _db.SaveChangesAsync(ct);
+            await RevokeTokenAsync(token.Id, now, "expired", null, ct);
+            await transaction.CommitAsync(ct);
             return new RefreshTokenRotationResult.Invalid("Refresh token is expired.");
         }
 
         if (IsSuspiciousAccess(token, ipAddress, userAgent, now))
         {
             await RevokeFamilyAsync(token.FamilyId, "compromised", ct);
+            await transaction.CommitAsync(ct);
             return new RefreshTokenRotationResult.Compromised(
                 "Session revoked due to suspicious activity. Please log in again.");
         }
@@ -103,12 +109,14 @@ public sealed class RefreshTokenService : IRefreshTokenService
         if (user is null)
         {
             await RevokeFamilyAsync(token.FamilyId, "user_missing", ct);
+            await transaction.CommitAsync(ct);
             return new RefreshTokenRotationResult.Invalid("User account is unavailable.");
         }
 
         if (await _userManager.IsLockedOutAsync(user))
         {
             await RevokeFamilyAsync(token.FamilyId, "user_locked", ct);
+            await transaction.CommitAsync(ct);
             return new RefreshTokenRotationResult.Invalid("User account is locked.");
         }
 
@@ -122,9 +130,18 @@ public sealed class RefreshTokenService : IRefreshTokenService
             userAgent,
             token.FamilyId);
 
-        token.MarkReplacedBy(replacement.Id, now);
+        var revokedRows = await RevokeTokenAsync(token.Id, now, "rotated", replacement.Id, ct);
+        if (revokedRows == 0)
+        {
+            await RevokeFamilyAsync(token.FamilyId, "compromised", ct);
+            await transaction.CommitAsync(ct);
+            return new RefreshTokenRotationResult.Compromised(
+                "Session revoked because the refresh token was reused. Please log in again.");
+        }
+
         _db.RefreshTokens.Add(replacement);
         await _db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
         return new RefreshTokenRotationResult.Success(user, replacementPlainTextToken, replacement.ExpiresAtUtc);
     }
@@ -216,16 +233,30 @@ public sealed class RefreshTokenService : IRefreshTokenService
     private async Task RevokeFamilyAsync(Guid familyId, string reason, CancellationToken ct)
     {
         var now = _clock.GetCurrentInstant();
-        var tokens = await _db.RefreshTokens
+        await _db.RefreshTokens
             .Where(token => token.FamilyId == familyId && token.RevokedAtUtc == null)
-            .ToListAsync(ct);
+            .ExecuteUpdateAsync(
+                updates => updates
+                    .SetProperty(token => token.RevokedAtUtc, now)
+                    .SetProperty(token => token.RevokedReason, reason),
+                ct);
+    }
 
-        foreach (var token in tokens)
-        {
-            token.Revoke(now, reason);
-        }
-
-        await _db.SaveChangesAsync(ct);
+    private async Task<int> RevokeTokenAsync(
+        RefreshTokenId tokenId,
+        Instant revokedAtUtc,
+        string reason,
+        RefreshTokenId? replacedByTokenId,
+        CancellationToken ct)
+    {
+        return await _db.RefreshTokens
+            .Where(token => token.Id == tokenId && token.RevokedAtUtc == null)
+            .ExecuteUpdateAsync(
+                updates => updates
+                    .SetProperty(token => token.RevokedAtUtc, revokedAtUtc)
+                    .SetProperty(token => token.RevokedReason, reason)
+                    .SetProperty(token => token.ReplacedByTokenId, replacedByTokenId),
+                ct);
     }
 
     private static bool IsSuspiciousAccess(
