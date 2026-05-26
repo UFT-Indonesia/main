@@ -10,15 +10,21 @@ public sealed class LoginEndpoint : Endpoint<LoginRequest, AuthResponse>
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly IRefreshTokenService _refreshTokenService;
+    private readonly IHostEnvironment _env;
 
     public LoginEndpoint(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        IJwtTokenService jwtTokenService)
+        IJwtTokenService jwtTokenService,
+        IRefreshTokenService refreshTokenService,
+        IHostEnvironment env)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _jwtTokenService = jwtTokenService;
+        _refreshTokenService = refreshTokenService;
+        _env = env;
     }
 
     public override void Configure()
@@ -52,11 +58,20 @@ public sealed class LoginEndpoint : Endpoint<LoginRequest, AuthResponse>
         var roles = await _userManager.GetRolesAsync(user);
         var token = _jwtTokenService.CreateAccessToken(user, roles);
 
+        var refreshResult = await _refreshTokenService.IssueAsync(
+            user,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            HttpContext.Request.Headers.UserAgent.ToString(),
+            ct);
+
+        RefreshTokenCookie.Append(HttpContext, refreshResult, _env);
+
         await SendOkAsync(new AuthResponse
         {
             AccessToken = token.AccessToken,
             TokenType = "Bearer",
             ExpiresAtUtc = token.ExpiresAtUtc,
+            RefreshTokenExpiresAtUtc = refreshResult.ExpiresAtUtc.ToDateTimeOffset(),
             User = new AuthUserResponse
             {
                 Id = user.Id,
