@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Employees.Events;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
@@ -6,6 +7,7 @@ using Erp.UseCases.Employees.Common;
 using Erp.UseCases.Employees.CreateEmployee;
 using FluentAssertions;
 using NSubstitute;
+using Wolverine;
 
 namespace Erp.UnitTests.UseCases;
 
@@ -13,6 +15,7 @@ public class CreateEmployeeHandlerTests
 {
     private readonly IRepository<Employee> _employees = Substitute.For<IRepository<Employee>>();
     private readonly IEmployeeHierarchyLookup _hierarchy = Substitute.For<IEmployeeHierarchyLookup>();
+    private readonly IMessageBus _bus = Substitute.For<IMessageBus>();
 
     public CreateEmployeeHandlerTests()
     {
@@ -34,13 +37,14 @@ public class CreateEmployeeHandlerTests
             Role: "Owner",
             ParentId: null);
 
-        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
         success.Value.FullName.Should().Be("Owner Satu");
         success.Value.Role.Should().Be("Owner");
         success.Value.Status.Should().Be("Active");
         await _employees.Received(1).AddAsync(Arg.Any<Employee>(), Arg.Any<CancellationToken>());
+        await _bus.Received(1).PublishAsync(Arg.Is<EmployeeCreated>(e => e.FullName == "Owner Satu"));
     }
 
     [Fact]
@@ -55,7 +59,7 @@ public class CreateEmployeeHandlerTests
             "Boss",
             null);
 
-        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
             .Which.Code.Should().Be("employee.role_invalid");
@@ -74,7 +78,7 @@ public class CreateEmployeeHandlerTests
             "Owner",
             null);
 
-        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
             .Which.Code.Should().Be("nik.length");
@@ -92,7 +96,7 @@ public class CreateEmployeeHandlerTests
             "Owner",
             Guid.NewGuid());
 
-        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
             .Which.Code.Should().Be("employee.owner_no_parent");
@@ -110,7 +114,7 @@ public class CreateEmployeeHandlerTests
             "Manager",
             null);
 
-        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
             .Which.Code.Should().Be("employee.parent_required");
@@ -128,7 +132,7 @@ public class CreateEmployeeHandlerTests
             "owner",
             null);
 
-        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
         success.Value.Npwp.Should().NotBeNullOrWhiteSpace();
@@ -150,7 +154,7 @@ public class CreateEmployeeHandlerTests
             "Staff",
             parentId.Value);
 
-        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, CancellationToken.None);
+        var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
             .Which.Code.Should().Be("employee.depth_exceeded");

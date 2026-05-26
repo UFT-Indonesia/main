@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Attendance.Events;
 using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
@@ -8,6 +9,7 @@ using Erp.UseCases.Attendance.Common;
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
+using Wolverine;
 
 namespace Erp.UnitTests.UseCases;
 
@@ -18,6 +20,7 @@ public class AttendanceLogServiceTests
 
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
     private readonly IRepository<AttendanceLog> _attendanceLogs = Substitute.For<IRepository<AttendanceLog>>();
+    private readonly IMessageBus _bus = Substitute.For<IMessageBus>();
 
     public AttendanceLogServiceTests()
     {
@@ -52,10 +55,12 @@ public class AttendanceLogServiceTests
             note: null,
             _employees,
             _attendanceLogs,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<AttendanceResult>.Success>();
         await _attendanceLogs.Received(1).AddAsync(Arg.Any<AttendanceLog>(), Arg.Any<CancellationToken>());
+        await _bus.Received(1).PublishAsync(Arg.Any<AttendanceLogRecorded>());
     }
 
     [Theory]
@@ -75,6 +80,7 @@ public class AttendanceLogServiceTests
             note: null,
             _employees,
             _attendanceLogs,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<AttendanceResult>.Error>()
@@ -94,6 +100,7 @@ public class AttendanceLogServiceTests
             note: null,
             _employees,
             _attendanceLogs,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<AttendanceResult>.NotFound>();
@@ -112,6 +119,7 @@ public class AttendanceLogServiceTests
             note: null,
             _employees,
             _attendanceLogs,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<AttendanceResult>.Error>()
@@ -132,6 +140,7 @@ public class AttendanceLogServiceTests
             note: "Forgot to punch",
             _employees,
             _attendanceLogs,
+            _bus,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<AttendanceResult>.Success>().Subject;
@@ -152,6 +161,7 @@ public class AttendanceLogServiceTests
             note: null,
             _employees,
             _attendanceLogs,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<AttendanceResult>.Error>()
@@ -170,6 +180,7 @@ public class AttendanceLogServiceTests
             note: null,
             _employees,
             _attendanceLogs,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<AttendanceResult>.Error>()
@@ -189,6 +200,7 @@ public class AttendanceLogServiceTests
             note: null,
             _employees,
             _attendanceLogs,
+            _bus,
             CancellationToken.None);
 
         await _attendanceLogs.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
