@@ -11,7 +11,13 @@ public sealed class AuthResponse
     public string AccessToken { get; init; } = default!;
     public string TokenType { get; init; } = default!;
     public DateTimeOffset ExpiresAtUtc { get; init; }
+    public DateTimeOffset RefreshTokenExpiresAtUtc { get; init; }
     public AuthUserResponse User { get; init; } = default!;
+}
+
+public sealed class AuthErrorResponse
+{
+    public string Message { get; init; } = default!;
 }
 
 public sealed class AuthUserResponse

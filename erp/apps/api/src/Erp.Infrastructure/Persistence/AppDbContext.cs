@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Auth;
 using Erp.Core.Aggregates.Employees;
 using Erp.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -17,6 +18,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<Employee> Employees => Set<Employee>();
 
     public DbSet<AttendanceLog> AttendanceLogs => Set<AttendanceLog>();
+
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
