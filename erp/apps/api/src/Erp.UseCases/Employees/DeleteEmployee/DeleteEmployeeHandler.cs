@@ -1,10 +1,12 @@
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Employees.Events;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Employees.Common;
 using NodaTime;
+using Wolverine;
 
 namespace Erp.UseCases.Employees.DeleteEmployee;
 
@@ -14,6 +16,7 @@ public static class DeleteEmployeeHandler
         DeleteEmployeeCommand command,
         IRepository<Employee> employees,
         IClock clock,
+        IMessageBus bus,
         CancellationToken ct)
     {
         var employee = await employees.GetByIdAsync(new EmployeeId(command.EmployeeId), ct);
@@ -36,6 +39,11 @@ public static class DeleteEmployeeHandler
         }
 
         await employees.UpdateAsync(employee, ct);
+        foreach (var domainEvent in employee.DomainEvents.OfType<EmployeeTerminated>())
+        {
+            await bus.PublishAsync(domainEvent);
+        }
+
         return new Result<EmployeeResult>.Success(EmployeeMapper.ToResult(employee));
     }
 }
