@@ -9,6 +9,7 @@ using Erp.UseCases.Employees.DeleteEmployee;
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
+using Wolverine;
 
 namespace Erp.UnitTests.UseCases;
 
@@ -16,6 +17,7 @@ public class DeleteEmployeeHandlerTests
 {
     private readonly IRepository<Employee> _employees = Substitute.For<IRepository<Employee>>();
     private readonly IClock _clock = Substitute.For<IClock>();
+    private readonly IMessageBus _bus = Substitute.For<IMessageBus>();
 
     private static Employee NewOwner()
     {
@@ -37,6 +39,7 @@ public class DeleteEmployeeHandlerTests
             new DeleteEmployeeCommand(Guid.NewGuid(), null),
             _employees,
             _clock,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.NotFound>();
@@ -52,6 +55,7 @@ public class DeleteEmployeeHandlerTests
             new DeleteEmployeeCommand(owner.Id.Value, new DateOnly(2025, 6, 1)),
             _employees,
             _clock,
+            _bus,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
@@ -59,6 +63,7 @@ public class DeleteEmployeeHandlerTests
         success.Value.TerminationDate.Should().Be(new DateOnly(2025, 6, 1));
         owner.DomainEvents.OfType<EmployeeTerminated>().Should().HaveCount(1);
         await _employees.Received(1).UpdateAsync(owner, Arg.Any<CancellationToken>());
+        await _bus.Received(1).PublishAsync(Arg.Any<EmployeeTerminated>());
     }
 
     [Fact]
@@ -73,6 +78,7 @@ public class DeleteEmployeeHandlerTests
             new DeleteEmployeeCommand(owner.Id.Value, null),
             _employees,
             _clock,
+            _bus,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<EmployeeResult>.Success>().Subject;
@@ -90,6 +96,7 @@ public class DeleteEmployeeHandlerTests
             new DeleteEmployeeCommand(owner.Id.Value, new DateOnly(2025, 6, 1)),
             _employees,
             _clock,
+            _bus,
             CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>()
