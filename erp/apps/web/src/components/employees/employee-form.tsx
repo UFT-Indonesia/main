@@ -1,6 +1,7 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslations } from 'next-intl';
@@ -8,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
+import { useParentCandidates } from '@/hooks/use-employees';
 import { EMPLOYEE_ROLES } from '@/lib/constants';
 import type { Employee, EmployeeRole } from '@/lib/api/types';
 
@@ -66,14 +69,26 @@ function toFormDefaults(initial?: Employee): EmployeeFormValues {
 export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: EmployeeFormProps) {
   const t = useTranslations('employees.form');
   const tCommon = useTranslations('common');
+  const [parentSearch, setParentSearch] = useState('');
+  const { candidates, isLoading: candidatesLoading } = useParentCandidates(parentSearch);
+
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<EmployeeFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: toFormDefaults(initial),
   });
+
+  const role = useWatch({ control, name: 'role' });
+
+  const parentOptions = candidates.map((e) => ({
+    value: e.id,
+    label: e.fullName,
+    meta: t(`roleOptions.${e.role}`),
+  }));
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -87,16 +102,11 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
         </Field>
 
         <Field label={t('npwp')} error={errors.npwp?.message}>
-          <Input {...register('npwp')} placeholder="opsional" />
+          <Input {...register('npwp')} placeholder="optional" maxLength={16} />
         </Field>
 
         <Field label={t('monthlyWage')} error={errors.monthlyWageAmount?.message}>
-          <Input
-            type="number"
-            step="1"
-            min="0"
-            {...register('monthlyWageAmount')}
-          />
+          <Input type="number" step="1" min="0" {...register('monthlyWageAmount')} />
         </Field>
 
         <Field label={t('effectiveSalaryFrom')} error={errors.effectiveSalaryFrom?.message}>
@@ -113,9 +123,27 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
           </Select>
         </Field>
 
-        <Field label={t('parentId')} error={errors.parentId?.message}>
-          <Input {...register('parentId')} placeholder="UUID parent (kosongkan untuk Owner)" />
-        </Field>
+        {role !== 'Owner' && (
+          <Field label={t('parent')} error={errors.parentId?.message}>
+            <Controller
+              name="parentId"
+              control={control}
+              render={({ field }) => (
+                <Combobox
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  options={parentOptions}
+                  placeholder={t('parentPlaceholder')}
+                  searchPlaceholder={t('parentSearchPlaceholder')}
+                  onSearchChange={setParentSearch}
+                  loading={candidatesLoading}
+                  clearable
+                  error={!!errors.parentId}
+                />
+              )}
+            />
+          </Field>
+        )}
       </div>
 
       <div className="flex justify-end gap-2">

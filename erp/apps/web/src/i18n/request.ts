@@ -20,6 +20,5 @@ export default getRequestConfig(async () => {
     locale,
     messages,
     timeZone: 'Asia/Jakarta',
-    now: new Date(),
   };
 });

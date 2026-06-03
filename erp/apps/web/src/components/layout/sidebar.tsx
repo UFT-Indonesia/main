@@ -3,20 +3,21 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Users, LayoutDashboard } from 'lucide-react';
+import { Users, LayoutDashboard, Clock } from 'lucide-react';
 import type { Route } from 'next';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/lib/constants';
 
 interface NavItem {
   href: Route;
-  labelKey: 'dashboard' | 'employees';
+  labelKey: 'dashboard' | 'employees' | 'attendance';
   icon: typeof Users;
 }
 
 const NAV: NavItem[] = [
   { href: '/' as Route, labelKey: 'dashboard', icon: LayoutDashboard },
   { href: '/employees' as Route, labelKey: 'employees', icon: Users },
+  { href: '/attendance' as Route, labelKey: 'attendance', icon: Clock },
 ];
 
 export function Sidebar() {
