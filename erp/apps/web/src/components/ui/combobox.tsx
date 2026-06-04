@@ -216,7 +216,7 @@ export function Combobox({
           )}
         </span>
         <span className="flex shrink-0 items-center gap-0.5">
-          {clearable && value && (
+          {clearable && value && !disabled && (
             <X
               role="button"
               aria-label="Clear selection"
