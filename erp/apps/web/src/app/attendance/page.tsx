@@ -13,6 +13,7 @@ import { useAttendanceLogs, useRecordManualLog } from '@/hooks/use-attendance';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import type { AttendanceSource, PunchType } from '@/lib/api/types';
+import { localDateStartToUtcIso, localDateEndExclusiveToUtcIso } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
 
@@ -29,19 +30,12 @@ export default function AttendancePage() {
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const toUtcParam = (dateStr: string, endOfDay = false) => {
-    if (!dateStr) return undefined;
-    const d = new Date(dateStr);
-    if (endOfDay) d.setDate(d.getDate() + 1);
-    return d.toISOString();
-  };
-
   const params = {
     page,
     pageSize: PAGE_SIZE,
     employeeSearch: employeeSearch || undefined,
-    dateFrom: toUtcParam(dateFrom),
-    dateTo: toUtcParam(dateTo, true),
+    dateFrom: localDateStartToUtcIso(dateFrom),
+    dateTo: localDateEndExclusiveToUtcIso(dateTo),
     punchType: punchType || undefined,
     source: source || undefined,
   };
