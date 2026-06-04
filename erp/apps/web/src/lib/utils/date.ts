@@ -13,7 +13,18 @@ const parseLocalYmd = (dateStr: string): Date | undefined => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
   if (!m) return undefined;
   const [, y, mo, d] = m;
-  return new Date(Number(y), Number(mo) - 1, Number(d));
+  const year = Number(y);
+  const month = Number(mo);
+  const day = Number(d);
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return undefined;
+  }
+  return date;
 };
 
 /** "YYYY-MM-DD" → ISO UTC at local 00:00:00 of that day. */
