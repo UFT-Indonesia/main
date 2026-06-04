@@ -9,13 +9,14 @@ internal sealed class AttendanceLogListSpec : Specification<AttendanceLog>
     public AttendanceLogListSpec(
         int page,
         int pageSize,
-        IReadOnlyList<Guid>? employeeIdFilter,
+        string? employeeSearch,
         Instant? dateFrom,
         Instant? dateTo,
         AttendanceSource? source,
         PunchType? punchType)
     {
-        ApplyFilters(Query, employeeIdFilter, dateFrom, dateTo, source, punchType);
+        ApplyFilters(Query, employeeSearch, dateFrom, dateTo, source, punchType);
+        Query.Include(log => log.Employee);
         Query.OrderByDescending(log => log.PunchedAtUtc);
         Query.AsNoTracking();
         Query.Skip((page - 1) * pageSize).Take(pageSize);
@@ -23,15 +24,15 @@ internal sealed class AttendanceLogListSpec : Specification<AttendanceLog>
 
     internal static void ApplyFilters(
         ISpecificationBuilder<AttendanceLog> query,
-        IReadOnlyList<Guid>? employeeIdFilter,
+        string? employeeSearch,
         Instant? dateFrom,
         Instant? dateTo,
         AttendanceSource? source,
         PunchType? punchType)
     {
-        if (employeeIdFilter is { Count: > 0 })
+        if (!string.IsNullOrWhiteSpace(employeeSearch))
         {
-            query.Where(log => employeeIdFilter.Contains(log.EmployeeId.Value));
+            query.Where(log => log.Employee!.FullName.Contains(employeeSearch));
         }
 
         if (dateFrom.HasValue)
@@ -59,13 +60,13 @@ internal sealed class AttendanceLogListSpec : Specification<AttendanceLog>
 internal sealed class AttendanceLogListCountSpec : Specification<AttendanceLog>
 {
     public AttendanceLogListCountSpec(
-        IReadOnlyList<Guid>? employeeIdFilter,
+        string? employeeSearch,
         Instant? dateFrom,
         Instant? dateTo,
         AttendanceSource? source,
         PunchType? punchType)
     {
-        AttendanceLogListSpec.ApplyFilters(Query, employeeIdFilter, dateFrom, dateTo, source, punchType);
+        AttendanceLogListSpec.ApplyFilters(Query, employeeSearch, dateFrom, dateTo, source, punchType);
         Query.AsNoTracking();
     }
 }

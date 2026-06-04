@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Attendance.Events;
+using Erp.Core.Aggregates.Employees;
 using Erp.SharedKernel.Domain;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Identity;
@@ -32,6 +33,9 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
     }
 
     public EmployeeId EmployeeId { get; private set; }
+
+    // EF Core navigation — read-only, not part of domain behavior.
+    public Employee? Employee { get; private set; }
 
     /// <summary>UTC instant of the actual punch (business fact, may be backfilled).</summary>
     public Instant PunchedAtUtc { get; private set; }
