@@ -8,9 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useEmployees } from '@/hooks/use-employees';
 import { useAttendanceLogs } from '@/hooks/use-attendance';
 
-function todayUtcRange(): { dateFrom: string; dateTo: string } {
+function todayLocalRange(): { dateFrom: string; dateTo: string } {
   const now = new Date();
-  const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const end = new Date(start.getTime() + 86_400_000);
   return {
     dateFrom: start.toISOString(),
@@ -18,9 +18,8 @@ function todayUtcRange(): { dateFrom: string; dateTo: string } {
   };
 }
 
-const { dateFrom, dateTo } = todayUtcRange();
-
 export default function HomePage() {
+  const { dateFrom, dateTo } = todayLocalRange();
   const tNav = useTranslations('nav');
   const tHome = useTranslations('home');
 

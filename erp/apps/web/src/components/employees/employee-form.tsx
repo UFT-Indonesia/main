@@ -128,6 +128,7 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
             <Controller
               name="parentId"
               control={control}
+              shouldUnregister
               render={({ field }) => (
                 <Combobox
                   value={field.value ?? ''}
