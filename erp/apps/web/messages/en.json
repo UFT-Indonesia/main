@@ -51,6 +51,7 @@
       "fullName": "Full name",
       "nik": "NIK",
       "npwp": "NPWP",
+      "npwpPlaceholder": "Optional",
       "monthlyWage": "Monthly wage",
       "effectiveSalaryFrom": "Effective from",
       "role": "Role",

@@ -102,7 +102,7 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
         </Field>
 
         <Field label={t('npwp')} error={errors.npwp?.message}>
-          <Input {...register('npwp')} placeholder="optional" maxLength={16} />
+          <Input {...register('npwp')} placeholder={t('npwpPlaceholder')} maxLength={16} />
         </Field>
 
         <Field label={t('monthlyWage')} error={errors.monthlyWageAmount?.message}>

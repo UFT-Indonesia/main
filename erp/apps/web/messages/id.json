@@ -51,6 +51,7 @@
       "fullName": "Nama lengkap",
       "nik": "NIK",
       "npwp": "NPWP",
+      "npwpPlaceholder": "Opsional",
       "monthlyWage": "Gaji bulanan",
       "effectiveSalaryFrom": "Berlaku sejak",
       "role": "Peran",
