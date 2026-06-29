@@ -13,11 +13,19 @@
   },
   "nav": {
     "dashboard": "Dasbor",
-    "employees": "Karyawan"
+    "employees": "Karyawan",
+    "attendance": "Kehadiran"
   },
   "home": {
     "title": "Selamat datang",
-    "subtitle": "Sistem ERP internal UFT Davis."
+    "subtitle": "Sistem ERP internal UFT Davis.",
+    "cards": {
+      "activeEmployees": "Karyawan aktif",
+      "owners": "Pemilik",
+      "managers": "Manajer",
+      "staff": "Staf",
+      "todayLogs": "Presensi hari ini"
+    }
   },
   "login": {
     "subtitle": "Masuk untuk melanjutkan",
@@ -43,11 +51,14 @@
       "fullName": "Nama lengkap",
       "nik": "NIK",
       "npwp": "NPWP",
+      "npwpPlaceholder": "Opsional",
       "monthlyWage": "Gaji bulanan",
       "effectiveSalaryFrom": "Berlaku sejak",
       "role": "Peran",
       "status": "Status",
-      "parentId": "ID atasan",
+      "parent": "Melapor kepada",
+      "parentPlaceholder": "Pilih manajer atau pemilik...",
+      "parentSearchPlaceholder": "Cari nama...",
       "roleOptions": {
         "Owner": "Pemilik",
         "Manager": "Manajer",
@@ -83,6 +94,49 @@
       "successTitle": "Karyawan diberhentikan",
       "successDescription": "Status karyawan diubah menjadi berhenti.",
       "errorTitle": "Gagal memberhentikan"
+    },
+    "pagination": {
+      "summary": "Menampilkan {from}-{to} dari {total}"
+    }
+  },
+  "attendance": {
+    "title": "Kehadiran",
+    "subtitle": "Lihat dan kelola catatan kehadiran.",
+    "addManual": "Tambah log manual",
+    "empty": "Tidak ada catatan kehadiran.",
+    "searchPlaceholder": "Cari nama karyawan...",
+    "filters": {
+      "dateFrom": "Dari tanggal",
+      "dateTo": "Sampai tanggal",
+      "allPunchTypes": "Semua tipe",
+      "allSources": "Semua sumber"
+    },
+    "columns": {
+      "employee": "Karyawan",
+      "punchedAt": "Waktu presensi",
+      "punchType": "Tipe",
+      "source": "Sumber",
+      "note": "Catatan"
+    },
+    "punchType": {
+      "In": "Masuk",
+      "Out": "Keluar"
+    },
+    "source": {
+      "Device": "Perangkat",
+      "Manual": "Manual"
+    },
+    "manualLog": {
+      "title": "Tambah log manual",
+      "description": "Catat presensi atas nama karyawan.",
+      "employee": "Karyawan",
+      "employeePlaceholder": "Pilih karyawan...",
+      "punchedAt": "Tanggal & waktu",
+      "notePlaceholder": "Catatan (opsional)",
+      "confirm": "Simpan log",
+      "successTitle": "Log tersimpan",
+      "successDescription": "Catatan kehadiran berhasil disimpan.",
+      "errorTitle": "Gagal menyimpan log"
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"

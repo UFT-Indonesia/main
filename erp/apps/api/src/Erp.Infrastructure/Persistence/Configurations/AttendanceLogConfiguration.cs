@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Employees;
 using Erp.Infrastructure.Persistence.ValueConverters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -58,5 +59,10 @@ public sealed class AttendanceLogConfiguration : IEntityTypeConfiguration<Attend
         builder.Property(log => log.RecordedByUserId).HasColumnName("recorded_by_user_id");
 
         builder.HasIndex(log => new { log.EmployeeId, log.PunchedAtUtc });
+
+        builder.HasOne(log => log.Employee)
+            .WithMany()
+            .HasForeignKey(log => log.EmployeeId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -13,11 +13,19 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "employees": "Employees"
+    "employees": "Employees",
+    "attendance": "Attendance"
   },
   "home": {
     "title": "Welcome",
-    "subtitle": "Internal ERP system for UFT Davis."
+    "subtitle": "Internal ERP system for UFT Davis.",
+    "cards": {
+      "activeEmployees": "Active employees",
+      "owners": "Owners",
+      "managers": "Managers",
+      "staff": "Staff",
+      "todayLogs": "Attendance punches today"
+    }
   },
   "login": {
     "subtitle": "Sign in to continue",
@@ -43,11 +51,14 @@
       "fullName": "Full name",
       "nik": "NIK",
       "npwp": "NPWP",
+      "npwpPlaceholder": "Optional",
       "monthlyWage": "Monthly wage",
       "effectiveSalaryFrom": "Effective from",
       "role": "Role",
       "status": "Status",
-      "parentId": "Parent ID",
+      "parent": "Reporting to",
+      "parentPlaceholder": "Select manager or owner...",
+      "parentSearchPlaceholder": "Search by name...",
       "roleOptions": {
         "Owner": "Owner",
         "Manager": "Manager",
@@ -83,6 +94,49 @@
       "successTitle": "Employee terminated",
       "successDescription": "Employee status set to terminated.",
       "errorTitle": "Termination failed"
+    },
+    "pagination": {
+      "summary": "Showing {from}-{to} of {total}"
+    }
+  },
+  "attendance": {
+    "title": "Attendance",
+    "subtitle": "View and manage attendance logs.",
+    "addManual": "Add manual log",
+    "empty": "No attendance logs found.",
+    "searchPlaceholder": "Search by employee name...",
+    "filters": {
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "allPunchTypes": "All types",
+      "allSources": "All sources"
+    },
+    "columns": {
+      "employee": "Employee",
+      "punchedAt": "Punched at",
+      "punchType": "Type",
+      "source": "Source",
+      "note": "Note"
+    },
+    "punchType": {
+      "In": "Clock in",
+      "Out": "Clock out"
+    },
+    "source": {
+      "Device": "Device",
+      "Manual": "Manual"
+    },
+    "manualLog": {
+      "title": "Add manual log",
+      "description": "Record an attendance entry on behalf of an employee.",
+      "employee": "Employee",
+      "employeePlaceholder": "Select employee...",
+      "punchedAt": "Date & time",
+      "notePlaceholder": "Optional note",
+      "confirm": "Save log",
+      "successTitle": "Log saved",
+      "successDescription": "Attendance log recorded successfully.",
+      "errorTitle": "Failed to save log"
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"

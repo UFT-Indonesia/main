@@ -1,9 +1,11 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { useDebounce } from '@/hooks/use-debounce';
 import { EMPLOYEE_ROLES, EMPLOYEE_STATUSES } from '@/lib/constants';
 import type { EmployeeRole, EmployeeStatus } from '@/lib/api/types';
 
@@ -27,14 +29,26 @@ export function EmployeeFilters({
   const t = useTranslations('employees');
   const tForm = useTranslations('employees.form');
 
+  const [localSearch, setLocalSearch] = useState(search);
+  const debouncedSearch = useDebounce(localSearch, 500);
+
+  useEffect(() => {
+    onSearchChange(debouncedSearch);
+  }, [debouncedSearch, onSearchChange]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalSearch(search);
+  }, [search]);
+
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-end">
       <div className="flex-1">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
             placeholder={t('searchPlaceholder')}
             className="pl-8"
           />

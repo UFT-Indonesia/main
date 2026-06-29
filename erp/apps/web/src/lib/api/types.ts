@@ -65,3 +65,53 @@ export type UpdateEmployeeBody = CreateEmployeeBody;
 export interface DeleteEmployeeBody {
   terminationDate?: string | null;
 }
+
+export type PunchType = 'In' | 'Out';
+export type AttendanceSource = 'Device' | 'Manual';
+
+export interface AttendanceLogListItem {
+  id: string;
+  employeeId: string;
+  employeeFullName: string;
+  punchedAtUtc: string;
+  source: AttendanceSource;
+  punchType: PunchType;
+  deviceId: string | null;
+  recordedByUserId: string | null;
+  note: string | null;
+}
+
+export interface ListAttendanceLogsResponse {
+  items: AttendanceLogListItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface ListAttendanceLogsParams {
+  page?: number;
+  pageSize?: number;
+  employeeSearch?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  punchType?: PunchType | '';
+  source?: AttendanceSource | '';
+}
+
+export interface RecordManualLogBody {
+  employeeId: string;
+  punchedAtUtc: string;
+  punchType: PunchType;
+  note?: string | null;
+}
+
+export interface AttendanceLogResponse {
+  id: string;
+  employeeId: string;
+  punchedAtUtc: string;
+  source: AttendanceSource;
+  punchType: PunchType;
+  deviceId: string | null;
+  recordedByUserId: string | null;
+  note: string | null;
+}
