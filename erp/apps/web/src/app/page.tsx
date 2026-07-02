@@ -8,9 +8,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useEmployees } from '@/hooks/use-employees';
 import { useAttendanceLogs } from '@/hooks/use-attendance';
 
-function todayLocalRange(): { dateFrom: string; dateTo: string } {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+function todayJakartaRange(): { dateFrom: string; dateTo: string } {
+  const dateStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const start = new Date(`${dateStr}T00:00:00+07:00`);
   const end = new Date(start.getTime() + 86_400_000);
   return {
     dateFrom: start.toISOString(),
@@ -19,7 +24,7 @@ function todayLocalRange(): { dateFrom: string; dateTo: string } {
 }
 
 export default function HomePage() {
-  const { dateFrom, dateTo } = todayLocalRange();
+  const { dateFrom, dateTo } = todayJakartaRange();
   const tNav = useTranslations('nav');
   const tHome = useTranslations('home');
 

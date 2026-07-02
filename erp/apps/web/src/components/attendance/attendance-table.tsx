@@ -21,12 +21,14 @@ const SOURCE_VARIANT: Record<AttendanceSource, 'outline' | 'secondary'> = {
   Manual: 'secondary',
 };
 
+const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  timeZone: 'Asia/Jakarta',
+});
+
 function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat('id-ID', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Jakarta',
-  }).format(new Date(iso));
+  return dateTimeFormatter.format(new Date(iso));
 }
 
 export function AttendanceTable({ items }: AttendanceTableProps) {

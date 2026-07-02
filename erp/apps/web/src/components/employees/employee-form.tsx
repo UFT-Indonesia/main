@@ -70,7 +70,7 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
   const t = useTranslations('employees.form');
   const tCommon = useTranslations('common');
   const [parentSearch, setParentSearch] = useState('');
-  const { candidates, isLoading: candidatesLoading } = useParentCandidates(parentSearch);
+  const { candidates, isLoading: candidatesLoading } = useParentCandidates(parentSearch, role !== 'Owner');
 
   const {
     register,

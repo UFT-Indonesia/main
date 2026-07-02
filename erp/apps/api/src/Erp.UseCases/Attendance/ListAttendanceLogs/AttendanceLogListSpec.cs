@@ -32,7 +32,8 @@ internal sealed class AttendanceLogListSpec : Specification<AttendanceLog>
     {
         if (!string.IsNullOrWhiteSpace(employeeSearch))
         {
-            query.Where(log => log.Employee!.FullName.Contains(employeeSearch));
+            var needle = employeeSearch.Trim().ToLowerInvariant();
+            query.Where(log => log.Employee!.FullName.ToLower().Contains(needle));
         }
 
         if (dateFrom.HasValue)

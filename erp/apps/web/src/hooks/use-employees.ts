@@ -72,17 +72,19 @@ export function useDeleteEmployee() {
   });
 }
 
-export function useParentCandidates(search: string) {
+export function useParentCandidates(search: string, enabled = true) {
   const ownerQuery = useQuery({
     queryKey: [...employeeKeys.all, 'parent-candidates', 'Owner', search] as const,
     queryFn: () => listEmployees({ role: 'Owner', status: 'Active', search, pageSize: 50 }),
     placeholderData: (prev) => prev,
+    enabled,
   });
 
   const managerQuery = useQuery({
     queryKey: [...employeeKeys.all, 'parent-candidates', 'Manager', search] as const,
     queryFn: () => listEmployees({ role: 'Manager', status: 'Active', search, pageSize: 50 }),
     placeholderData: (prev) => prev,
+    enabled,
   });
 
   const owners = ownerQuery.data?.items ?? [];
