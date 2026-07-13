@@ -8,9 +8,10 @@ interface DialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
+  className?: string;
 }
 
-export function Dialog({ open, onOpenChange, children }: DialogProps) {
+export function Dialog({ open, onOpenChange, children, className }: DialogProps) {
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -29,7 +30,10 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
       role="presentation"
     >
       <div
-        className="relative w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg"
+        className={cn(
+          'relative w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg',
+          className,
+        )}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

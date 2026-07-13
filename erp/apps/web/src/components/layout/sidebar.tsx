@@ -3,26 +3,38 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Users, LayoutDashboard, Clock } from 'lucide-react';
+import { Users, LayoutDashboard, Clock, Settings } from 'lucide-react';
 import type { Route } from 'next';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/lib/constants';
+import { useAuthStore } from '@/lib/auth/store';
 
 interface NavItem {
   href: Route;
-  labelKey: 'dashboard' | 'employees' | 'attendance';
+  labelKey: 'dashboard' | 'employees' | 'attendance' | 'attendanceSettings';
   icon: typeof Users;
+  /** Only shown to users with one of these roles; omitted means visible to everyone. */
+  roles?: string[];
 }
 
 const NAV: NavItem[] = [
   { href: '/' as Route, labelKey: 'dashboard', icon: LayoutDashboard },
   { href: '/employees' as Route, labelKey: 'employees', icon: Users },
   { href: '/attendance' as Route, labelKey: 'attendance', icon: Clock },
+  {
+    href: '/attendance/settings' as Route,
+    labelKey: 'attendanceSettings',
+    icon: Settings,
+    roles: ['Owner', 'Manager'],
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const t = useTranslations('nav');
+  const user = useAuthStore((s) => s.user);
+
+  const items = NAV.filter((item) => !item.roles || item.roles.some((role) => user?.roles.includes(role)));
 
   return (
     <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:block">
@@ -30,7 +42,7 @@ export function Sidebar() {
         <span className="text-base font-semibold">{APP_NAME}</span>
       </div>
       <nav className="flex flex-col gap-1 p-2">
-        {NAV.map((item) => {
+        {items.map((item) => {
           const active =
             item.href === '/'
               ? pathname === '/'
