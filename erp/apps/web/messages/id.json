@@ -14,7 +14,8 @@
   "nav": {
     "dashboard": "Dasbor",
     "employees": "Karyawan",
-    "attendance": "Kehadiran"
+    "attendance": "Kehadiran",
+    "attendanceSettings": "Kebijakan presensi"
   },
   "home": {
     "title": "Selamat datang",
@@ -109,14 +110,20 @@
       "dateFrom": "Dari tanggal",
       "dateTo": "Sampai tanggal",
       "allPunchTypes": "Semua tipe",
-      "allSources": "Semua sumber"
+      "allSources": "Semua sumber",
+      "allStatuses": "Semua status"
     },
     "columns": {
       "employee": "Karyawan",
       "punchedAt": "Waktu presensi",
       "punchType": "Tipe",
       "source": "Sumber",
-      "note": "Catatan"
+      "note": "Catatan",
+      "date": "Tanggal",
+      "tapIn": "Tap Masuk",
+      "tapOut": "Tap Keluar",
+      "status": "Status",
+      "action": "Aksi"
     },
     "punchType": {
       "In": "Masuk",
@@ -140,6 +147,52 @@
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
+    },
+    "status": {
+      "Complete": "Lengkap",
+      "Incomplete": "Tidak lengkap"
+    },
+    "actions": {
+      "viewLogDetails": "Lihat detail log",
+      "edit": "Ubah",
+      "exportSelected": "Ekspor terpilih"
+    },
+    "selection": {
+      "nSelected": "{count} dipilih",
+      "selectAll": "Pilih semua di halaman ini",
+      "selectRow": "Pilih baris"
+    },
+    "details": {
+      "title": "Detail log presensi",
+      "description": "Daftar kronologis semua presensi pada hari ini."
+    },
+    "edit": {
+      "title": "Ubah log presensi",
+      "description": "Perbaiki presensi individual pada hari ini.",
+      "successTitle": "Perubahan tersimpan",
+      "successDescription": "Log presensi berhasil diperbarui.",
+      "errorTitle": "Gagal memperbarui log"
+    },
+    "export": {
+      "errorTitle": "Gagal mengekspor"
     }
+  },
+  "attendanceSettings": {
+    "title": "Kebijakan presensi",
+    "subtitle": "Jam kerja dan toleransi keterlambatan yang menentukan status presensi.",
+    "accessDenied": "Anda tidak memiliki izin untuk melihat halaman ini.",
+    "form": {
+      "shiftStart": "Jam masuk",
+      "shiftEnd": "Jam pulang",
+      "clockInGraceMinutes": "Toleransi masuk (menit)",
+      "clockOutGraceMinutes": "Toleransi pulang (menit)",
+      "timeZoneId": "Zona waktu",
+      "timeZoneIdPlaceholder": "cth. Asia/Jakarta",
+      "save": "Simpan perubahan"
+    },
+    "successTitle": "Kebijakan diperbarui",
+    "successDescription": "Data presensi sedang dihitung ulang dengan kebijakan baru.",
+    "errorTitle": "Gagal memperbarui kebijakan",
+    "loadErrorTitle": "Gagal memuat kebijakan"
   }
 }
