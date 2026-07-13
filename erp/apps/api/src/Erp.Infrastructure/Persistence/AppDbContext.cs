@@ -19,6 +19,12 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
 
     public DbSet<AttendanceLog> AttendanceLogs => Set<AttendanceLog>();
 
+    public DbSet<AttendanceDay> AttendanceDays => Set<AttendanceDay>();
+
+    public DbSet<AttendancePolicy> AttendancePolicies => Set<AttendancePolicy>();
+
+    public DbSet<AttendancePolicyHistory> AttendancePolicyHistories => Set<AttendancePolicyHistory>();
+
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)

@@ -130,4 +130,24 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
 
         return log;
     }
+
+    /// <summary>
+    /// Corrects a punch after the fact (Owner/Manager action). Callers are
+    /// responsible for recomputing the affected <see cref="AttendanceDay"/> rows.
+    /// </summary>
+    public void UpdateManualEntry(Instant punchedAtUtc, PunchType punchType, string? note)
+    {
+        var trimmedNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+
+        if (PunchedAtUtc == punchedAtUtc
+            && PunchType == punchType
+            && string.Equals(Note, trimmedNote, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        PunchedAtUtc = punchedAtUtc;
+        PunchType = punchType;
+        Note = trimmedNote;
+    }
 }

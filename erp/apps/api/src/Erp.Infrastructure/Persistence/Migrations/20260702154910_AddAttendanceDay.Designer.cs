@@ -3,6 +3,7 @@ using System;
 using Erp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Erp.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260702154910_AddAttendanceDay")]
+    partial class AddAttendanceDay
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -101,93 +104,6 @@ namespace Erp.Infrastructure.Persistence.Migrations
                     b.HasIndex("EmployeeId", "PunchedAtUtc");
 
                     b.ToTable("AttendanceLogs", (string)null);
-                });
-
-            modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendancePolicy", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("ClockInGraceMinutes")
-                        .HasColumnType("integer")
-                        .HasColumnName("clock_in_grace_minutes");
-
-                    b.Property<int>("ClockOutGraceMinutes")
-                        .HasColumnType("integer")
-                        .HasColumnName("clock_out_grace_minutes");
-
-                    b.Property<TimeOnly>("ShiftEnd")
-                        .HasColumnType("time")
-                        .HasColumnName("shift_end");
-
-                    b.Property<TimeOnly>("ShiftStart")
-                        .HasColumnType("time")
-                        .HasColumnName("shift_start");
-
-                    b.Property<string>("TimeZoneId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("time_zone_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at_utc");
-
-                    b.Property<Guid>("UpdatedByUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by_user_id");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AttendancePolicies", (string)null);
-                });
-
-            modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendancePolicyHistory", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("ChangedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("changed_at_utc");
-
-                    b.Property<Guid>("ChangedByUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("changed_by_user_id");
-
-                    b.Property<int>("ClockInGraceMinutes")
-                        .HasColumnType("integer")
-                        .HasColumnName("clock_in_grace_minutes");
-
-                    b.Property<int>("ClockOutGraceMinutes")
-                        .HasColumnType("integer")
-                        .HasColumnName("clock_out_grace_minutes");
-
-                    b.Property<Guid>("PolicyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("policy_id");
-
-                    b.Property<TimeOnly>("ShiftEnd")
-                        .HasColumnType("time")
-                        .HasColumnName("shift_end");
-
-                    b.Property<TimeOnly>("ShiftStart")
-                        .HasColumnType("time")
-                        .HasColumnName("shift_start");
-
-                    b.Property<string>("TimeZoneId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("time_zone_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PolicyId");
-
-                    b.ToTable("AttendancePolicyHistories", (string)null);
                 });
 
             modelBuilder.Entity("Erp.Core.Aggregates.Auth.RefreshToken", b =>
