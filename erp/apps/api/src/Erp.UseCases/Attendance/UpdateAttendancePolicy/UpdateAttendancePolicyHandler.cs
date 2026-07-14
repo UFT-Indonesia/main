@@ -39,13 +39,15 @@ public static class UpdateAttendancePolicyHandler
 
         var now = clock.GetCurrentInstant();
 
-        // Record the pre-change snapshot BEFORE applying the new values.
+        // Snapshot pre-change values BEFORE applying the new ones — this only builds the
+        // history object in memory, it isn't persisted yet.
         var history = AttendancePolicyHistory.Snapshot(policy, command.ChangedByUserId, now);
-        await policyHistories.AddAsync(history, ct);
 
         // Domain-level validation errors (shift window, negative grace, bad time zone)
         // are thrown as DomainException and left to bubble up to the global
         // exception handler, same as UpdateAttendanceLogHandler does for its aggregate.
+        // Must not throw AFTER any persistence below, or the audit trail would record
+        // a change that never actually took effect.
         policy.Update(
             shiftStart,
             shiftEnd,
@@ -55,6 +57,10 @@ public static class UpdateAttendancePolicyHandler
             command.ChangedByUserId,
             now);
 
+        // Validation passed — now persist both. Wolverine wraps the handler in a single
+        // EF Core transaction (see UseEntityFrameworkCoreTransactions in Program.cs), so
+        // these two writes commit or roll back together.
+        await policyHistories.AddAsync(history, ct);
         await policies.UpdateAsync(policy, ct);
 
         foreach (var domainEvent in policy.DomainEvents.OfType<AttendancePolicyUpdated>())

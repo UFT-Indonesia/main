@@ -80,6 +80,29 @@ public class UpdateAttendancePolicyHandlerTests
     }
 
     [Fact]
+    public async Task Handle_does_not_persist_history_row_when_domain_validation_fails()
+    {
+        var policy = ExistingPolicy();
+        _policies.GetByIdAsync(policy.Id, Arg.Any<CancellationToken>()).Returns(policy);
+        _clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 1, 2, 0, 0));
+
+        var act = () => UpdateAttendancePolicyHandler.Handle(
+            new UpdateAttendancePolicyCommand("18:00", "09:00", 5, 5, "Asia/Jakarta", Guid.NewGuid()),
+            _policies,
+            _histories,
+            _clock,
+            _bus,
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>();
+
+        // The shift window was invalid — nothing actually changed. A history row here
+        // would record a "change" that never took effect.
+        await _histories.DidNotReceive().AddAsync(Arg.Any<AttendancePolicyHistory>(), Arg.Any<CancellationToken>());
+        await _policies.DidNotReceive().UpdateAsync(Arg.Any<AttendancePolicy>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_writes_history_row_with_pre_change_values_before_updating()
     {
         var policy = ExistingPolicy();
