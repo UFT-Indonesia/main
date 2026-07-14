@@ -64,5 +64,10 @@ public sealed class AttendancePolicyHistoryConfiguration : IEntityTypeConfigurat
             .IsRequired();
 
         builder.HasIndex(history => history.PolicyId);
+
+        builder.HasOne<AttendancePolicy>()
+            .WithMany()
+            .HasForeignKey(history => history.PolicyId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
