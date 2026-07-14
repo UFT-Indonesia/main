@@ -59,7 +59,7 @@ public static class DependencyInjection
         services.AddScoped<AttendanceDayPolicy>(serviceProvider =>
         {
             var db = serviceProvider.GetRequiredService<AppDbContext>();
-            var policy = db.AttendancePolicies.SingleOrDefault(p => p.Id == AttendancePolicyId.Singleton)
+            var policy = db.AttendancePolicies.AsNoTracking().SingleOrDefault(p => p.Id == AttendancePolicyId.Singleton)
                 ?? throw new InvalidOperationException(
                     "Attendance policy singleton row is missing. Seed it (or re-run migrations) before starting the app.");
             return policy.ToAttendanceDayPolicy();
