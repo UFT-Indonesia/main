@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -34,7 +34,14 @@ export function AttendanceDayFilters({
   const [localSearch, setLocalSearch] = useState(employeeSearch);
   const debouncedSearch = useDebounce(localSearch, 500);
 
+  // onEmployeeSearchChange gets a new identity on every parent render (inline callback),
+  // which would otherwise re-fire this effect — and the parent's handler resets pagination
+  // unconditionally. Guard on the VALUE, not the effect firing, so an identity-only churn
+  // is a no-op instead of a spurious page reset.
+  const lastEmitted = useRef(employeeSearch);
   useEffect(() => {
+    if (lastEmitted.current === debouncedSearch) return;
+    lastEmitted.current = debouncedSearch;
     onEmployeeSearchChange(debouncedSearch);
   }, [debouncedSearch, onEmployeeSearchChange]);
 
