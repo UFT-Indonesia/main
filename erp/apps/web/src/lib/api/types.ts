@@ -98,6 +98,52 @@ export interface ListAttendanceLogsParams {
   source?: AttendanceSource | '';
 }
 
+export type AttendanceDayStatus = 'Complete' | 'Incomplete';
+
+export interface AttendanceDayListItem {
+  employeeId: string;
+  employeeFullName: string;
+  /** Calendar date in the attendance policy time zone, "YYYY-MM-DD". */
+  date: string;
+  tapInUtc: string | null;
+  tapOutUtc: string | null;
+  status: AttendanceDayStatus;
+}
+
+export interface ListAttendanceDaysResponse {
+  items: AttendanceDayListItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface ListAttendanceDaysParams {
+  page?: number;
+  pageSize?: number;
+  employeeSearch?: string;
+  /** "YYYY-MM-DD" calendar date (inclusive). */
+  dateFrom?: string;
+  /** "YYYY-MM-DD" calendar date (inclusive). */
+  dateTo?: string;
+  status?: AttendanceDayStatus | '';
+}
+
+export interface GetAttendanceDayLogsResponse {
+  items: AttendanceLogListItem[];
+}
+
+export interface UpdateAttendanceLogBody {
+  punchedAtUtc: string;
+  punchType: PunchType;
+  note?: string | null;
+}
+
+export interface AttendanceDayKey {
+  employeeId: string;
+  /** "YYYY-MM-DD" calendar date. */
+  date: string;
+}
+
 export interface RecordManualLogBody {
   employeeId: string;
   punchedAtUtc: string;
@@ -114,4 +160,25 @@ export interface AttendanceLogResponse {
   deviceId: string | null;
   recordedByUserId: string | null;
   note: string | null;
+}
+
+export interface AttendancePolicy {
+  /** "HH:mm" formatted shift start. */
+  shiftStart: string;
+  /** "HH:mm" formatted shift end. */
+  shiftEnd: string;
+  clockInGraceMinutes: number;
+  clockOutGraceMinutes: number;
+  /** IANA time zone id (e.g. "Asia/Jakarta"). */
+  timeZoneId: string;
+  updatedByUserId: string;
+  updatedAtUtc: string;
+}
+
+export interface UpdateAttendancePolicyBody {
+  shiftStart: string;
+  shiftEnd: string;
+  clockInGraceMinutes: number;
+  clockOutGraceMinutes: number;
+  timeZoneId: string;
 }

@@ -14,7 +14,8 @@
   "nav": {
     "dashboard": "Dashboard",
     "employees": "Employees",
-    "attendance": "Attendance"
+    "attendance": "Attendance",
+    "attendanceSettings": "Attendance policy"
   },
   "home": {
     "title": "Welcome",
@@ -109,14 +110,20 @@
       "dateFrom": "From date",
       "dateTo": "To date",
       "allPunchTypes": "All types",
-      "allSources": "All sources"
+      "allSources": "All sources",
+      "allStatuses": "All statuses"
     },
     "columns": {
       "employee": "Employee",
       "punchedAt": "Punched at",
       "punchType": "Type",
       "source": "Source",
-      "note": "Note"
+      "note": "Note",
+      "date": "Date",
+      "tapIn": "Tap-In",
+      "tapOut": "Tap-Out",
+      "status": "Status",
+      "action": "Action"
     },
     "punchType": {
       "In": "Clock in",
@@ -140,6 +147,52 @@
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
+    },
+    "status": {
+      "Complete": "Complete",
+      "Incomplete": "Incomplete"
+    },
+    "actions": {
+      "viewLogDetails": "View log details",
+      "edit": "Edit",
+      "exportSelected": "Export selected"
+    },
+    "selection": {
+      "nSelected": "{count} selected",
+      "selectAll": "Select all on this page",
+      "selectRow": "Select row"
+    },
+    "details": {
+      "title": "Attendance log details",
+      "description": "Chronological list of all punches for this day."
+    },
+    "edit": {
+      "title": "Edit attendance log",
+      "description": "Correct individual punches for this day.",
+      "successTitle": "Changes saved",
+      "successDescription": "Attendance log updated successfully.",
+      "errorTitle": "Failed to update log"
+    },
+    "export": {
+      "errorTitle": "Failed to export"
     }
+  },
+  "attendanceSettings": {
+    "title": "Attendance policy",
+    "subtitle": "Shift window and grace periods used to derive attendance status.",
+    "accessDenied": "You don't have permission to view this page.",
+    "form": {
+      "shiftStart": "Shift start",
+      "shiftEnd": "Shift end",
+      "clockInGraceMinutes": "Clock-in grace (minutes)",
+      "clockOutGraceMinutes": "Clock-out grace (minutes)",
+      "timeZoneId": "Time zone",
+      "timeZoneIdPlaceholder": "e.g. Asia/Jakarta",
+      "save": "Save changes"
+    },
+    "successTitle": "Policy updated",
+    "successDescription": "Attendance days are being recomputed under the new policy.",
+    "errorTitle": "Failed to update policy",
+    "loadErrorTitle": "Failed to load policy"
   }
 }

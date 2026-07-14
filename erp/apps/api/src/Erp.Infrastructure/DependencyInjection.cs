@@ -1,9 +1,14 @@
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Interfaces;
+using Erp.Infrastructure.Attendance;
 using Erp.Infrastructure.Authentication;
 using Erp.Infrastructure.DeviceIngest;
 using Erp.Infrastructure.Identity;
 using Erp.Infrastructure.Persistence;
 using Erp.Infrastructure.Persistence.Hierarchy;
+using Erp.SharedKernel.Identity;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -47,6 +52,19 @@ public static class DependencyInjection
             .Validate(options => options.ToleranceSeconds > 0, "Device ingest tolerance must be positive.")
             .ValidateOnStart();
 
+        // The attendance shift/grace-period policy is now a DB row (admin-editable via
+        // /api/attendance/policy), not static config. It's read fresh per DI scope — a
+        // Hangfire job recomputes existing AttendanceDay rows whenever it changes, and
+        // there's no hot-reload story needed for a value pulled per-request/per-message.
+        services.AddScoped<AttendanceDayPolicy>(serviceProvider =>
+        {
+            var db = serviceProvider.GetRequiredService<AppDbContext>();
+            var policy = db.AttendancePolicies.AsNoTracking().SingleOrDefault(p => p.Id == AttendancePolicyId.Singleton)
+                ?? throw new InvalidOperationException(
+                    "Attendance policy singleton row is missing. Seed it (or re-run migrations) before starting the app.");
+            return policy.ToAttendanceDayPolicy();
+        });
+
         services.AddOptions<IdentitySeedOptions>()
             .Bind(configuration.GetSection(IdentitySeedOptions.SectionName));
 
@@ -66,6 +84,17 @@ public static class DependencyInjection
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
         services.AddScoped(typeof(IReadRepository<>), typeof(EfRepository<>));
         services.AddScoped<IEmployeeHierarchyLookup, PgEmployeeHierarchyLookup>();
+
+        // Hangfire: background job runner used to recompute AttendanceDay rows when the
+        // attendance policy changes. Packages were already referenced but never wired up.
+        services.AddHangfire((serviceProvider, config) =>
+        {
+            var connectionStrings = serviceProvider.GetRequiredService<IOptions<ConnectionStringsOptions>>();
+            config.UsePostgreSqlStorage(options =>
+                options.UseNpgsqlConnection(connectionStrings.Value.Default));
+        });
+        services.AddHangfireServer();
+        services.AddScoped<RecomputeAttendanceDaysJob>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {

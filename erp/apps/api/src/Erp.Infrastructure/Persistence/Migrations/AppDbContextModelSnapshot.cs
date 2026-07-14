@@ -22,6 +22,41 @@ namespace Erp.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendanceDay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("CalendarDate")
+                        .HasColumnType("date")
+                        .HasColumnName("calendar_date");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("TapInUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("tap_in_utc");
+
+                    b.Property<DateTimeOffset?>("TapOutUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("tap_out_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId", "CalendarDate")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceDays", (string)null);
+                });
+
             modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendanceLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -66,6 +101,93 @@ namespace Erp.Infrastructure.Persistence.Migrations
                     b.HasIndex("EmployeeId", "PunchedAtUtc");
 
                     b.ToTable("AttendanceLogs", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendancePolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ClockInGraceMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("clock_in_grace_minutes");
+
+                    b.Property<int>("ClockOutGraceMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("clock_out_grace_minutes");
+
+                    b.Property<TimeOnly>("ShiftEnd")
+                        .HasColumnType("time")
+                        .HasColumnName("shift_end");
+
+                    b.Property<TimeOnly>("ShiftStart")
+                        .HasColumnType("time")
+                        .HasColumnName("shift_start");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("time_zone_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AttendancePolicies", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendancePolicyHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ChangedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_at_utc");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("changed_by_user_id");
+
+                    b.Property<int>("ClockInGraceMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("clock_in_grace_minutes");
+
+                    b.Property<int>("ClockOutGraceMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("clock_out_grace_minutes");
+
+                    b.Property<Guid>("PolicyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("policy_id");
+
+                    b.Property<TimeOnly>("ShiftEnd")
+                        .HasColumnType("time")
+                        .HasColumnName("shift_end");
+
+                    b.Property<TimeOnly>("ShiftStart")
+                        .HasColumnType("time")
+                        .HasColumnName("shift_start");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("time_zone_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PolicyId");
+
+                    b.ToTable("AttendancePolicyHistories", (string)null);
                 });
 
             modelBuilder.Entity("Erp.Core.Aggregates.Auth.RefreshToken", b =>
@@ -393,6 +515,17 @@ namespace Erp.Infrastructure.Persistence.Migrations
                     b.ToTable("AuthUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendanceDay", b =>
+                {
+                    b.HasOne("Erp.Core.Aggregates.Employees.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendanceLog", b =>
                 {
                     b.HasOne("Erp.Core.Aggregates.Employees.Employee", "Employee")
@@ -402,6 +535,15 @@ namespace Erp.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendancePolicyHistory", b =>
+                {
+                    b.HasOne("Erp.Core.Aggregates.Attendance.AttendancePolicy", null)
+                        .WithMany()
+                        .HasForeignKey("PolicyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Erp.Core.Aggregates.Auth.RefreshToken", b =>

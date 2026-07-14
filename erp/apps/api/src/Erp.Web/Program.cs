@@ -6,6 +6,8 @@ using Erp.Infrastructure.Identity;
 using Erp.UseCases.Attendance.Common;
 using Erp.Web.Middleware.Authentication;
 using FastEndpoints;
+using Hangfire;
+using Hangfire.Dashboard;
 using Scalar.AspNetCore;
 using Serilog;
 using Wolverine;
@@ -87,6 +89,17 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseExceptionHandler();
+
+    if (builder.Configuration.GetValue<bool>("Hangfire:DashboardEnabled"))
+    {
+        app.UseHangfireDashboard(
+            builder.Configuration["Hangfire:DashboardPath"] ?? "/hangfire",
+            new DashboardOptions
+            {
+                Authorization = [new HangfireDashboardAuthorizationFilter()],
+            });
+    }
+
     app.UseFastEndpoints();
     app.MapOpenApi();
     app.MapScalarApiReference(options =>

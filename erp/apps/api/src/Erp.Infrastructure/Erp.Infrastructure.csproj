@@ -28,6 +28,7 @@
     <PackageReference Include="MailKit" />
     <PackageReference Include="Minio" />
     <PackageReference Include="RazorLight" />
+    <PackageReference Include="Hangfire.AspNetCore" />
     <PackageReference Include="Hangfire.PostgreSql" />
   </ItemGroup>
 

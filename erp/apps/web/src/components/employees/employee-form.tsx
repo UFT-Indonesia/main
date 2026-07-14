@@ -70,7 +70,6 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
   const t = useTranslations('employees.form');
   const tCommon = useTranslations('common');
   const [parentSearch, setParentSearch] = useState('');
-  const { candidates, isLoading: candidatesLoading } = useParentCandidates(parentSearch, role !== 'Owner');
 
   const {
     register,
@@ -83,6 +82,7 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
   });
 
   const role = useWatch({ control, name: 'role' });
+  const { candidates, isLoading: candidatesLoading } = useParentCandidates(parentSearch, role !== 'Owner');
 
   const parentOptions = candidates.map((e) => ({
     value: e.id,

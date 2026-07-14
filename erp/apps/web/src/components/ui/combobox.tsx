@@ -68,6 +68,7 @@ export function Combobox({
   useEffect(() => {
     if (!open) return;
     if (options.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveIndex(-1);
       return;
     }
