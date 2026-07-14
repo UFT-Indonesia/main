@@ -21,6 +21,5 @@ public sealed record AttendanceLogRecorded(
     AttendanceSource Source,
     PunchType PunchType,
     string? DeviceId,
-    Guid? RecordedByUserId,
-    string? Note)
+    Guid? RecordedByUserId)
     : DomainEvent(LogId, nameof(AttendanceLog), "attendance.recorded");

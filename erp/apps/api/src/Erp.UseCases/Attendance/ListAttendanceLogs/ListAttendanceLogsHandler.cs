@@ -1,6 +1,7 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Attendance.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Attendance.ListAttendanceLogs;
@@ -70,7 +71,7 @@ public static class ListAttendanceLogsHandler
             PunchType = log.PunchType.ToString(),
             DeviceId = log.DeviceId,
             RecordedByUserId = log.RecordedByUserId,
-            Note = log.Note,
+            Notes = AttendanceLogNoteResult.FromLog(log),
         }).ToList();
 
         return new Result<ListAttendanceLogsResult>.Success(new ListAttendanceLogsResult

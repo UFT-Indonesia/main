@@ -20,6 +20,7 @@ public class AttendanceLogServiceTests
 
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
     private readonly IRepository<AttendanceLog> _attendanceLogs = Substitute.For<IRepository<AttendanceLog>>();
+    private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IMessageBus _bus = Substitute.For<IMessageBus>();
 
     public AttendanceLogServiceTests()
@@ -35,6 +36,8 @@ public class AttendanceLogServiceTests
             .Returns((Employee?)null);
         _employees.GetByIdAsync(ValidEmployeeId, Arg.Any<CancellationToken>())
             .Returns(employee);
+
+        _clock.GetCurrentInstant().Returns(Instant.FromDateTimeOffset(Now));
     }
 
     [Theory]
@@ -51,10 +54,12 @@ public class AttendanceLogServiceTests
             Now,
             punchType,
             recordedByUserId: null,
+            recordedByName: null,
             deviceId: "esp32-1",
             note: null,
             _employees,
             _attendanceLogs,
+            _clock,
             _bus,
             CancellationToken.None);
 
@@ -76,10 +81,12 @@ public class AttendanceLogServiceTests
             Now,
             punchType,
             recordedByUserId: null,
+            recordedByName: null,
             deviceId: "esp32-1",
             note: null,
             _employees,
             _attendanceLogs,
+            _clock,
             _bus,
             CancellationToken.None);
 
@@ -96,10 +103,12 @@ public class AttendanceLogServiceTests
             Now,
             "In",
             recordedByUserId: null,
+            recordedByName: null,
             deviceId: "esp32-1",
             note: null,
             _employees,
             _attendanceLogs,
+            _clock,
             _bus,
             CancellationToken.None);
 
@@ -115,10 +124,12 @@ public class AttendanceLogServiceTests
             Now,
             "In",
             recordedByUserId: null,
+            recordedByName: null,
             deviceId: "  ",
             note: null,
             _employees,
             _attendanceLogs,
+            _clock,
             _bus,
             CancellationToken.None);
 
@@ -136,17 +147,23 @@ public class AttendanceLogServiceTests
             Now,
             "Out",
             recordedByUserId: userId,
+            recordedByName: "Test Recorder",
             deviceId: null,
             note: "Forgot to punch",
             _employees,
             _attendanceLogs,
+            _clock,
             _bus,
             CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<AttendanceResult>.Success>().Subject;
         success.Value.Source.Should().Be("Manual");
         success.Value.RecordedByUserId.Should().Be(userId);
-        success.Value.Note.Should().Be("Forgot to punch");
+        var note = success.Value.Notes.Should().ContainSingle().Subject;
+        note.Text.Should().Be("Forgot to punch");
+        note.CreatedByUserId.Should().Be(userId);
+        note.CreatedByName.Should().Be("Test Recorder");
+        note.CreatedAtUtc.Should().Be(Now);
     }
 
     [Fact]
@@ -157,10 +174,12 @@ public class AttendanceLogServiceTests
             Now,
             "In",
             recordedByUserId: Guid.Empty,
+            recordedByName: null,
             deviceId: null,
             note: null,
             _employees,
             _attendanceLogs,
+            _clock,
             _bus,
             CancellationToken.None);
 
@@ -176,10 +195,12 @@ public class AttendanceLogServiceTests
             Now,
             "invalid",
             recordedByUserId: null,
+            recordedByName: null,
             deviceId: "esp32-1",
             note: null,
             _employees,
             _attendanceLogs,
+            _clock,
             _bus,
             CancellationToken.None);
 
@@ -196,10 +217,12 @@ public class AttendanceLogServiceTests
             Now,
             "In",
             recordedByUserId: null,
+            recordedByName: null,
             deviceId: "esp32-1",
             note: null,
             _employees,
             _attendanceLogs,
+            _clock,
             _bus,
             CancellationToken.None);
 

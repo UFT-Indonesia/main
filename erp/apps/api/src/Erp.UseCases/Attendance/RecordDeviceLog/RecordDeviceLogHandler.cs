@@ -3,6 +3,7 @@ using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Attendance.Common;
+using NodaTime;
 using Wolverine;
 
 namespace Erp.UseCases.Attendance.RecordDeviceLog;
@@ -13,6 +14,7 @@ public static class RecordDeviceLogHandler
         RecordDeviceLogCommand command,
         IReadRepository<Employee> employees,
         IRepository<AttendanceLog> attendanceLogs,
+        IClock clock,
         IMessageBus bus,
         CancellationToken ct) =>
         AttendanceLogService.RecordAsync(
@@ -20,10 +22,12 @@ public static class RecordDeviceLogHandler
             command.PunchedAtUtc,
             command.PunchType,
             null,
+            null,
             command.DeviceId,
             null,
             employees,
             attendanceLogs,
+            clock,
             bus,
             ct);
 }

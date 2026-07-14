@@ -5,4 +5,5 @@ public sealed record RecordManualLogCommand(
     DateTimeOffset PunchedAtUtc,
     string PunchType,
     Guid RecordedByUserId,
+    string RecordedByName,
     string? Note);

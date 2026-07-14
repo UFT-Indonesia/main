@@ -14,8 +14,19 @@ internal sealed class AttendanceLogsForEmployeeDaySpec : Specification<Attendanc
                            && log.PunchedAtUtc >= fromInclusive
                            && log.PunchedAtUtc < toExclusive);
         Query.Include(log => log.Employee);
+        Query.Include(log => log.Notes);
         Query.OrderBy(log => log.PunchedAtUtc);
         Query.AsNoTracking();
+    }
+}
+
+/// <summary>One punch with its notes loaded, tracked for mutation (add/remove note, edit punch).</summary>
+internal sealed class AttendanceLogByIdWithNotesSpec : SingleResultSpecification<AttendanceLog>
+{
+    public AttendanceLogByIdWithNotesSpec(AttendanceLogId id)
+    {
+        Query.Where(log => log.Id == id);
+        Query.Include(log => log.Notes);
     }
 }
 
