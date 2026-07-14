@@ -47,7 +47,7 @@ public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDays
         throw new InvalidOperationException($"Unexpected result type: {result.GetType().Name}");
     }
 
-    private static string BuildCsv(IReadOnlyList<ExportAttendanceDayRowResult> rows)
+    internal static string BuildCsv(IReadOnlyList<ExportAttendanceDayRowResult> rows)
     {
         var builder = new StringBuilder();
         builder.AppendLine("Employee,Date,TapIn,TapOut,Status");
@@ -66,8 +66,17 @@ public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDays
         return builder.ToString();
     }
 
-    private static string EscapeCsv(string value)
+    // Values starting with =, +, -, or @ are interpreted as formulas by Excel/Sheets.
+    // Prefix a leading single quote to neutralize that — OWASP CSV injection mitigation.
+    private static readonly char[] FormulaTriggers = ['=', '+', '-', '@'];
+
+    internal static string EscapeCsv(string value)
     {
+        if (value.Length > 0 && FormulaTriggers.Contains(value[0]))
+        {
+            value = "'" + value;
+        }
+
         if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
         {
             return $"\"{value.Replace("\"", "\"\"")}\"";
