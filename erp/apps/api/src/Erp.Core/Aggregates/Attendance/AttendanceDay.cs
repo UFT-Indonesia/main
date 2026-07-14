@@ -33,7 +33,7 @@ public sealed class AttendanceDay : AggregateRoot<AttendanceDayId>
     // EF Core navigation — read-only, not part of domain behavior.
     public Employee? Employee { get; private set; }
 
-    /// <summary>Calendar day in the shift time zone (Asia/Jakarta).</summary>
+    /// <summary>Calendar day in the configured shift time zone.</summary>
     public LocalDate CalendarDate { get; private set; }
 
     /// <summary>UTC instant of the day's first punch.</summary>

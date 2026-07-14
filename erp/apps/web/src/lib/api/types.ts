@@ -103,7 +103,7 @@ export type AttendanceDayStatus = 'Complete' | 'Incomplete';
 export interface AttendanceDayListItem {
   employeeId: string;
   employeeFullName: string;
-  /** Calendar date in Asia/Jakarta, "YYYY-MM-DD". */
+  /** Calendar date in the attendance policy time zone, "YYYY-MM-DD". */
   date: string;
   tapInUtc: string | null;
   tapOutUtc: string | null;
