@@ -34,7 +34,7 @@ public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDays
         if (result is Result<ExportAttendanceDaysResult>.Success s)
         {
             var csv = BuildCsv(s.Value.Rows);
-            HttpContext.Response.Headers.ContentDisposition = "attachment; filename=\"attendance-days.csv\"";
+            HttpContext.Response.Headers["Content-Disposition"] = "attachment; filename=\"attendance-days.csv\"";
             await SendStringAsync(csv, contentType: "text/csv; charset=utf-8", cancellation: ct);
             return;
         }
