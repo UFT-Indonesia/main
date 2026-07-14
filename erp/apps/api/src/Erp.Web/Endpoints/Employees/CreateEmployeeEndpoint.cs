@@ -8,7 +8,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Employees;
 
-[Authorize]
+[Authorize(Roles = "Owner")]
 public sealed class CreateEmployeeEndpoint : Endpoint<CreateEmployeeRequest, EmployeeResponse>
 {
     private readonly IMessageBus _bus;
@@ -26,7 +26,6 @@ public sealed class CreateEmployeeEndpoint : Endpoint<CreateEmployeeRequest, Emp
 
     public override async Task HandleAsync(CreateEmployeeRequest req, CancellationToken ct)
     {
-        // TODO: Enforce RBS permission check — only authorized roles should be able to create employees.
         var result = await _bus.InvokeAsync<Result<EmployeeResult>>(new CreateEmployeeCommand(
             req.FullName,
             req.Nik,

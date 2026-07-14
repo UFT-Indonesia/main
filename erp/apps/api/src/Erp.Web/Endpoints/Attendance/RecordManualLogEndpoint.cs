@@ -9,7 +9,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
-[Authorize]
+[Authorize(Roles = "Owner,Manager")]
 public sealed class RecordManualLogEndpoint : Endpoint<ManualAttendanceLogRequest, AttendanceLogResponse>
 {
     private readonly IMessageBus _bus;

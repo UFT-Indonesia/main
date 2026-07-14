@@ -8,7 +8,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Employees;
 
-[Authorize]
+[Authorize(Roles = "Owner")]
 public sealed class GetEmployeeEndpoint : Endpoint<GetEmployeeByIdRequest, EmployeeResponse>
 {
     private readonly IMessageBus _bus;

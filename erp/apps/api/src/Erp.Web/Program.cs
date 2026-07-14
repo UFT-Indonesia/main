@@ -84,6 +84,14 @@ try
         await seeder.SeedAsync();
     }
 
+    // TLS terminates at the reverse proxy (nginx/Caddy), which also does the HTTP→HTTPS
+    // redirect. The app only emits HSTS so browsers refuse plain-HTTP on later visits.
+    // UseHttpsRedirection is intentionally omitted — it loops behind a TLS-terminating proxy.
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHsts();
+    }
+
     app.UseSerilogRequestLogging();
     app.UseCors("Web");
     app.UseAuthentication();
@@ -101,12 +109,18 @@ try
     }
 
     app.UseFastEndpoints();
-    app.MapOpenApi();
-    app.MapScalarApiReference(options =>
+
+    // API docs expose the full endpoint surface + schemas — keep them off the public
+    // internet in production. Dev only.
+    if (app.Environment.IsDevelopment())
     {
-        options.Title = "UFT Davis ERP API";
-        options.Theme = ScalarTheme.Kepler;
-    });
+        app.MapOpenApi();
+        app.MapScalarApiReference(options =>
+        {
+            options.Title = "UFT Davis ERP API";
+            options.Theme = ScalarTheme.Kepler;
+        });
+    }
 
     app.Run();
 }
