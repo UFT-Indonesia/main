@@ -2,11 +2,10 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronLeft, Pencil } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Pencil, Plus, X } from 'lucide-react';
 import {
   Dialog,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -23,7 +22,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAttendanceDayLogs, useUpdateAttendanceLog } from '@/hooks/use-attendance';
+import {
+  useAddAttendanceLogNote,
+  useAttendanceDayLogs,
+  useDeleteAttendanceLogNote,
+  useUpdateAttendanceLog,
+} from '@/hooks/use-attendance';
 import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
@@ -57,7 +61,6 @@ function isoToLocalInput(iso: string): string {
 interface FormState {
   punchedAt: string;
   punchType: PunchType;
-  note: string;
 }
 
 interface ViewLogDetailsDialogProps {
@@ -78,7 +81,9 @@ export function ViewLogDetailsDialog({
   const toast = useToast();
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>({ punchedAt: '', punchType: 'In', note: '' });
+  const [notesForId, setNotesForId] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>({ punchedAt: '', punchType: 'In' });
+  const [noteText, setNoteText] = useState('');
 
   const { data, isLoading, error } = useAttendanceDayLogs(
     day?.employeeId ?? '',
@@ -86,19 +91,33 @@ export function ViewLogDetailsDialog({
     open,
   );
   const updateMutation = useUpdateAttendanceLog();
+  const addNoteMutation = useAddAttendanceLogNote();
+  const deleteNoteMutation = useDeleteAttendanceLogNote();
   const { data: policy } = useAttendancePolicy();
+
+  // Notes are re-read from the (refetched) query data each render so the
+  // thread reflects adds/deletes without local copies to keep in sync.
+  const notesLog: AttendanceLogListItem | null =
+    (notesForId && data?.items.find((log) => log.id === notesForId)) || null;
 
   function startEditing(log: AttendanceLogListItem) {
     setEditingId(log.id);
     setForm({
       punchedAt: isoToLocalInput(log.punchedAtUtc),
       punchType: log.punchType,
-      note: log.note ?? '',
     });
   }
 
+  function openNotes(log: AttendanceLogListItem) {
+    setNotesForId(log.id);
+    setNoteText('');
+  }
+
   function handleOpenChange(o: boolean) {
-    if (!o) setEditingId(null);
+    if (!o) {
+      setEditingId(null);
+      setNotesForId(null);
+    }
     onOpenChange(o);
   }
 
@@ -110,7 +129,6 @@ export function ViewLogDetailsDialog({
         body: {
           punchedAtUtc: new Date(form.punchedAt).toISOString(),
           punchType: form.punchType,
-          note: form.note || null,
         },
       });
       toast.success(t('edit.successTitle'), t('edit.successDescription'));
@@ -120,14 +138,40 @@ export function ViewLogDetailsDialog({
     }
   }
 
+  async function handleAddNote() {
+    if (!notesForId || !noteText.trim()) return;
+    try {
+      await addNoteMutation.mutateAsync({ logId: notesForId, text: noteText.trim() });
+      setNoteText('');
+    } catch (err) {
+      toast.error(t('notes.errorTitle'), extractApiError(err).message);
+    }
+  }
+
+  async function handleDeleteNote(noteId: string) {
+    if (!notesForId) return;
+    try {
+      await deleteNoteMutation.mutateAsync({ logId: notesForId, noteId });
+    } catch (err) {
+      toast.error(t('notes.errorTitle'), extractApiError(err).message);
+    }
+  }
+
   const editing = editingId !== null;
+  const viewingNotes = notesLog !== null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} className="sm:max-w-2xl">
       <DialogHeader>
-        <DialogTitle>{editing ? t('edit.title') : t('details.title')}</DialogTitle>
+        <DialogTitle>
+          {editing ? t('edit.title') : viewingNotes ? t('notes.title') : t('details.title')}
+        </DialogTitle>
         <DialogDescription>
-          {day ? `${day.employeeFullName} — ${day.date}` : t('details.description')}
+          {viewingNotes && day
+            ? `${day.employeeFullName} — ${formatPunchedAt(notesLog.punchedAtUtc, policy?.timeZoneId)} (${t(`punchType.${notesLog.punchType}`)})`
+            : day
+              ? `${day.employeeFullName} — ${day.date}`
+              : t('details.description')}
         </DialogDescription>
       </DialogHeader>
 
@@ -142,12 +186,69 @@ export function ViewLogDetailsDialog({
               <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>
-        ) : editing ? (
+        ) : viewingNotes ? (
           <div className="space-y-3">
-            <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
+            <Button variant="ghost" size="sm" onClick={() => setNotesForId(null)}>
               <ChevronLeft className="h-4 w-4" />
               {tCommon('back')}
             </Button>
+
+            {notesLog.notes.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                {t('notes.empty')}
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {notesLog.notes.map((note) => (
+                  <li key={note.id} className="rounded-lg border border-border bg-card p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{note.createdByName}</span>
+                        {' · '}
+                        {formatPunchedAt(note.createdAtUtc, policy?.timeZoneId)}
+                      </p>
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => handleDeleteNote(note.id)}
+                          disabled={deleteNoteMutation.isPending}
+                          aria-label={t('notes.deleteLabel')}
+                          title={t('notes.deleteLabel')}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm">{note.text}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {canEdit && (
+              <div className="flex gap-2">
+                <Input
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleAddNote();
+                  }}
+                  placeholder={t('notes.placeholder')}
+                  maxLength={500}
+                />
+                <Button
+                  onClick={handleAddNote}
+                  disabled={addNoteMutation.isPending || !noteText.trim()}
+                >
+                  {addNoteMutation.isPending ? tCommon('loading') : t('notes.add')}
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : editing ? (
+          <div className="space-y-3">
             <div className="flex flex-col gap-1.5">
               <Label>{t('manualLog.punchedAt')}</Label>
               <Input
@@ -172,14 +273,6 @@ export function ViewLogDetailsDialog({
                 ))}
               </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>{t('columns.note')}</Label>
-              <Input
-                value={form.note}
-                onChange={(e) => setForm((s) => ({ ...s, note: e.target.value }))}
-                placeholder={t('manualLog.notePlaceholder')}
-              />
-            </div>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -201,7 +294,7 @@ export function ViewLogDetailsDialog({
                 <TableHead>{t('columns.punchType')}</TableHead>
                 <TableHead>{t('columns.source')}</TableHead>
                 <TableHead>{t('columns.note')}</TableHead>
-                {canEdit && <TableHead className="w-10" />}
+                {canEdit && <TableHead className="w-10 text-right">{t('columns.action')}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -218,7 +311,33 @@ export function ViewLogDetailsDialog({
                   <TableCell>
                     <Badge variant={SOURCE_VARIANT[log.source]}>{t(`source.${log.source}`)}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{log.note ?? '—'}</TableCell>
+                  <TableCell className="max-w-48">
+                    {log.notes.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => openNotes(log)}
+                        className="flex w-full items-center gap-1.5 text-left text-sm text-muted-foreground hover:text-foreground"
+                        title={t('notes.viewLabel')}
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                        <span className="shrink-0 tabular-nums">{log.notes.length}</span>
+                        <span className="truncate">
+                          · {log.notes[log.notes.length - 1]?.text}
+                        </span>
+                      </button>
+                    ) : canEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => openNotes(log)}
+                        className="flex items-center justify-center rounded-lg border border-border px-4 py-[5px] text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        title={t('notes.addLabel')}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                   {canEdit && (
                     <TableCell className="text-right">
                       <Button
@@ -238,12 +357,6 @@ export function ViewLogDetailsDialog({
           </Table>
         )}
       </div>
-
-      <DialogFooter>
-        <Button variant="outline" onClick={() => handleOpenChange(false)}>
-          {tCommon('back')}
-        </Button>
-      </DialogFooter>
     </Dialog>
   );
 }
