@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
 import type { AttendanceDayListItem, AttendanceDayStatus } from '@/lib/api/types';
 
 export function attendanceDayKey(item: Pick<AttendanceDayListItem, 'employeeId' | 'date'>): string {
@@ -32,22 +33,18 @@ const STATUS_VARIANT: Record<AttendanceDayStatus, 'success' | 'destructive'> = {
   Incomplete: 'destructive',
 };
 
-const dateFormatter = new Intl.DateTimeFormat('id-ID', {
-  dateStyle: 'medium',
-  timeZone: 'Asia/Jakarta',
-});
-
-const timeFormatter = new Intl.DateTimeFormat('id-ID', {
-  timeStyle: 'short',
-  timeZone: 'Asia/Jakarta',
-});
+// ymd is a calendar date only (no time), already derived server-side under the policy's
+// zone — format it as-is, with no zone conversion, so it can't drift from that date.
+const dateFormatter = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeZone: 'UTC' });
 
 function formatDate(ymd: string): string {
-  return dateFormatter.format(new Date(`${ymd}T00:00:00+07:00`));
+  return dateFormatter.format(new Date(`${ymd}T00:00:00Z`));
 }
 
-function formatTime(iso: string | null): string {
-  return iso ? timeFormatter.format(new Date(iso)) : '–';
+function formatTime(iso: string | null, timeZoneId: string | undefined): string {
+  return iso
+    ? new Intl.DateTimeFormat('id-ID', { timeStyle: 'short', timeZone: timeZoneId }).format(new Date(iso))
+    : '–';
 }
 
 export function AttendanceDayTable({
@@ -58,6 +55,7 @@ export function AttendanceDayTable({
   onViewDetails,
 }: AttendanceDayTableProps) {
   const t = useTranslations('attendance');
+  const { data: policy } = useAttendancePolicy();
 
   if (items.length === 0) {
     return (
@@ -107,8 +105,8 @@ export function AttendanceDayTable({
                 </TableCell>
                 <TableCell className="font-medium">{item.employeeFullName}</TableCell>
                 <TableCell className="tabular-nums">{formatDate(item.date)}</TableCell>
-                <TableCell className="tabular-nums">{formatTime(item.tapInUtc)}</TableCell>
-                <TableCell className="tabular-nums">{formatTime(item.tapOutUtc)}</TableCell>
+                <TableCell className="tabular-nums">{formatTime(item.tapInUtc, policy?.timeZoneId)}</TableCell>
+                <TableCell className="tabular-nums">{formatTime(item.tapOutUtc, policy?.timeZoneId)}</TableCell>
                 <TableCell>
                   <Badge variant={STATUS_VARIANT[item.status]}>
                     {t(`status.${item.status}`)}
