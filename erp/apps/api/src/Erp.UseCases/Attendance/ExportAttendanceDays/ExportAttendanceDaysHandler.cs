@@ -1,20 +1,51 @@
+using System.Linq.Expressions;
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
+using Erp.SharedKernel.Identity;
 using NodaTime;
 using NodaTime.Text;
 
 namespace Erp.UseCases.Attendance.ExportAttendanceDays;
 
+/// <summary>
+/// Fetches exactly the selected (employee, date) rows. Built as one OR-clause per distinct
+/// employee — "employee == e AND date IN (selected dates for e)" — rather than a date-range
+/// scan across all employees: a date-range scan pulls every employee's row for every day
+/// between the earliest and latest selected date, even though only a handful of exact pairs
+/// were asked for.
+/// </summary>
 internal sealed class AttendanceDayExportSpec : Specification<AttendanceDay>
 {
-    public AttendanceDayExportSpec(LocalDate minDate, LocalDate maxDate)
+    public AttendanceDayExportSpec(IReadOnlyCollection<(EmployeeId EmployeeId, LocalDate Date)> keys)
     {
-        Query.Where(day => day.CalendarDate >= minDate && day.CalendarDate <= maxDate);
+        Query.Where(BuildKeyPredicate(keys));
         Query.Include(day => day.Employee);
         Query.OrderBy(day => day.CalendarDate).ThenBy(day => day.Employee!.FullName);
         Query.AsNoTracking();
+    }
+
+    private static Expression<Func<AttendanceDay, bool>> BuildKeyPredicate(
+        IReadOnlyCollection<(EmployeeId EmployeeId, LocalDate Date)> keys)
+    {
+        var day = Expression.Parameter(typeof(AttendanceDay), "day");
+        var employeeIdProperty = Expression.Property(day, nameof(AttendanceDay.EmployeeId));
+        var calendarDateProperty = Expression.Property(day, nameof(AttendanceDay.CalendarDate));
+        var containsMethod = typeof(List<LocalDate>).GetMethod(nameof(List<LocalDate>.Contains))!;
+
+        var perEmployeeClauses = keys
+            .GroupBy(key => key.EmployeeId)
+            .Select(group =>
+            {
+                var dates = group.Select(key => key.Date).ToList();
+                var employeeMatch = Expression.Equal(employeeIdProperty, Expression.Constant(group.Key));
+                var dateMatch = Expression.Call(Expression.Constant(dates), containsMethod, calendarDateProperty);
+                return (Expression)Expression.AndAlso(employeeMatch, dateMatch);
+            })
+            .Aggregate(Expression.OrElse);
+
+        return Expression.Lambda<Func<AttendanceDay, bool>>(perEmployeeClauses, day);
     }
 }
 
@@ -44,20 +75,12 @@ public static class ExportAttendanceDaysHandler
         }
 
         var keys = query.Items
-            .Select(item => (item.EmployeeId, Date: LocalDate.FromDateOnly(item.Date)))
+            .Select(item => (EmployeeId: new EmployeeId(item.EmployeeId), Date: LocalDate.FromDateOnly(item.Date)))
             .ToHashSet();
 
-        var minDate = keys.Min(key => key.Date);
-        var maxDate = keys.Max(key => key.Date);
+        var days = await attendanceDays.ListAsync(new AttendanceDayExportSpec(keys), ct);
 
-        // Fetch the date-range superset, then narrow to the exact selected
-        // (employee, day) pairs in memory — tuple IN is not translatable.
-        var candidates = await attendanceDays.ListAsync(
-            new AttendanceDayExportSpec(minDate, maxDate),
-            ct);
-
-        var rows = candidates
-            .Where(day => keys.Contains((day.EmployeeId.Value, day.CalendarDate)))
+        var rows = days
             .Select(day => new ExportAttendanceDayRowResult
             {
                 EmployeeFullName = day.Employee?.FullName ?? "—",
