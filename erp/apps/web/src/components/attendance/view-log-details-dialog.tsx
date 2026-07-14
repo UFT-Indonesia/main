@@ -24,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useAttendanceDayLogs, useUpdateAttendanceLog } from '@/hooks/use-attendance';
+import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -39,11 +40,13 @@ const SOURCE_VARIANT: Record<AttendanceSource, 'outline' | 'secondary'> = {
   Manual: 'secondary',
 };
 
-const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-  timeZone: 'Asia/Jakarta',
-});
+function formatPunchedAt(iso: string, timeZoneId: string | undefined): string {
+  return new Intl.DateTimeFormat('id-ID', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: timeZoneId,
+  }).format(new Date(iso));
+}
 
 /** ISO UTC → value for <input type="datetime-local"> in the browser's zone. */
 function isoToLocalInput(iso: string): string {
@@ -83,6 +86,7 @@ export function ViewLogDetailsDialog({
     open,
   );
   const updateMutation = useUpdateAttendanceLog();
+  const { data: policy } = useAttendancePolicy();
 
   function startEditing(log: AttendanceLogListItem) {
     setEditingId(log.id);
@@ -204,7 +208,7 @@ export function ViewLogDetailsDialog({
               {(data?.items ?? []).map((log) => (
                 <TableRow key={log.id}>
                   <TableCell className="tabular-nums">
-                    {dateTimeFormatter.format(new Date(log.punchedAtUtc))}
+                    {formatPunchedAt(log.punchedAtUtc, policy?.timeZoneId)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={log.punchType === 'In' ? 'success' : 'destructive'}>
