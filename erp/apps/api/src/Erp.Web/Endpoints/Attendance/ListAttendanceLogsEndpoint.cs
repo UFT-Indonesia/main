@@ -48,7 +48,7 @@ public sealed class ListAttendanceLogsEndpoint : Endpoint<ListAttendanceLogsRequ
                     PunchType = i.PunchType,
                     DeviceId = i.DeviceId,
                     RecordedByUserId = i.RecordedByUserId,
-                    Note = i.Note,
+                    Notes = AttendanceLogNoteResponse.FromAll(i.Notes),
                 }).ToList(),
                 Page = s.Value.Page,
                 PageSize = s.Value.PageSize,

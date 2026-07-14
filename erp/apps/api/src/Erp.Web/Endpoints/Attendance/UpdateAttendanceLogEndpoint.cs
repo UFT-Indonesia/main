@@ -29,8 +29,7 @@ public sealed class UpdateAttendanceLogEndpoint : Endpoint<UpdateAttendanceLogRe
         var result = await _bus.InvokeAsync<Result<AttendanceResult>>(new UpdateAttendanceLogCommand(
             req.Id,
             req.PunchedAtUtc,
-            req.PunchType,
-            req.Note), ct);
+            req.PunchType), ct);
 
         if (result is Result<AttendanceResult>.Success s)
         {
@@ -43,7 +42,7 @@ public sealed class UpdateAttendanceLogEndpoint : Endpoint<UpdateAttendanceLogRe
                 PunchType = s.Value.PunchType,
                 DeviceId = s.Value.DeviceId,
                 RecordedByUserId = s.Value.RecordedByUserId,
-                Note = s.Value.Note,
+                Notes = AttendanceLogNoteResponse.FromAll(s.Value.Notes),
             }, ct);
             return;
         }

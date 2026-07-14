@@ -17,6 +17,7 @@ internal sealed class AttendanceLogListSpec : Specification<AttendanceLog>
     {
         ApplyFilters(Query, employeeSearch, dateFrom, dateTo, source, punchType);
         Query.Include(log => log.Employee);
+        Query.Include(log => log.Notes);
         Query.OrderByDescending(log => log.PunchedAtUtc);
         Query.AsNoTracking();
         Query.Skip((page - 1) * pageSize).Take(pageSize);

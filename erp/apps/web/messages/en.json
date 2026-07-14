@@ -173,6 +173,16 @@
       "successDescription": "Attendance log updated successfully.",
       "errorTitle": "Failed to update log"
     },
+    "notes": {
+      "title": "Notes",
+      "empty": "No notes yet.",
+      "placeholder": "Write a note…",
+      "add": "Add",
+      "addLabel": "Add note",
+      "viewLabel": "View notes",
+      "deleteLabel": "Delete note",
+      "errorTitle": "Note action failed"
+    },
     "export": {
       "errorTitle": "Failed to export"
     }

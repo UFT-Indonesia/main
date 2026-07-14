@@ -173,6 +173,16 @@
       "successDescription": "Log presensi berhasil diperbarui.",
       "errorTitle": "Gagal memperbarui log"
     },
+    "notes": {
+      "title": "Catatan",
+      "empty": "Belum ada catatan.",
+      "placeholder": "Tulis catatan…",
+      "add": "Tambah",
+      "addLabel": "Tambah catatan",
+      "viewLabel": "Lihat catatan",
+      "deleteLabel": "Hapus catatan",
+      "errorTitle": "Aksi catatan gagal"
+    },
     "export": {
       "errorTitle": "Gagal mengekspor"
     }

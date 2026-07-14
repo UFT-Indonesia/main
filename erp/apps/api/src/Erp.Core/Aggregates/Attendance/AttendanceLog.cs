@@ -9,6 +9,10 @@ namespace Erp.Core.Aggregates.Attendance;
 
 public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
 {
+    public const int NoteMaxLength = 500;
+
+    private readonly List<AttendanceLogNote> _notes = [];
+
     // EF Core constructor.
     private AttendanceLog() { }
 
@@ -19,7 +23,6 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
         AttendanceSource source,
         PunchType punchType,
         string? deviceId,
-        string? note,
         Guid? recordedByUserId)
         : base(id)
     {
@@ -28,7 +31,6 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
         Source = source;
         PunchType = punchType;
         DeviceId = deviceId;
-        Note = note;
         RecordedByUserId = recordedByUserId;
     }
 
@@ -46,9 +48,10 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
 
     public string? DeviceId { get; private set; }
 
-    public string? Note { get; private set; }
-
     public Guid? RecordedByUserId { get; private set; }
+
+    /// <summary>Authored notes on this punch, append-only, oldest first.</summary>
+    public IReadOnlyCollection<AttendanceLogNote> Notes => _notes.AsReadOnly();
 
     public static AttendanceLog FromDevice(
         EmployeeId employeeId,
@@ -73,7 +76,6 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
             AttendanceSource.Device,
             punchType,
             deviceId.Trim(),
-            null,
             null);
 
         log.RaiseDomainEvent(new AttendanceLogRecorded(
@@ -83,8 +85,7 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
             log.Source,
             log.PunchType,
             log.DeviceId,
-            log.RecordedByUserId,
-            log.Note));
+            log.RecordedByUserId));
 
         return log;
     }
@@ -93,8 +94,7 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
         EmployeeId employeeId,
         Instant punchedAtUtc,
         PunchType punchType,
-        Guid recordedByUserId,
-        string? note = null)
+        Guid recordedByUserId)
     {
         if (employeeId == EmployeeId.Empty)
         {
@@ -115,7 +115,6 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
             AttendanceSource.Manual,
             punchType,
             null,
-            string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
             recordedByUserId);
 
         log.RaiseDomainEvent(new AttendanceLogRecorded(
@@ -125,8 +124,7 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
             log.Source,
             log.PunchType,
             log.DeviceId,
-            log.RecordedByUserId,
-            log.Note));
+            log.RecordedByUserId));
 
         return log;
     }
@@ -134,20 +132,59 @@ public sealed class AttendanceLog : AggregateRoot<AttendanceLogId>
     /// <summary>
     /// Corrects a punch after the fact (Owner/Manager action). Callers are
     /// responsible for recomputing the affected <see cref="AttendanceDay"/> rows.
+    /// Notes are managed separately via <see cref="AddNote"/> / <see cref="RemoveNote"/>.
     /// </summary>
-    public void UpdateManualEntry(Instant punchedAtUtc, PunchType punchType, string? note)
+    public void UpdateManualEntry(Instant punchedAtUtc, PunchType punchType)
     {
-        var trimmedNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
-
-        if (PunchedAtUtc == punchedAtUtc
-            && PunchType == punchType
-            && string.Equals(Note, trimmedNote, StringComparison.Ordinal))
+        if (PunchedAtUtc == punchedAtUtc && PunchType == punchType)
         {
             return;
         }
 
         PunchedAtUtc = punchedAtUtc;
         PunchType = punchType;
-        Note = trimmedNote;
+    }
+
+    /// <summary>Appends an authored note. Notes are immutable once written.</summary>
+    public AttendanceLogNote AddNote(string text, Guid createdByUserId, string createdByName, Instant nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            throw new DomainException("attendance_note.text", "Note text is required.");
+        }
+
+        var trimmed = text.Trim();
+        if (trimmed.Length > NoteMaxLength)
+        {
+            throw new DomainException(
+                "attendance_note.text_length", $"Note text cannot exceed {NoteMaxLength} characters.");
+        }
+
+        if (createdByUserId == Guid.Empty)
+        {
+            throw new DomainException("attendance_note.author", "Notes require an authenticated author.");
+        }
+
+        if (string.IsNullOrWhiteSpace(createdByName))
+        {
+            throw new DomainException("attendance_note.author_name", "Notes require the author's display name.");
+        }
+
+        var note = new AttendanceLogNote(Id, trimmed, createdByUserId, createdByName.Trim(), nowUtc);
+        _notes.Add(note);
+        return note;
+    }
+
+    /// <summary>Removes a note by id. Returns false when the note does not belong to this punch.</summary>
+    public bool RemoveNote(Guid noteId)
+    {
+        var note = _notes.FirstOrDefault(n => n.Id == noteId);
+        if (note is null)
+        {
+            return false;
+        }
+
+        _notes.Remove(note);
+        return true;
     }
 }

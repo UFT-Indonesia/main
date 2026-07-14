@@ -52,10 +52,6 @@ public sealed class AttendanceLogConfiguration : IEntityTypeConfiguration<Attend
             .HasColumnName("device_id")
             .HasMaxLength(100);
 
-        builder.Property(log => log.Note)
-            .HasColumnName("note")
-            .HasMaxLength(500);
-
         builder.Property(log => log.RecordedByUserId).HasColumnName("recorded_by_user_id");
 
         builder.HasIndex(log => new { log.EmployeeId, log.PunchedAtUtc });
@@ -64,5 +60,14 @@ public sealed class AttendanceLogConfiguration : IEntityTypeConfiguration<Attend
             .WithMany()
             .HasForeignKey(log => log.EmployeeId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Notes live and die with their punch; append/remove only via the aggregate root.
+        builder.HasMany(log => log.Notes)
+            .WithOne()
+            .HasForeignKey(note => note.AttendanceLogId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(log => log.Notes)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

@@ -23,7 +23,8 @@ public static class UpdateAttendanceLogHandler
                 "attendance.punch_type", "Punch type must be In or Out.");
         }
 
-        var log = await attendanceLogs.GetByIdAsync(new AttendanceLogId(command.LogId), ct);
+        var log = await attendanceLogReader.FirstOrDefaultAsync(
+            new AttendanceLogByIdWithNotesSpec(new AttendanceLogId(command.LogId)), ct);
         if (log is null)
         {
             return new Result<AttendanceResult>.NotFound("Attendance log was not found.");
@@ -33,7 +34,7 @@ public static class UpdateAttendanceLogHandler
         var oldDate = AttendanceDayRecomputeService.CalendarDateOf(log.PunchedAtUtc, policy);
         var newDate = AttendanceDayRecomputeService.CalendarDateOf(newPunchedAt, policy);
 
-        log.UpdateManualEntry(newPunchedAt, punchType, command.Note);
+        log.UpdateManualEntry(newPunchedAt, punchType);
         await attendanceLogs.UpdateAsync(log, ct);
 
         // The derived Tap-In/Tap-Out/Status may now be stale — recompute the
@@ -46,16 +47,6 @@ public static class UpdateAttendanceLogHandler
                 log.EmployeeId, newDate, attendanceLogReader, attendanceDays, policy, ct);
         }
 
-        return new Result<AttendanceResult>.Success(new AttendanceResult
-        {
-            Id = log.Id.Value,
-            EmployeeId = log.EmployeeId.Value,
-            PunchedAtUtc = log.PunchedAtUtc.ToDateTimeOffset(),
-            Source = log.Source.ToString(),
-            PunchType = log.PunchType.ToString(),
-            DeviceId = log.DeviceId,
-            RecordedByUserId = log.RecordedByUserId,
-            Note = log.Note,
-        });
+        return new Result<AttendanceResult>.Success(AttendanceLogService.ToResult(log));
     }
 }

@@ -1,4 +1,39 @@
+using Erp.UseCases.Attendance.Common;
+
 namespace Erp.Web.Endpoints.Attendance;
+
+public sealed class AttendanceLogNoteResponse
+{
+    public Guid Id { get; init; }
+    public string Text { get; init; } = default!;
+    public Guid CreatedByUserId { get; init; }
+    public string CreatedByName { get; init; } = default!;
+    public DateTimeOffset CreatedAtUtc { get; init; }
+
+    public static AttendanceLogNoteResponse From(AttendanceLogNoteResult note) => new()
+    {
+        Id = note.Id,
+        Text = note.Text,
+        CreatedByUserId = note.CreatedByUserId,
+        CreatedByName = note.CreatedByName,
+        CreatedAtUtc = note.CreatedAtUtc,
+    };
+
+    public static IReadOnlyList<AttendanceLogNoteResponse> FromAll(
+        IReadOnlyList<AttendanceLogNoteResult> notes) => notes.Select(From).ToList();
+}
+
+public sealed class AddAttendanceLogNoteRequest
+{
+    public Guid LogId { get; init; }
+    public string Text { get; init; } = default!;
+}
+
+public sealed class DeleteAttendanceLogNoteRequest
+{
+    public Guid LogId { get; init; }
+    public Guid NoteId { get; init; }
+}
 
 public sealed class ListAttendanceLogsRequest
 {
@@ -21,7 +56,7 @@ public sealed class AttendanceLogListItemResponse
     public string PunchType { get; init; } = default!;
     public string? DeviceId { get; init; }
     public Guid? RecordedByUserId { get; init; }
-    public string? Note { get; init; }
+    public IReadOnlyList<AttendanceLogNoteResponse> Notes { get; init; } = [];
 }
 
 public sealed class ListAttendanceLogsResponse
@@ -76,7 +111,6 @@ public sealed class UpdateAttendanceLogRequest
     public Guid Id { get; init; }
     public DateTimeOffset PunchedAtUtc { get; init; }
     public string PunchType { get; init; } = default!;
-    public string? Note { get; init; }
 }
 
 public sealed class ExportAttendanceDayKeyRequest
@@ -115,7 +149,7 @@ public sealed class AttendanceLogResponse
     public string PunchType { get; init; } = default!;
     public string? DeviceId { get; init; }
     public Guid? RecordedByUserId { get; init; }
-    public string? Note { get; init; }
+    public IReadOnlyList<AttendanceLogNoteResponse> Notes { get; init; } = [];
 }
 
 public sealed class AttendancePolicyResponse

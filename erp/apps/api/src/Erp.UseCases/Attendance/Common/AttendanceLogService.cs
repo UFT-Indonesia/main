@@ -17,10 +17,12 @@ internal static class AttendanceLogService
         DateTimeOffset punchedAtUtc,
         string punchTypeValue,
         Guid? recordedByUserId,
+        string? recordedByName,
         string? deviceId,
         string? note,
         IReadRepository<Employee> employees,
         IRepository<AttendanceLog> attendanceLogs,
+        IClock clock,
         IMessageBus bus,
         CancellationToken ct)
     {
@@ -40,8 +42,15 @@ internal static class AttendanceLogService
         try
         {
             log = recordedByUserId.HasValue
-                ? AttendanceLog.Manual(typedEmployeeId, Instant.FromDateTimeOffset(punchedAtUtc), punchType, recordedByUserId.Value, note)
+                ? AttendanceLog.Manual(typedEmployeeId, Instant.FromDateTimeOffset(punchedAtUtc), punchType, recordedByUserId.Value)
                 : AttendanceLog.FromDevice(typedEmployeeId, Instant.FromDateTimeOffset(punchedAtUtc), punchType, deviceId ?? string.Empty);
+
+            // The manual-entry dialog's optional "catatan" becomes the first note in the
+            // punch's thread, authored by the recorder at the actual time of writing.
+            if (recordedByUserId.HasValue && !string.IsNullOrWhiteSpace(note))
+            {
+                log.AddNote(note, recordedByUserId.Value, recordedByName ?? "—", clock.GetCurrentInstant());
+            }
         }
         catch (DomainException ex)
         {
@@ -74,7 +83,7 @@ internal static class AttendanceLogService
         return Enum.TryParse(value, ignoreCase: true, out punchType);
     }
 
-    private static AttendanceResult ToResult(AttendanceLog log) => new()
+    internal static AttendanceResult ToResult(AttendanceLog log) => new()
     {
         Id = log.Id.Value,
         EmployeeId = log.EmployeeId.Value,
@@ -83,6 +92,6 @@ internal static class AttendanceLogService
         PunchType = log.PunchType.ToString(),
         DeviceId = log.DeviceId,
         RecordedByUserId = log.RecordedByUserId,
-        Note = log.Note,
+        Notes = AttendanceLogNoteResult.FromLog(log),
     };
 }

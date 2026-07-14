@@ -8,7 +8,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Employees;
 
-[Authorize]
+[Authorize(Roles = "Owner")]
 public sealed class UpdateEmployeeEndpoint : Endpoint<UpdateEmployeeRouteRequest, EmployeeResponse>
 {
     private readonly IMessageBus _bus;

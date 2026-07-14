@@ -8,7 +8,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Employees;
 
-[Authorize]
+[Authorize(Roles = "Owner")]
 public sealed class DeleteEmployeeEndpoint : Endpoint<DeleteEmployeeRouteRequest, EmployeeResponse>
 {
     private readonly IMessageBus _bus;

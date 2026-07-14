@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import type {
   AttendanceDayKey,
+  AttendanceLogNote,
   AttendanceLogResponse,
   GetAttendanceDayLogsResponse,
   ListAttendanceDaysParams,
@@ -77,4 +78,16 @@ export async function exportAttendanceDays(dayKeys: AttendanceDayKey[]): Promise
     { responseType: 'blob' },
   );
   return data;
+}
+
+export async function addAttendanceLogNote(logId: string, text: string): Promise<AttendanceLogNote> {
+  const { data } = await apiClient.post<AttendanceLogNote>(
+    `/api/attendance/logs/${logId}/notes`,
+    { text },
+  );
+  return data;
+}
+
+export async function deleteAttendanceLogNote(logId: string, noteId: string): Promise<void> {
+  await apiClient.delete(`/api/attendance/logs/${logId}/notes/${noteId}`);
 }

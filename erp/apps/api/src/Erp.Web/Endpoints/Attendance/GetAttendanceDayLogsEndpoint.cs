@@ -42,7 +42,7 @@ public sealed class GetAttendanceDayLogsEndpoint : Endpoint<GetAttendanceDayLogs
                     PunchType = i.PunchType,
                     DeviceId = i.DeviceId,
                     RecordedByUserId = i.RecordedByUserId,
-                    Note = i.Note,
+                    Notes = AttendanceLogNoteResponse.FromAll(i.Notes),
                 }).ToList(),
             }, ct);
             return;

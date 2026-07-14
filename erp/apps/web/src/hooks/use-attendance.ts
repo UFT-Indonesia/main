@@ -2,6 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  addAttendanceLogNote,
+  deleteAttendanceLogNote,
   getAttendanceDayLogs,
   listAttendanceDays,
   listAttendanceLogs,
@@ -67,6 +69,29 @@ export function useUpdateAttendanceLog() {
       updateAttendanceLog(id, body),
     onSuccess: () => {
       // Editing a punch changes the derived day (Tap-In/Tap-Out/Status).
+      qc.invalidateQueries({ queryKey: attendanceKeys.all });
+    },
+  });
+}
+
+export function useAddAttendanceLogNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ logId, text }: { logId: string; text: string }) =>
+      addAttendanceLogNote(logId, text),
+    onSuccess: () => {
+      // Notes are shown in the day-logs dialog and the raw log list.
+      qc.invalidateQueries({ queryKey: attendanceKeys.all });
+    },
+  });
+}
+
+export function useDeleteAttendanceLogNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ logId, noteId }: { logId: string; noteId: string }) =>
+      deleteAttendanceLogNote(logId, noteId),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: attendanceKeys.all });
     },
   });

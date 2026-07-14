@@ -69,6 +69,14 @@ export interface DeleteEmployeeBody {
 export type PunchType = 'In' | 'Out';
 export type AttendanceSource = 'Device' | 'Manual';
 
+export interface AttendanceLogNote {
+  id: string;
+  text: string;
+  createdByUserId: string;
+  createdByName: string;
+  createdAtUtc: string;
+}
+
 export interface AttendanceLogListItem {
   id: string;
   employeeId: string;
@@ -78,7 +86,7 @@ export interface AttendanceLogListItem {
   punchType: PunchType;
   deviceId: string | null;
   recordedByUserId: string | null;
-  note: string | null;
+  notes: AttendanceLogNote[];
 }
 
 export interface ListAttendanceLogsResponse {
@@ -135,7 +143,6 @@ export interface GetAttendanceDayLogsResponse {
 export interface UpdateAttendanceLogBody {
   punchedAtUtc: string;
   punchType: PunchType;
-  note?: string | null;
 }
 
 export interface AttendanceDayKey {
@@ -159,7 +166,7 @@ export interface AttendanceLogResponse {
   punchType: PunchType;
   deviceId: string | null;
   recordedByUserId: string | null;
-  note: string | null;
+  notes: AttendanceLogNote[];
 }
 
 export interface AttendancePolicy {

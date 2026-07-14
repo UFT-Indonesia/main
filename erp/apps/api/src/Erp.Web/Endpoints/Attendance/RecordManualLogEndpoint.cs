@@ -9,7 +9,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
-[Authorize]
+[Authorize(Roles = "Owner,Manager")]
 public sealed class RecordManualLogEndpoint : Endpoint<ManualAttendanceLogRequest, AttendanceLogResponse>
 {
     private readonly IMessageBus _bus;
@@ -34,11 +34,14 @@ public sealed class RecordManualLogEndpoint : Endpoint<ManualAttendanceLogReques
             return;
         }
 
+        var userName = User.FindFirstValue(ClaimTypes.Name) ?? "—";
+
         var result = await _bus.InvokeAsync<Result<AttendanceResult>>(new RecordManualLogCommand(
             req.EmployeeId,
             req.PunchedAtUtc,
             req.PunchType,
             userId,
+            userName,
             req.Note), ct);
 
         if (result is Result<AttendanceResult>.Success s)
@@ -73,6 +76,6 @@ public sealed class RecordManualLogEndpoint : Endpoint<ManualAttendanceLogReques
         PunchType = result.PunchType,
         DeviceId = result.DeviceId,
         RecordedByUserId = result.RecordedByUserId,
-        Note = result.Note,
+        Notes = AttendanceLogNoteResponse.FromAll(result.Notes),
     };
 }

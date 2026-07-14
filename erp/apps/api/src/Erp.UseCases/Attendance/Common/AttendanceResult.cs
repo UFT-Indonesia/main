@@ -9,5 +9,5 @@ public sealed class AttendanceResult
     public string PunchType { get; init; } = default!;
     public string? DeviceId { get; init; }
     public Guid? RecordedByUserId { get; init; }
-    public string? Note { get; init; }
+    public IReadOnlyList<AttendanceLogNoteResult> Notes { get; init; } = [];
 }

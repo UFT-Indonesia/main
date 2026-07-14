@@ -97,6 +97,6 @@ public sealed class RecordDeviceLogEndpoint : EndpointWithoutRequest<AttendanceL
         PunchType = result.PunchType,
         DeviceId = result.DeviceId,
         RecordedByUserId = result.RecordedByUserId,
-        Note = result.Note,
+        Notes = AttendanceLogNoteResponse.FromAll(result.Notes),
     };
 }

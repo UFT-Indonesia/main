@@ -34,7 +34,7 @@ public static class GetAttendanceDayLogsHandler
             PunchType = log.PunchType.ToString(),
             DeviceId = log.DeviceId,
             RecordedByUserId = log.RecordedByUserId,
-            Note = log.Note,
+            Notes = AttendanceLogNoteResult.FromLog(log),
         }).ToList();
 
         return new Result<GetAttendanceDayLogsResult>.Success(

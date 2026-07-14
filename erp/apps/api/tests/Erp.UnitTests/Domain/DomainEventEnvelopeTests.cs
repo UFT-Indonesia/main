@@ -90,8 +90,7 @@ public class DomainEventEnvelopeTests
             EmployeeId.New(),
             twoDaysAgoPunch,
             PunchType.In,
-            Guid.NewGuid(),
-            note: "lupa absen");
+            Guid.NewGuid());
 
         var ev = log.DomainEvents.OfType<AttendanceLogRecorded>().Single();
 
@@ -131,7 +130,6 @@ public class DomainEventEnvelopeTests
         ev.Source.Should().Be(AttendanceSource.Device);
         ev.DeviceId.Should().Be("esp32-7");
         ev.RecordedByUserId.Should().BeNull();
-        ev.Note.Should().BeNull();
     }
 
     [Fact]
@@ -142,14 +140,12 @@ public class DomainEventEnvelopeTests
             EmployeeId.New(),
             SystemClock.Instance.GetCurrentInstant(),
             PunchType.In,
-            userId,
-            note: "koreksi manual");
+            userId);
 
         var ev = log.DomainEvents.OfType<AttendanceLogRecorded>().Single();
 
         ev.Source.Should().Be(AttendanceSource.Manual);
         ev.DeviceId.Should().BeNull();
         ev.RecordedByUserId.Should().Be(userId);
-        ev.Note.Should().Be("koreksi manual");
     }
 }

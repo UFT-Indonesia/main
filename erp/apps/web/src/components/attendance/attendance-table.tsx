@@ -67,7 +67,16 @@ export function AttendanceTable({ items }: AttendanceTableProps) {
               <TableCell>
                 <Badge variant={SOURCE_VARIANT[item.source]}>{t(`source.${item.source}`)}</Badge>
               </TableCell>
-              <TableCell className="text-muted-foreground">{item.note ?? '—'}</TableCell>
+              <TableCell className="max-w-48 text-muted-foreground">
+                {item.notes.length > 0 ? (
+                  <span className="block truncate" title={item.notes.map((n) => n.text).join('\n')}>
+                    {item.notes.length > 1 ? `(${item.notes.length}) ` : ''}
+                    {item.notes[item.notes.length - 1]?.text}
+                  </span>
+                ) : (
+                  '—'
+                )}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
