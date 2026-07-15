@@ -188,11 +188,6 @@ export function ViewLogDetailsDialog({
           </div>
         ) : viewingNotes ? (
           <div className="space-y-3">
-            <Button variant="ghost" size="sm" onClick={() => setNotesForId(null)}>
-              <ChevronLeft className="h-4 w-4" />
-              {tCommon('back')}
-            </Button>
-
             {notesLog.notes.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 {t('notes.empty')}
@@ -227,8 +222,8 @@ export function ViewLogDetailsDialog({
               </ul>
             )}
 
-            {canEdit && (
-              <div className="flex gap-2">
+            <div className="flex gap-2">
+              {canEdit && (
                 <Input
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
@@ -238,14 +233,19 @@ export function ViewLogDetailsDialog({
                   placeholder={t('notes.placeholder')}
                   maxLength={500}
                 />
+              )}
+              <Button variant="outline" onClick={() => setNotesForId(null)}>
+                {tCommon('back')}
+              </Button>
+              {canEdit && (
                 <Button
                   onClick={handleAddNote}
                   disabled={addNoteMutation.isPending || !noteText.trim()}
                 >
                   {addNoteMutation.isPending ? tCommon('loading') : t('notes.add')}
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ) : editing ? (
           <div className="space-y-3">
