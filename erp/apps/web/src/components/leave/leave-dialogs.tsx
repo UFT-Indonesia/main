@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -85,13 +85,15 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
   const workdays = countWorkdays(form.startDate, form.endDate);
   const canSubmit = !!form.employeeId && workdays > 0;
 
-  function handleOpenChange(o: boolean) {
-    if (!o) setForm(EMPTY_FORM);
-    onOpenChange(o);
-  }
+  // Reset on every close, regardless of whether it closed via the dialog's own
+  // affordances or a parent driving `open` to false after a successful submit.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!open) setForm(EMPTY_FORM);
+  }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogHeader>
         <DialogTitle>{t('create.title')}</DialogTitle>
         <DialogDescription>{t('create.description')}</DialogDescription>
@@ -159,7 +161,7 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
       </div>
 
       <DialogFooter>
-        <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={submitting}>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
           {tCommon('cancel')}
         </Button>
         <Button
@@ -196,15 +198,17 @@ export function DecideLeaveDialog({
 
   const open = !!request && !!action;
 
-  function handleOpenChange(o: boolean) {
-    if (!o) setNote('');
-    onOpenChange(o);
-  }
+  // `open` going false doesn't unmount this component (render just returns null
+  // below), so state would otherwise leak into the next request/action shown.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!open) setNote('');
+  }, [open]);
 
   if (!open) return null;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogHeader>
         <DialogTitle>{t(`decide.${action}.title`)}</DialogTitle>
         <DialogDescription>
@@ -230,7 +234,7 @@ export function DecideLeaveDialog({
       )}
 
       <DialogFooter>
-        <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={submitting}>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
           {tCommon('cancel')}
         </Button>
         <Button

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronLeft, MessageSquare, Pencil, Plus, X } from 'lucide-react';
+import { MessageSquare, Pencil, Plus, X } from 'lucide-react';
 import {
   Dialog,
   DialogDescription,
