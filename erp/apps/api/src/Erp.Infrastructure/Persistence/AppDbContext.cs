@@ -1,6 +1,7 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Auth;
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Leave;
 using Erp.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -26,6 +27,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<AttendancePolicyHistory> AttendancePolicyHistories => Set<AttendancePolicyHistory>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -15,7 +15,8 @@
     "dashboard": "Dasbor",
     "employees": "Karyawan",
     "attendance": "Kehadiran",
-    "attendanceSettings": "Kebijakan presensi"
+    "attendanceSettings": "Kebijakan presensi",
+    "leave": "Cuti"
   },
   "home": {
     "title": "Selamat datang",
@@ -204,5 +205,86 @@
     "successDescription": "Data presensi sedang dihitung ulang dengan kebijakan baru.",
     "errorTitle": "Gagal memperbarui kebijakan",
     "loadErrorTitle": "Gagal memuat kebijakan"
+  },
+  "leave": {
+    "title": "Cuti",
+    "subtitle": "Ajukan dan setujui permintaan cuti karyawan.",
+    "empty": "Tidak ada permintaan cuti.",
+    "filters": {
+      "allStatuses": "Semua status",
+      "allEmployees": "Semua karyawan"
+    },
+    "columns": {
+      "employee": "Karyawan",
+      "type": "Jenis",
+      "dates": "Tanggal",
+      "workdays": "Hari kerja",
+      "approvedThisYear": "Disetujui thn ini",
+      "status": "Status"
+    },
+    "type": {
+      "Annual": "Cuti tahunan",
+      "Sick": "Sakit",
+      "Permission": "Izin",
+      "Unpaid": "Di luar tanggungan"
+    },
+    "status": {
+      "Pending": "Menunggu",
+      "Approved": "Disetujui",
+      "Denied": "Ditolak",
+      "Cancelled": "Dibatalkan"
+    },
+    "create": {
+      "button": "Ajukan cuti",
+      "title": "Ajukan cuti",
+      "description": "Ajukan permintaan cuti atas nama karyawan.",
+      "employee": "Karyawan",
+      "employeePlaceholder": "Pilih karyawan...",
+      "startDate": "Tanggal mulai",
+      "endDate": "Tanggal selesai",
+      "reason": "Alasan",
+      "reasonPlaceholder": "Alasan (opsional)",
+      "workdayPreview": "{count, plural, =0 {Tidak ada hari kerja dalam rentang} other {# hari kerja}}",
+      "confirm": "Ajukan",
+      "successTitle": "Permintaan diajukan",
+      "successDescription": "Permintaan cuti berhasil dibuat.",
+      "errorTitle": "Gagal mengajukan permintaan"
+    },
+    "decide": {
+      "note": "Catatan",
+      "notePlaceholder": "Catatan (opsional)",
+      "approve": {
+        "title": "Setujui cuti",
+        "description": "Setujui cuti untuk {employee}, {from} – {to} ({count, plural, other {# hari kerja}})?",
+        "confirm": "Setujui",
+        "successTitle": "Cuti disetujui",
+        "errorTitle": "Gagal menyetujui"
+      },
+      "deny": {
+        "title": "Tolak cuti",
+        "description": "Tolak cuti untuk {employee}, {from} – {to} ({count, plural, other {# hari kerja}})?",
+        "confirm": "Tolak",
+        "successTitle": "Cuti ditolak",
+        "errorTitle": "Gagal menolak"
+      },
+      "cancel": {
+        "title": "Batalkan cuti",
+        "description": "Batalkan cuti untuk {employee}, {from} – {to} ({count, plural, other {# hari kerja}})?",
+        "confirm": "Batalkan cuti",
+        "successTitle": "Cuti dibatalkan",
+        "errorTitle": "Gagal membatalkan"
+      }
+    },
+    "details": {
+      "title": "Detail permintaan cuti",
+      "reason": "Alasan",
+      "requestedAt": "Diajukan pada",
+      "decidedBy": "Diputuskan oleh",
+      "decidedAt": "Diputuskan pada",
+      "decisionNote": "Catatan keputusan"
+    },
+    "pagination": {
+      "summary": "Menampilkan {from}-{to} dari {total}"
+    }
   }
 }

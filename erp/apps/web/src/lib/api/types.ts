@@ -169,6 +169,50 @@ export interface AttendanceLogResponse {
   notes: AttendanceLogNote[];
 }
 
+export type LeaveType = 'Annual' | 'Sick' | 'Permission' | 'Unpaid';
+export type LeaveRequestStatus = 'Pending' | 'Approved' | 'Denied' | 'Cancelled';
+
+export interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  employeeFullName: string;
+  type: LeaveType;
+  /** "YYYY-MM-DD" inclusive. */
+  startDate: string;
+  /** "YYYY-MM-DD" inclusive. */
+  endDate: string;
+  workdayCount: number;
+  reason: string | null;
+  status: LeaveRequestStatus;
+  requestedAtUtc: string;
+  decidedByName: string | null;
+  decidedAtUtc: string | null;
+  decisionNote: string | null;
+  approvedWorkdaysThisYear: number;
+}
+
+export interface ListLeaveRequestsResponse {
+  items: LeaveRequest[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface ListLeaveRequestsParams {
+  page?: number;
+  pageSize?: number;
+  status?: LeaveRequestStatus | '';
+  employeeId?: string;
+}
+
+export interface CreateLeaveRequestBody {
+  employeeId: string;
+  type: LeaveType;
+  startDate: string;
+  endDate: string;
+  reason?: string | null;
+}
+
 export interface AttendancePolicy {
   /** "HH:mm" formatted shift start. */
   shiftStart: string;

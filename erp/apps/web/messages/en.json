@@ -15,7 +15,8 @@
     "dashboard": "Dashboard",
     "employees": "Employees",
     "attendance": "Attendance",
-    "attendanceSettings": "Attendance policy"
+    "attendanceSettings": "Attendance policy",
+    "leave": "Leave"
   },
   "home": {
     "title": "Welcome",
@@ -204,5 +205,86 @@
     "successDescription": "Attendance days are being recomputed under the new policy.",
     "errorTitle": "Failed to update policy",
     "loadErrorTitle": "Failed to load policy"
+  },
+  "leave": {
+    "title": "Leave",
+    "subtitle": "Submit and approve employee leave requests.",
+    "empty": "No leave requests found.",
+    "filters": {
+      "allStatuses": "All statuses",
+      "allEmployees": "All employees"
+    },
+    "columns": {
+      "employee": "Employee",
+      "type": "Type",
+      "dates": "Dates",
+      "workdays": "Workdays",
+      "approvedThisYear": "Approved this yr",
+      "status": "Status"
+    },
+    "type": {
+      "Annual": "Annual",
+      "Sick": "Sick",
+      "Permission": "Permission",
+      "Unpaid": "Unpaid"
+    },
+    "status": {
+      "Pending": "Pending",
+      "Approved": "Approved",
+      "Denied": "Denied",
+      "Cancelled": "Cancelled"
+    },
+    "create": {
+      "button": "Request leave",
+      "title": "Request leave",
+      "description": "Submit a leave request on behalf of an employee.",
+      "employee": "Employee",
+      "employeePlaceholder": "Select employee...",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "reason": "Reason",
+      "reasonPlaceholder": "Optional reason",
+      "workdayPreview": "{count, plural, =0 {No workdays in range} one {# workday} other {# workdays}}",
+      "confirm": "Submit request",
+      "successTitle": "Request submitted",
+      "successDescription": "Leave request created successfully.",
+      "errorTitle": "Failed to submit request"
+    },
+    "decide": {
+      "note": "Note",
+      "notePlaceholder": "Optional note",
+      "approve": {
+        "title": "Approve leave",
+        "description": "Approve leave for {employee}, {from} – {to} ({count, plural, one {# workday} other {# workdays}})?",
+        "confirm": "Approve",
+        "successTitle": "Leave approved",
+        "errorTitle": "Failed to approve"
+      },
+      "deny": {
+        "title": "Deny leave",
+        "description": "Deny leave for {employee}, {from} – {to} ({count, plural, one {# workday} other {# workdays}})?",
+        "confirm": "Deny",
+        "successTitle": "Leave denied",
+        "errorTitle": "Failed to deny"
+      },
+      "cancel": {
+        "title": "Cancel leave",
+        "description": "Cancel leave for {employee}, {from} – {to} ({count, plural, one {# workday} other {# workdays}})?",
+        "confirm": "Cancel leave",
+        "successTitle": "Leave cancelled",
+        "errorTitle": "Failed to cancel"
+      }
+    },
+    "details": {
+      "title": "Leave request details",
+      "reason": "Reason",
+      "requestedAt": "Requested at",
+      "decidedBy": "Decided by",
+      "decidedAt": "Decided at",
+      "decisionNote": "Decision note"
+    },
+    "pagination": {
+      "summary": "Showing {from}-{to} of {total}"
+    }
   }
 }
