@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
 
 const schema = z.object({
-  email: z.string().email('Email tidak valid.'),
+  username: z.string().min(1, 'Username wajib diisi.'),
   password: z.string().min(1, 'Password wajib diisi.'),
 });
 
@@ -39,16 +39,16 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { username: '', password: '' },
   });
 
   const onSubmit = async (values: LoginValues) => {
     setSubmitting(true);
     try {
-      const response = await loginApi(values.email, values.password);
+      const response = await loginApi(values.username, values.password);
       setSession(response.accessToken, response.user, response.expiresAtUtc);
       toast.success(t('successTitle'), t('successDescription'));
-      router.replace('/');
+      router.replace(response.user.mustChangePassword ? '/change-password' : '/');
     } catch (error) {
       const err = extractApiError(error);
       toast.error(t('errorTitle'), err.message);
@@ -67,16 +67,15 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">{t('email')}</Label>
+              <Label htmlFor="username">{t('username')}</Label>
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                {...register('email')}
-                aria-invalid={!!errors.email}
+                id="username"
+                autoComplete="username"
+                {...register('username')}
+                aria-invalid={!!errors.username}
               />
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
+              {errors.username && (
+                <p className="text-xs text-destructive">{errors.username.message}</p>
               )}
             </div>
 

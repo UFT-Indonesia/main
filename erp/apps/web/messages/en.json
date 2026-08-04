@@ -9,14 +9,16 @@
     "logout": "Log out",
     "back": "Back",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "close": "Close"
   },
   "nav": {
     "dashboard": "Dashboard",
     "employees": "Employees",
     "attendance": "Attendance",
     "attendanceSettings": "Attendance policy",
-    "leave": "Leave"
+    "leave": "Leave",
+    "accounts": "Accounts"
   },
   "home": {
     "title": "Welcome",
@@ -31,12 +33,12 @@
   },
   "login": {
     "subtitle": "Sign in to continue",
-    "email": "Email",
     "password": "Password",
     "submit": "Sign in",
     "successTitle": "Signed in",
     "successDescription": "Welcome back.",
-    "errorTitle": "Sign-in failed"
+    "errorTitle": "Sign-in failed",
+    "username": "Username"
   },
   "employees": {
     "title": "Employees",
@@ -99,7 +101,8 @@
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
-    }
+    },
+    "createAccount": "Create account"
   },
   "attendance": {
     "title": "Attendance",
@@ -285,6 +288,62 @@
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
+    }
+  },
+  "changePassword": {
+    "subtitle": "Set a new password to continue",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "submit": "Change password",
+    "successTitle": "Password changed",
+    "successDescription": "You can now use the app.",
+    "errorTitle": "Password change failed"
+  },
+  "accounts": {
+    "title": "Accounts",
+    "subtitle": "Manage who can sign in to the platform",
+    "addNew": "Create account",
+    "empty": "No accounts yet.",
+    "table": {
+      "username": "Username",
+      "fullName": "Full name",
+      "role": "Role",
+      "status": "Status"
+    },
+    "status": {
+      "enabled": "Active",
+      "disabled": "Disabled",
+      "mustChangePassword": "Temp password"
+    },
+    "actions": {
+      "resetPassword": "Reset password",
+      "disable": "Disable",
+      "enable": "Enable"
+    },
+    "toggle": {
+      "enabledTitle": "Account enabled",
+      "disabledTitle": "Account disabled",
+      "errorTitle": "Update failed"
+    },
+    "reset": {
+      "errorTitle": "Password reset failed"
+    },
+    "create": {
+      "title": "Create account",
+      "employee": "Employee",
+      "selectEmployee": "Select an employee…",
+      "username": "Username",
+      "email": "Email",
+      "emailOptional": "Optional",
+      "submit": "Create",
+      "errorTitle": "Account creation failed"
+    },
+    "tempPassword": {
+      "title": "Temporary password",
+      "description": "Hand this password to {username}. They must change it at first sign-in.",
+      "copy": "Copy",
+      "shownOnce": "This password is shown only once and cannot be retrieved later."
     }
   }
 }
