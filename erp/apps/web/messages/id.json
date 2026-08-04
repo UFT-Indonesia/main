@@ -4,19 +4,22 @@
     "loading": "Memuat...",
     "save": "Simpan",
     "cancel": "Batal",
+    "confirm": "Konfirmasi",
     "search": "Cari",
     "actions": "Aksi",
     "logout": "Keluar",
     "back": "Kembali",
     "previous": "Sebelumnya",
-    "next": "Berikutnya"
+    "next": "Berikutnya",
+    "close": "Tutup"
   },
   "nav": {
     "dashboard": "Dasbor",
     "employees": "Karyawan",
     "attendance": "Kehadiran",
     "attendanceSettings": "Kebijakan presensi",
-    "leave": "Cuti"
+    "leave": "Cuti",
+    "accounts": "Akun"
   },
   "home": {
     "title": "Selamat datang",
@@ -31,12 +34,12 @@
   },
   "login": {
     "subtitle": "Masuk untuk melanjutkan",
-    "email": "Email",
     "password": "Kata sandi",
     "submit": "Masuk",
     "successTitle": "Berhasil masuk",
     "successDescription": "Selamat datang kembali.",
-    "errorTitle": "Gagal masuk"
+    "errorTitle": "Gagal masuk",
+    "username": "Username"
   },
   "employees": {
     "title": "Karyawan",
@@ -99,7 +102,8 @@
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
-    }
+    },
+    "createAccount": "Buat akun"
   },
   "attendance": {
     "title": "Kehadiran",
@@ -285,6 +289,69 @@
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
+    }
+  },
+  "changePassword": {
+    "subtitle": "Buat password baru untuk melanjutkan",
+    "currentPassword": "Password saat ini",
+    "newPassword": "Password baru",
+    "confirmPassword": "Konfirmasi password baru",
+    "submit": "Ubah password",
+    "successTitle": "Password diubah",
+    "successDescription": "Anda sekarang dapat menggunakan aplikasi.",
+    "errorTitle": "Gagal mengubah password"
+  },
+  "accounts": {
+    "title": "Akun",
+    "subtitle": "Kelola siapa yang dapat masuk ke platform",
+    "addNew": "Buat akun",
+    "empty": "Belum ada akun.",
+    "table": {
+      "username": "Username",
+      "fullName": "Nama lengkap",
+      "role": "Peran",
+      "status": "Status"
+    },
+    "status": {
+      "enabled": "Aktif",
+      "disabled": "Nonaktif",
+      "mustChangePassword": "Password sementara"
+    },
+    "actions": {
+      "resetPassword": "Reset password",
+      "disable": "Nonaktifkan",
+      "enable": "Aktifkan",
+      "delete": "Hapus"
+    },
+    "toggle": {
+      "enabledTitle": "Akun diaktifkan",
+      "disabledTitle": "Akun dinonaktifkan",
+      "errorTitle": "Gagal memperbarui"
+    },
+    "reset": {
+      "errorTitle": "Gagal mereset password"
+    },
+    "delete": {
+      "title": "Hapus akun",
+      "confirm": "Apakah Anda yakin ingin menghapus akun {username}?",
+      "deletedTitle": "Akun dihapus",
+      "errorTitle": "Gagal menghapus"
+    },
+    "create": {
+      "title": "Buat akun",
+      "employee": "Karyawan",
+      "selectEmployee": "Pilih karyawan…",
+      "username": "Username",
+      "email": "Email",
+      "emailOptional": "Opsional",
+      "submit": "Buat",
+      "errorTitle": "Gagal membuat akun"
+    },
+    "tempPassword": {
+      "title": "Password sementara",
+      "description": "Serahkan password ini kepada {username}. Mereka wajib menggantinya saat pertama kali masuk.",
+      "copy": "Salin",
+      "shownOnce": "Password ini hanya ditampilkan sekali dan tidak dapat dilihat lagi."
     }
   }
 }

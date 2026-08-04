@@ -1,8 +1,10 @@
 export interface AuthUser {
   id: string;
+  username: string;
   email: string;
   fullName: string;
   employeeId: string | null;
+  mustChangePassword: boolean;
   roles: string[];
 }
 
@@ -64,6 +66,47 @@ export type UpdateEmployeeBody = CreateEmployeeBody;
 
 export interface DeleteEmployeeBody {
   terminationDate?: string | null;
+}
+
+export interface Account {
+  id: string;
+  username: string;
+  email: string | null;
+  fullName: string;
+  employeeId: string | null;
+  role: EmployeeRole;
+  isEnabled: boolean;
+  mustChangePassword: boolean;
+}
+
+export interface ListAccountsResponse {
+  items: Account[];
+}
+
+export interface CreateAccountBody {
+  employeeId: string;
+  username: string;
+  email?: string | null;
+}
+
+export interface CreateAccountResponse {
+  account: Account;
+  /** Shown exactly once; not retrievable afterwards. */
+  tempPassword: string;
+}
+
+export interface ResetAccountPasswordResponse {
+  tempPassword: string;
+}
+
+export interface ProvisionCandidate {
+  employeeId: string;
+  fullName: string;
+  role: EmployeeRole;
+}
+
+export interface ListProvisionCandidatesResponse {
+  items: ProvisionCandidate[];
 }
 
 export type PunchType = 'In' | 'Out';

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { useTranslations } from 'next-intl';
-import { Pencil, Trash2 } from 'lucide-react';
+import { KeyRound, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -84,6 +84,14 @@ export function EmployeeTable({ employees, onDelete }: EmployeeTableProps) {
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
+                  <Link
+                    href={`/accounts?employeeId=${employee.id}` as Route}
+                    className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
+                    aria-label={t('createAccount')}
+                    title={t('createAccount')}
+                  >
+                    <KeyRound className="h-4 w-4" />
+                  </Link>
                   <Link
                     href={`/employees/${employee.id}` as Route}
                     className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}

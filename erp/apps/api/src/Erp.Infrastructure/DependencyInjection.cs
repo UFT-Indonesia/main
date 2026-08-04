@@ -98,7 +98,9 @@ public static class DependencyInjection
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {
-                options.User.RequireUniqueEmail = true;
+                // Email is optional on provisioned accounts (RequireUniqueEmail would demand
+                // one); uniqueness of provided emails is checked at account creation.
+                options.User.RequireUniqueEmail = false;
                 options.Password.RequiredLength = 8;
                 options.Password.RequireDigit = true;
                 options.Password.RequireLowercase = true;

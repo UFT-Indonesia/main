@@ -95,6 +95,7 @@ try
     app.UseSerilogRequestLogging();
     app.UseCors("Web");
     app.UseAuthentication();
+    app.UseMiddleware<MustChangePasswordMiddleware>();
     app.UseAuthorization();
     app.UseExceptionHandler();
 

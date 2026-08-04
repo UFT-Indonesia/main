@@ -1,27 +1,27 @@
+using System.Security.Claims;
 using Erp.Infrastructure.Authentication;
 using Erp.Infrastructure.Identity;
 using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 
 namespace Erp.Web.Endpoints.Auth;
 
-public sealed class LoginEndpoint : Endpoint<LoginRequest, AuthResponse>
+[Authorize]
+public sealed class ChangePasswordEndpoint : Endpoint<ChangePasswordRequest, AuthResponse>
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IHostEnvironment _env;
 
-    public LoginEndpoint(
+    public ChangePasswordEndpoint(
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
         IHostEnvironment env)
     {
         _userManager = userManager;
-        _signInManager = signInManager;
         _jwtTokenService = jwtTokenService;
         _refreshTokenService = refreshTokenService;
         _env = env;
@@ -29,31 +29,38 @@ public sealed class LoginEndpoint : Endpoint<LoginRequest, AuthResponse>
 
     public override void Configure()
     {
-        Post("/login");
-        AllowAnonymous();
+        Post("/change-password");
         Group<AuthGroup>();
     }
 
-    public override async Task HandleAsync(LoginRequest req, CancellationToken ct)
+    public override async Task HandleAsync(ChangePasswordRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
+        if (string.IsNullOrWhiteSpace(req.CurrentPassword) || string.IsNullOrWhiteSpace(req.NewPassword))
         {
-            ThrowError("Username and password are required.", 400);
+            ThrowError("Current and new password are required.", 400);
         }
 
-        var user = await _userManager.FindByNameAsync(req.Username.Trim());
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var user = userId is null ? null : await _userManager.FindByIdAsync(userId);
         if (user is null)
         {
             await SendUnauthorizedAsync(ct);
             return;
         }
 
-        var result = await _signInManager.CheckPasswordSignInAsync(user, req.Password, lockoutOnFailure: true);
+        var result = await _userManager.ChangePasswordAsync(user, req.CurrentPassword, req.NewPassword);
         if (!result.Succeeded)
         {
-            await SendUnauthorizedAsync(ct);
-            return;
+            ThrowError(string.Join(" ", result.Errors.Select(e => e.Description)), 400);
         }
+
+        if (user.MustChangePassword)
+        {
+            user.MustChangePassword = false;
+            await _userManager.UpdateAsync(user);
+        }
+
+        await _refreshTokenService.RevokeAllForUserAsync(user.Id, "password_changed", ct);
 
         var roles = await _userManager.GetRolesAsync(user);
         var token = _jwtTokenService.CreateAccessToken(user, roles);

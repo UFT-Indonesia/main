@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Users, LayoutDashboard, Clock, Settings, CalendarDays } from 'lucide-react';
+import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound } from 'lucide-react';
 import type { Route } from 'next';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/lib/constants';
@@ -11,7 +11,7 @@ import { useAuthStore } from '@/lib/auth/store';
 
 interface NavItem {
   href: Route;
-  labelKey: 'dashboard' | 'employees' | 'attendance' | 'attendanceSettings' | 'leave';
+  labelKey: 'dashboard' | 'employees' | 'attendance' | 'attendanceSettings' | 'leave' | 'accounts';
   icon: typeof Users;
   /** Only shown to users with one of these roles; omitted means visible to everyone. */
   roles?: string[];
@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { href: '/employees' as Route, labelKey: 'employees', icon: Users },
   { href: '/attendance' as Route, labelKey: 'attendance', icon: Clock },
   { href: '/leave' as Route, labelKey: 'leave', icon: CalendarDays, roles: ['Owner', 'Manager'] },
+  { href: '/accounts' as Route, labelKey: 'accounts', icon: KeyRound, roles: ['Owner', 'Manager'] },
   {
     href: '/attendance/settings' as Route,
     labelKey: 'attendanceSettings',
