@@ -9,6 +9,9 @@ namespace Erp.Infrastructure.Authentication;
 
 public sealed class JwtTokenService : IJwtTokenService
 {
+    /// <summary>Present (value "true") while the user must change a temporary password.</summary>
+    public const string MustChangePasswordClaim = "pwd_change";
+
     private readonly JwtOptions _options;
     private readonly IClock _clock;
 
@@ -35,6 +38,11 @@ public sealed class JwtTokenService : IJwtTokenService
         };
 
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
+        if (user.MustChangePassword)
+        {
+            claims.Add(new Claim(MustChangePasswordClaim, "true"));
+        }
 
         var signingKey = new SymmetricSecurityKey(JwtSigningKeyHelper.DecodeSigningKey(_options.SigningKey));
         var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);

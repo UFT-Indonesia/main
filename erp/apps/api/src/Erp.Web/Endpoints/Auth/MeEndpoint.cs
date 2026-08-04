@@ -40,13 +40,6 @@ public sealed class MeEndpoint : EndpointWithoutRequest<AuthUserResponse>
 
         var roles = await _userManager.GetRolesAsync(user);
 
-        await SendOkAsync(new AuthUserResponse
-        {
-            Id = user.Id,
-            Email = user.Email ?? string.Empty,
-            FullName = user.FullName,
-            EmployeeId = user.EmployeeId,
-            Roles = roles,
-        }, ct);
+        await SendOkAsync(AuthUserResponse.From(user, roles), ct);
     }
 }

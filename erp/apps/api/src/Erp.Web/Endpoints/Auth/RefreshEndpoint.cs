@@ -61,14 +61,7 @@ public sealed class RefreshEndpoint : Endpoint<EmptyRequest, AuthResponse>
                     TokenType = "Bearer",
                     ExpiresAtUtc = accessToken.ExpiresAtUtc,
                     RefreshTokenExpiresAtUtc = success.ExpiresAtUtc.ToDateTimeOffset(),
-                    User = new AuthUserResponse
-                    {
-                        Id = success.User.Id,
-                        Email = success.User.Email ?? string.Empty,
-                        FullName = success.User.FullName,
-                        EmployeeId = success.User.EmployeeId,
-                        Roles = roles,
-                    },
+                    User = AuthUserResponse.From(success.User, roles),
                 }, ct);
                 return;
 

@@ -40,7 +40,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
         {
             entity.ToTable("AuthUsers");
             entity.Property(user => user.FullName).HasMaxLength(200).IsRequired();
-            entity.HasIndex(user => user.EmployeeId);
+            // One account per employee; NULLs (the seeded owner) don't collide in Postgres.
+            entity.HasIndex(user => user.EmployeeId).IsUnique();
         });
 
         builder.Entity<IdentityRole<Guid>>().ToTable("AuthRoles");

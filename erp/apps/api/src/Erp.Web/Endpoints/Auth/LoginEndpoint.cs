@@ -36,12 +36,12 @@ public sealed class LoginEndpoint : Endpoint<LoginRequest, AuthResponse>
 
     public override async Task HandleAsync(LoginRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
+        if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
         {
-            ThrowError("Email and password are required.", 400);
+            ThrowError("Username and password are required.", 400);
         }
 
-        var user = await _userManager.FindByEmailAsync(req.Email.Trim());
+        var user = await _userManager.FindByNameAsync(req.Username.Trim());
         if (user is null)
         {
             await SendUnauthorizedAsync(ct);
@@ -72,14 +72,7 @@ public sealed class LoginEndpoint : Endpoint<LoginRequest, AuthResponse>
             TokenType = "Bearer",
             ExpiresAtUtc = token.ExpiresAtUtc,
             RefreshTokenExpiresAtUtc = refreshResult.ExpiresAtUtc.ToDateTimeOffset(),
-            User = new AuthUserResponse
-            {
-                Id = user.Id,
-                Email = user.Email ?? string.Empty,
-                FullName = user.FullName,
-                EmployeeId = user.EmployeeId,
-                Roles = roles,
-            },
+            User = AuthUserResponse.From(user, roles),
         }, ct);
     }
 }
