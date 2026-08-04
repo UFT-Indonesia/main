@@ -6,8 +6,9 @@ export async function login(username: string, password: string): Promise<AuthRes
   return data;
 }
 
-export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
-  await apiClient.post('/api/auth/change-password', { currentPassword, newPassword });
+export async function changePassword(currentPassword: string, newPassword: string): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/api/auth/change-password', { currentPassword, newPassword });
+  return data;
 }
 
 export async function refreshSession(): Promise<AuthResponse> {

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Erp.Infrastructure.Authentication;
 using Erp.Infrastructure.Identity;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
@@ -7,13 +8,23 @@ using Microsoft.AspNetCore.Identity;
 namespace Erp.Web.Endpoints.Auth;
 
 [Authorize]
-public sealed class ChangePasswordEndpoint : Endpoint<ChangePasswordRequest>
+public sealed class ChangePasswordEndpoint : Endpoint<ChangePasswordRequest, AuthResponse>
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IJwtTokenService _jwtTokenService;
+    private readonly IRefreshTokenService _refreshTokenService;
+    private readonly IHostEnvironment _env;
 
-    public ChangePasswordEndpoint(UserManager<ApplicationUser> userManager)
+    public ChangePasswordEndpoint(
+        UserManager<ApplicationUser> userManager,
+        IJwtTokenService jwtTokenService,
+        IRefreshTokenService refreshTokenService,
+        IHostEnvironment env)
     {
         _userManager = userManager;
+        _jwtTokenService = jwtTokenService;
+        _refreshTokenService = refreshTokenService;
+        _env = env;
     }
 
     public override void Configure()
@@ -49,7 +60,26 @@ public sealed class ChangePasswordEndpoint : Endpoint<ChangePasswordRequest>
             await _userManager.UpdateAsync(user);
         }
 
-        // Client should hit /api/auth/refresh next to get a token without the pwd_change claim.
-        await SendNoContentAsync(ct);
+        await _refreshTokenService.RevokeAllForUserAsync(user.Id, "password_changed", ct);
+
+        var roles = await _userManager.GetRolesAsync(user);
+        var token = _jwtTokenService.CreateAccessToken(user, roles);
+
+        var refreshResult = await _refreshTokenService.IssueAsync(
+            user,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            HttpContext.Request.Headers.UserAgent.ToString(),
+            ct);
+
+        RefreshTokenCookie.Append(HttpContext, refreshResult, _env);
+
+        await SendOkAsync(new AuthResponse
+        {
+            AccessToken = token.AccessToken,
+            TokenType = "Bearer",
+            ExpiresAtUtc = token.ExpiresAtUtc,
+            RefreshTokenExpiresAtUtc = refreshResult.ExpiresAtUtc.ToDateTimeOffset(),
+            User = AuthUserResponse.From(user, roles),
+        }, ct);
     }
 }

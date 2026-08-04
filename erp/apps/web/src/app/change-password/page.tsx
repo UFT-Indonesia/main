@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/lib/auth/store';
 import { useRequireAuth } from '@/lib/auth/use-auth';
-import { changePassword, refreshSession } from '@/lib/api/auth';
+import { changePassword } from '@/lib/api/auth';
 import { extractApiError } from '@/lib/api/client';
 import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
@@ -51,9 +51,7 @@ export default function ChangePasswordPage() {
   const onSubmit = async (values: ChangePasswordValues) => {
     setSubmitting(true);
     try {
-      await changePassword(values.currentPassword, values.newPassword);
-      // Fetch a fresh token without the pwd_change claim.
-      const response = await refreshSession();
+      const response = await changePassword(values.currentPassword, values.newPassword);
       setSession(response.accessToken, response.user, response.expiresAtUtc);
       toast.success(t('successTitle'), t('successDescription'));
       router.replace('/');
