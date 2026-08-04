@@ -59,8 +59,14 @@ public static class AccountRules
         caller.IsInRole(nameof(EmployeeRole.Owner))
         || (caller.IsInRole(nameof(EmployeeRole.Manager)) && targetRole == EmployeeRole.Staff);
 
+    /// <summary>Most privileged role wins when a user has multiple Identity roles (Owner &lt; Manager &lt; Staff by enum value).</summary>
     public static EmployeeRole RoleFromNames(IList<string> roles) =>
-        roles.Count > 0 && Enum.TryParse<EmployeeRole>(roles[0], out var role) ? role : EmployeeRole.Staff;
+        roles
+            .Select(r => Enum.TryParse<EmployeeRole>(r, out var role) ? role : (EmployeeRole?)null)
+            .Where(r => r.HasValue)
+            .Select(r => r!.Value)
+            .DefaultIfEmpty(EmployeeRole.Staff)
+            .Min();
 }
 
 public static class TempPassword
