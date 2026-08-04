@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createAccount,
+  deleteAccount,
   listAccounts,
   listProvisionCandidates,
   resetAccountPassword,
@@ -54,6 +55,16 @@ export function useResetAccountPassword() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => resetAccountPassword(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: accountKeys.all });
+    },
+  });
+}
+
+export function useDeleteAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteAccount(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: accountKeys.all });
     },

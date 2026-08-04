@@ -34,3 +34,7 @@ export async function resetAccountPassword(id: string): Promise<ResetAccountPass
   );
   return data;
 }
+
+export async function deleteAccount(id: string): Promise<void> {
+  await apiClient.delete(`/api/accounts/${id}`);
+}

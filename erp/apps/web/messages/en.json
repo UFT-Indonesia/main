@@ -4,6 +4,7 @@
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
+    "confirm": "Confirm",
     "search": "Search",
     "actions": "Actions",
     "logout": "Log out",
@@ -319,7 +320,8 @@
     "actions": {
       "resetPassword": "Reset password",
       "disable": "Disable",
-      "enable": "Enable"
+      "enable": "Enable",
+      "delete": "Delete"
     },
     "toggle": {
       "enabledTitle": "Account enabled",
@@ -328,6 +330,12 @@
     },
     "reset": {
       "errorTitle": "Password reset failed"
+    },
+    "delete": {
+      "title": "Delete account",
+      "confirm": "Are you sure you want to delete {username} account?",
+      "deletedTitle": "Account deleted",
+      "errorTitle": "Delete failed"
     },
     "create": {
       "title": "Create account",

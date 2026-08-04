@@ -9,8 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AccountTable } from '@/components/accounts/account-table';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
+import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { TempPasswordDialog } from '@/components/accounts/temp-password-dialog';
-import { useAccounts, useResetAccountPassword, useSetAccountEnabled } from '@/hooks/use-accounts';
+import {
+  useAccounts,
+  useDeleteAccount,
+  useResetAccountPassword,
+  useSetAccountEnabled,
+} from '@/hooks/use-accounts';
 import { useAuthStore } from '@/lib/auth/store';
 import { extractApiError } from '@/lib/api/client';
 import { useToast } from '@/hooks/use-toast';
@@ -27,10 +33,12 @@ function AccountsPageContent() {
   const [tempPassword, setTempPassword] = useState<{ username: string; password: string } | null>(
     null,
   );
+  const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
 
   const { data, isLoading, error } = useAccounts();
   const setEnabledMutation = useSetAccountEnabled();
   const resetMutation = useResetAccountPassword();
+  const deleteMutation = useDeleteAccount();
 
   const handleToggleEnabled = async (account: Account) => {
     try {
@@ -50,6 +58,17 @@ function AccountsPageContent() {
       setTempPassword({ username: account.username, password: response.tempPassword });
     } catch (err) {
       toast.error(t('reset.errorTitle'), extractApiError(err).message);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteMutation.mutateAsync(deleteTarget.id);
+      toast.success(t('delete.deletedTitle'), deleteTarget.username);
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error(t('delete.errorTitle'), extractApiError(err).message);
     }
   };
 
@@ -82,6 +101,7 @@ function AccountsPageContent() {
           currentUserId={currentUser?.id}
           onToggleEnabled={handleToggleEnabled}
           onResetPassword={handleResetPassword}
+          onDelete={setDeleteTarget}
         />
       )}
 
@@ -102,6 +122,14 @@ function AccountsPageContent() {
         onOpenChange={(open) => !open && setTempPassword(null)}
         username={tempPassword?.username ?? ''}
         tempPassword={tempPassword?.password ?? ''}
+      />
+
+      <DeleteAccountDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        username={deleteTarget?.username ?? ''}
+        onConfirm={handleDeleteConfirm}
+        isPending={deleteMutation.isPending}
       />
     </div>
   );

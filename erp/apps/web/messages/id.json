@@ -4,6 +4,7 @@
     "loading": "Memuat...",
     "save": "Simpan",
     "cancel": "Batal",
+    "confirm": "Konfirmasi",
     "search": "Cari",
     "actions": "Aksi",
     "logout": "Keluar",
@@ -319,7 +320,8 @@
     "actions": {
       "resetPassword": "Reset password",
       "disable": "Nonaktifkan",
-      "enable": "Aktifkan"
+      "enable": "Aktifkan",
+      "delete": "Hapus"
     },
     "toggle": {
       "enabledTitle": "Akun diaktifkan",
@@ -328,6 +330,12 @@
     },
     "reset": {
       "errorTitle": "Gagal mereset password"
+    },
+    "delete": {
+      "title": "Hapus akun",
+      "confirm": "Apakah Anda yakin ingin menghapus akun {username}?",
+      "deletedTitle": "Akun dihapus",
+      "errorTitle": "Gagal menghapus"
     },
     "create": {
       "title": "Buat akun",

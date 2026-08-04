@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { KeyRound, Lock, LockOpen } from 'lucide-react';
+import { KeyRound, Lock, LockOpen, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,7 @@ interface AccountTableProps {
   currentUserId: string | undefined;
   onToggleEnabled: (account: Account) => void;
   onResetPassword: (account: Account) => void;
+  onDelete: (account: Account) => void;
 }
 
 export function AccountTable({
@@ -26,6 +27,7 @@ export function AccountTable({
   currentUserId,
   onToggleEnabled,
   onResetPassword,
+  onDelete,
 }: AccountTableProps) {
   const t = useTranslations('accounts');
   const tRoles = useTranslations('employees.form.roleOptions');
@@ -93,6 +95,16 @@ export function AccountTable({
                     ) : (
                       <LockOpen className="h-4 w-4" />
                     )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onDelete(account)}
+                    disabled={account.id === currentUserId}
+                    aria-label={t('actions.delete')}
+                    title={t('actions.delete')}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </TableCell>
