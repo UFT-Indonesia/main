@@ -81,7 +81,12 @@ public sealed class CreateAccountEndpoint : Endpoint<CreateAccountRequest, Creat
             ThrowError(string.Join(" ", createResult.Errors.Select(e => e.Description)), 400);
         }
 
-        await _userManager.AddToRoleAsync(user, employee.Role.ToString());
+        var roleResult = await _userManager.AddToRoleAsync(user, employee.Role.ToString());
+        if (!roleResult.Succeeded)
+        {
+            await _userManager.DeleteAsync(user);
+            ThrowError(string.Join(" ", roleResult.Errors.Select(e => e.Description)), 400);
+        }
 
         await SendAsync(new CreateAccountResponse
         {
