@@ -1,6 +1,4 @@
-using Erp.Core.Aggregates.Employees;
 using Erp.Infrastructure.Identity;
-using Erp.Infrastructure.Persistence;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -12,12 +10,10 @@ namespace Erp.Web.Endpoints.Accounts;
 public sealed class ListAccountsEndpoint : EndpointWithoutRequest<ListAccountsResponse>
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly AppDbContext _db;
 
-    public ListAccountsEndpoint(UserManager<ApplicationUser> userManager, AppDbContext db)
+    public ListAccountsEndpoint(UserManager<ApplicationUser> userManager)
     {
         _userManager = userManager;
-        _db = db;
     }
 
     public override void Configure()
