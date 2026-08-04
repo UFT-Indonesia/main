@@ -25,8 +25,15 @@ public static class EmployeeRoleChangedHandler
             return;
         }
 
-        await userManager.RemoveFromRoleAsync(user, message.OldRole.ToString());
-        await userManager.AddToRoleAsync(user, message.NewRole.ToString());
+        var removeResult = await userManager.RemoveFromRoleAsync(user, message.OldRole.ToString());
+        var addResult = await userManager.AddToRoleAsync(user, message.NewRole.ToString());
+        if (!removeResult.Succeeded || !addResult.Succeeded)
+        {
+            var errors = removeResult.Errors.Concat(addResult.Errors).Select(e => e.Description);
+            throw new InvalidOperationException(
+                $"Failed to sync Identity role for employee {message.EmployeeId}: {string.Join(" ", errors)}");
+        }
+
         await refreshTokenService.RevokeAllForEmployeeAsync(message.EmployeeId, "employee_role_changed", ct);
     }
 }
