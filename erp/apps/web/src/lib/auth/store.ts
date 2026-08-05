@@ -41,3 +41,8 @@ export const useAuthStore = create<AuthState>()(
 export function useAuthHydrated(): boolean {
   return useAuthStore((s) => s.hydrated);
 }
+
+/** Mirrors the backend gate: Owner manages anyone, Manager only Staff. */
+export function useHasRole(...roles: string[]): boolean {
+  return useAuthStore((s) => roles.some((role) => s.user?.roles.includes(role) ?? false));
+}

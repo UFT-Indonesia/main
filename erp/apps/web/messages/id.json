@@ -103,7 +103,16 @@
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
     },
-    "createAccount": "Buat akun"
+    "createAccount": "Buat akun",
+    "parentChange": {
+      "title": "Ubah garis pelaporan?",
+      "description": "{name} akan dipindahkan ke atasan lain. Ini mengubah struktur organisasi.",
+      "from": "Saat ini melapor ke",
+      "to": "Akan melapor ke",
+      "none": "Tanpa atasan",
+      "unknown": "Tidak diketahui",
+      "confirm": "Ubah garis pelaporan"
+    }
   },
   "attendance": {
     "title": "Kehadiran",

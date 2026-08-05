@@ -103,7 +103,16 @@
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
     },
-    "createAccount": "Create account"
+    "createAccount": "Create account",
+    "parentChange": {
+      "title": "Change reporting line?",
+      "description": "{name} will be moved to a different manager. This restructures the org chart.",
+      "from": "Currently reports to",
+      "to": "Will report to",
+      "none": "No manager",
+      "unknown": "Unknown",
+      "confirm": "Change reporting line"
+    }
   },
   "attendance": {
     "title": "Attendance",

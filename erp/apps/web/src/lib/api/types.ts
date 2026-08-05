@@ -28,9 +28,10 @@ export interface Employee {
   fullName: string;
   nik: string;
   npwp: string | null;
-  monthlyWageAmount: number;
-  monthlyWageCurrency: string;
-  effectiveSalaryFrom: string;
+  /** Null for non-Owner callers — pay is redacted server-side. */
+  monthlyWageAmount: number | null;
+  monthlyWageCurrency: string | null;
+  effectiveSalaryFrom: string | null;
   role: EmployeeRole;
   status: EmployeeStatus;
   parentId: string | null;
@@ -62,7 +63,11 @@ export interface CreateEmployeeBody {
   parentId?: string | null;
 }
 
-export type UpdateEmployeeBody = CreateEmployeeBody;
+export interface UpdateEmployeeBody extends Omit<CreateEmployeeBody, 'monthlyWageAmount' | 'effectiveSalaryFrom'> {
+  /** Omit or null to leave pay unchanged. Managers must omit it — only Owner may set pay. */
+  monthlyWageAmount?: number | null;
+  effectiveSalaryFrom?: string | null;
+}
 
 export interface DeleteEmployeeBody {
   terminationDate?: string | null;

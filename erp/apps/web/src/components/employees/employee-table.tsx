@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useHasRole } from '@/lib/auth/store';
 import type { Employee, EmployeeStatus } from '@/lib/api/types';
 
 interface EmployeeTableProps {
@@ -44,6 +45,9 @@ export function EmployeeTable({ employees, onDelete }: EmployeeTableProps) {
   const t = useTranslations('employees');
   const tForm = useTranslations('employees.form');
   const tCommon = useTranslations('common');
+  // Matches the backend: only Owner reads pay or terminates; Manager may still edit.
+  const isOwner = useHasRole('Owner');
+  const canEdit = useHasRole('Owner', 'Manager');
 
   if (employees.length === 0) {
     return (
@@ -62,7 +66,7 @@ export function EmployeeTable({ employees, onDelete }: EmployeeTableProps) {
             <TableHead>{tForm('nik')}</TableHead>
             <TableHead>{tForm('role')}</TableHead>
             <TableHead>{tForm('status')}</TableHead>
-            <TableHead className="text-right">{tForm('monthlyWage')}</TableHead>
+            {isOwner && <TableHead className="text-right">{tForm('monthlyWage')}</TableHead>}
             <TableHead className="text-right">{tCommon('actions')}</TableHead>
           </TableRow>
         </TableHeader>
@@ -79,9 +83,13 @@ export function EmployeeTable({ employees, onDelete }: EmployeeTableProps) {
                   {tForm(`statusOptions.${employee.status}`)}
                 </Badge>
               </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {formatIdr(employee.monthlyWageAmount, employee.monthlyWageCurrency)}
-              </TableCell>
+              {isOwner && (
+                <TableCell className="text-right tabular-nums">
+                  {employee.monthlyWageAmount === null
+                    ? '—'
+                    : formatIdr(employee.monthlyWageAmount, employee.monthlyWageCurrency ?? 'IDR')}
+                </TableCell>
+              )}
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
                   <Link
@@ -92,22 +100,26 @@ export function EmployeeTable({ employees, onDelete }: EmployeeTableProps) {
                   >
                     <KeyRound className="h-4 w-4" />
                   </Link>
-                  <Link
-                    href={`/employees/${employee.id}` as Route}
-                    className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
-                    aria-label="Edit"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onDelete(employee)}
-                    disabled={employee.status === 'Terminated'}
-                    aria-label="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {canEdit && (
+                    <Link
+                      href={`/employees/${employee.id}` as Route}
+                      className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
+                      aria-label="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Link>
+                  )}
+                  {isOwner && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDelete(employee)}
+                      disabled={employee.status === 'Terminated'}
+                      aria-label="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </TableCell>
             </TableRow>
