@@ -21,7 +21,8 @@ const NAV: NavItem[] = [
   { href: '/' as Route, labelKey: 'dashboard', icon: LayoutDashboard },
   { href: '/employees' as Route, labelKey: 'employees', icon: Users },
   { href: '/attendance' as Route, labelKey: 'attendance', icon: Clock },
-  { href: '/leave' as Route, labelKey: 'leave', icon: CalendarDays, roles: ['Owner', 'Manager'] },
+  // Everyone can reach leave now — Staff file their own; the list is scoped server-side.
+  { href: '/leave' as Route, labelKey: 'leave', icon: CalendarDays },
   { href: '/accounts' as Route, labelKey: 'accounts', icon: KeyRound, roles: ['Owner', 'Manager'] },
   {
     href: '/attendance/settings' as Route,

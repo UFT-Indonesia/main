@@ -237,6 +237,9 @@ export interface LeaveRequest {
   decidedAtUtc: string | null;
   decisionNote: string | null;
   approvedWorkdaysThisYear: number;
+  /** Server-computed: the rules depend on the subject's role and reporting line, which the client cannot see. */
+  canDecide: boolean;
+  canCancel: boolean;
 }
 
 export interface ListLeaveRequestsResponse {

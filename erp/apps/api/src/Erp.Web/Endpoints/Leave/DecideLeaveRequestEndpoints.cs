@@ -1,6 +1,6 @@
-using System.Security.Claims;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
 using Erp.UseCases.Leave.DecideLeaveRequest;
 using FastEndpoints;
@@ -9,7 +9,12 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Leave;
 
-/// <summary>Shared plumbing for the three decision endpoints (approve/deny/cancel).</summary>
+/// <summary>
+/// Shared plumbing for the three decision endpoints (approve/deny/cancel). Authority is
+/// enforced per-request by <see cref="LeaveRules"/> against the subject's role and reporting
+/// line, so the role gate here is only "must be signed in".
+/// </summary>
+[Authorize]
 public abstract class DecideLeaveRequestEndpointBase : Endpoint<DecideLeaveRequestRequest, LeaveRequestResponse>
 {
     private readonly IMessageBus _bus;
@@ -22,7 +27,7 @@ public abstract class DecideLeaveRequestEndpointBase : Endpoint<DecideLeaveReque
     /// <summary>Route segment under /api/leave/{id:guid}/ (e.g. "approve").</summary>
     protected abstract string Action { get; }
 
-    protected abstract object BuildCommand(DecideLeaveRequestRequest req, Guid userId, string userName);
+    protected abstract object BuildCommand(DecideLeaveRequestRequest req, Caller caller);
 
     public override void Configure()
     {
@@ -32,17 +37,13 @@ public abstract class DecideLeaveRequestEndpointBase : Endpoint<DecideLeaveReque
 
     public override async Task HandleAsync(DecideLeaveRequestRequest req, CancellationToken ct)
     {
-        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdValue, out var userId))
+        if (CallerFactory.From(User) is not { } caller)
         {
             await SendUnauthorizedAsync(ct);
             return;
         }
 
-        var userName = User.FindFirstValue(ClaimTypes.Name) ?? "—";
-
-        var result = await _bus.InvokeAsync<Result<LeaveRequestResult>>(
-            BuildCommand(req, userId, userName), ct);
+        var result = await _bus.InvokeAsync<Result<LeaveRequestResult>>(BuildCommand(req, caller), ct);
 
         if (result is Result<LeaveRequestResult>.Success s)
         {
@@ -58,6 +59,12 @@ public abstract class DecideLeaveRequestEndpointBase : Endpoint<DecideLeaveReque
 
         if (result is Result<LeaveRequestResult>.Error e)
         {
+            if (e.Code == ResultErrors.Forbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 
@@ -65,35 +72,32 @@ public abstract class DecideLeaveRequestEndpointBase : Endpoint<DecideLeaveReque
     }
 }
 
-[Authorize(Roles = "Owner,Manager")]
 public sealed class ApproveLeaveRequestEndpoint : DecideLeaveRequestEndpointBase
 {
     public ApproveLeaveRequestEndpoint(IMessageBus bus) : base(bus) { }
 
     protected override string Action => "approve";
 
-    protected override object BuildCommand(DecideLeaveRequestRequest req, Guid userId, string userName) =>
-        new ApproveLeaveRequestCommand(req.Id, userId, userName);
+    protected override object BuildCommand(DecideLeaveRequestRequest req, Caller caller) =>
+        new ApproveLeaveRequestCommand(req.Id, caller);
 }
 
-[Authorize(Roles = "Owner,Manager")]
 public sealed class DenyLeaveRequestEndpoint : DecideLeaveRequestEndpointBase
 {
     public DenyLeaveRequestEndpoint(IMessageBus bus) : base(bus) { }
 
     protected override string Action => "deny";
 
-    protected override object BuildCommand(DecideLeaveRequestRequest req, Guid userId, string userName) =>
-        new DenyLeaveRequestCommand(req.Id, userId, userName, req.Note);
+    protected override object BuildCommand(DecideLeaveRequestRequest req, Caller caller) =>
+        new DenyLeaveRequestCommand(req.Id, caller, req.Note);
 }
 
-[Authorize(Roles = "Owner,Manager")]
 public sealed class CancelLeaveRequestEndpoint : DecideLeaveRequestEndpointBase
 {
     public CancelLeaveRequestEndpoint(IMessageBus bus) : base(bus) { }
 
     protected override string Action => "cancel";
 
-    protected override object BuildCommand(DecideLeaveRequestRequest req, Guid userId, string userName) =>
-        new CancelLeaveRequestCommand(req.Id, userId, userName, req.Note);
+    protected override object BuildCommand(DecideLeaveRequestRequest req, Caller caller) =>
+        new CancelLeaveRequestCommand(req.Id, caller, req.Note);
 }

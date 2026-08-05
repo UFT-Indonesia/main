@@ -4,6 +4,7 @@ using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
 using NodaTime;
 
@@ -38,6 +39,12 @@ public static class CreateLeaveRequestHandler
                 "leave.employee_terminated", "Cannot file leave for a terminated employee.");
         }
 
+        if (!LeaveRules.CanFileFor(command.Caller, employee))
+        {
+            return new Result<LeaveRequestResult>.Error(
+                ResultErrors.Forbidden, "You cannot file leave for this employee.");
+        }
+
         // One open request per employee at a time.
         if (await leaveRequests.AnyAsync(new PendingLeaveForEmployeeSpec(employeeId), ct))
         {
@@ -58,14 +65,22 @@ public static class CreateLeaveRequestHandler
         LeaveRequest request;
         try
         {
+            var now = clock.GetCurrentInstant();
             request = LeaveRequest.Create(
                 employeeId,
                 type,
                 startDate,
                 endDate,
                 command.Reason,
-                command.RequestedByUserId,
-                clock.GetCurrentInstant());
+                command.Caller.UserId,
+                now);
+
+            // Nobody outranks an Owner, so their leave is recorded already-approved — it is a
+            // note on the calendar rather than something awaiting a decision.
+            if (LeaveRules.IsAutoApproved(employee.Role))
+            {
+                request.Approve(command.Caller.UserId, command.Caller.Name, now);
+            }
         }
         catch (DomainException ex)
         {
@@ -74,7 +89,12 @@ public static class CreateLeaveRequestHandler
 
         await leaveRequests.AddAsync(request, ct);
 
+        var (canDecide, canCancel) = LeaveRequestResult.PermissionsFor(command.Caller, request, employee);
         return new Result<LeaveRequestResult>.Success(
-            LeaveRequestResult.From(request, employeeFullName: employee.FullName));
+            LeaveRequestResult.From(
+                request,
+                employeeFullName: employee.FullName,
+                canDecide: canDecide,
+                canCancel: canCancel));
     }
 }
