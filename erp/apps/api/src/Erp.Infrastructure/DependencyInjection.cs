@@ -112,6 +112,7 @@ public static class DependencyInjection
             .AddSignInManager()
             .AddEntityFrameworkStores<AppDbContext>();
 
+        services.AddScoped<IAccountIdentityResolver, AccountIdentityResolver>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IDeviceIngestSignatureValidator, DeviceIngestSignatureValidator>();

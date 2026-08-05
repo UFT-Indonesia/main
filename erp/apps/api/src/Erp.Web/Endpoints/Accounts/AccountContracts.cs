@@ -54,19 +54,13 @@ public sealed class ResetAccountPasswordResponse
 
 public static class AccountRules
 {
-    /// <summary>Owner manages any account; Manager only Staff-role accounts.</summary>
+    /// <summary>
+    /// Owner manages any account; Manager only Staff-role accounts. The caller's role comes
+    /// from the token claim, which is stamped from <c>Employee.Role</c> at issue time.
+    /// </summary>
     public static bool CanManage(ClaimsPrincipal caller, EmployeeRole targetRole) =>
         caller.IsInRole(nameof(EmployeeRole.Owner))
         || (caller.IsInRole(nameof(EmployeeRole.Manager)) && targetRole == EmployeeRole.Staff);
-
-    /// <summary>Most privileged role wins when a user has multiple Identity roles (Owner &lt; Manager &lt; Staff by enum value).</summary>
-    public static EmployeeRole RoleFromNames(IList<string> roles) =>
-        roles
-            .Select(r => Enum.TryParse<EmployeeRole>(r, out var role) ? role : (EmployeeRole?)null)
-            .Where(r => r.HasValue)
-            .Select(r => r!.Value)
-            .DefaultIfEmpty(EmployeeRole.Staff)
-            .Min();
 }
 
 public static class TempPassword

@@ -10,10 +10,14 @@ namespace Erp.Web.Endpoints.Accounts;
 public sealed class ListAccountsEndpoint : EndpointWithoutRequest<ListAccountsResponse>
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IAccountIdentityResolver _identityResolver;
 
-    public ListAccountsEndpoint(UserManager<ApplicationUser> userManager)
+    public ListAccountsEndpoint(
+        UserManager<ApplicationUser> userManager,
+        IAccountIdentityResolver identityResolver)
     {
         _userManager = userManager;
+        _identityResolver = identityResolver;
     }
 
     public override void Configure()
@@ -26,13 +30,12 @@ public sealed class ListAccountsEndpoint : EndpointWithoutRequest<ListAccountsRe
     {
         var users = await _userManager.Users.AsNoTracking().OrderBy(u => u.UserName).ToListAsync(ct);
 
-        // ponytail: one GetRolesAsync per account — fine for a small org, batch via a
-        // join on AuthUserRoles if the account list ever gets slow.
+        // ponytail: one employee lookup per account — fine for a small org, batch into a
+        // single join on Employees if the account list ever gets slow.
         var items = new List<AccountResponse>(users.Count);
         foreach (var user in users)
         {
-            var roles = await _userManager.GetRolesAsync(user);
-            var role = AccountRules.RoleFromNames(roles);
+            var role = (await _identityResolver.ResolveAsync(user, ct)).Role;
 
             if (!AccountRules.CanManage(User, role))
             {

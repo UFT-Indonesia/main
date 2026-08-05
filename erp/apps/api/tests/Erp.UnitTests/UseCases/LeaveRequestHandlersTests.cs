@@ -46,6 +46,36 @@ public class LeaveRequestHandlersTests
         Guid.NewGuid());
 
     [Fact]
+    public async Task Create_rejects_a_terminated_employee()
+    {
+        var terminated = Employee.Create(
+            "Gone Employee",
+            Nik.Create("3201234567890124"),
+            Money.Idr(5_000_000m),
+            LocalDate.FromDateTime(DateTime.Today),
+            EmployeeRole.Owner);
+        terminated.Terminate(LocalDate.FromDateTime(DateTime.Today));
+        _employees.GetByIdAsync(terminated.Id, Arg.Any<CancellationToken>()).Returns(terminated);
+
+        var result = await CreateLeaveRequestHandler.Handle(
+            new CreateLeaveRequestCommand(
+                terminated.Id.Value,
+                "Annual",
+                new DateOnly(2026, 8, 3),
+                new DateOnly(2026, 8, 7),
+                null,
+                Guid.NewGuid()),
+            _employees,
+            _leaveRequests,
+            _clock,
+            CancellationToken.None);
+
+        result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
+            .Which.Code.Should().Be("leave.employee_terminated");
+        await _leaveRequests.DidNotReceive().AddAsync(Arg.Any<LeaveRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Create_succeeds_and_persists()
     {
         var result = await CreateLeaveRequestHandler.Handle(

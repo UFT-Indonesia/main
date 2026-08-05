@@ -12,6 +12,13 @@ public sealed class JwtTokenService : IJwtTokenService
     /// <summary>Present (value "true") while the user must change a temporary password.</summary>
     public const string MustChangePasswordClaim = "pwd_change";
 
+    /// <summary>
+    /// The employee this account speaks for. Safe to cache in the token because the
+    /// account→employee link is set once at provisioning and never rewritten; anything
+    /// that does change (ParentId) is read fresh per request instead.
+    /// </summary>
+    public const string EmployeeIdClaim = "employee_id";
+
     private readonly JwtOptions _options;
     private readonly IClock _clock;
 
@@ -21,7 +28,7 @@ public sealed class JwtTokenService : IJwtTokenService
         _clock = clock;
     }
 
-    public JwtToken CreateAccessToken(ApplicationUser user, IEnumerable<string> roles)
+    public JwtToken CreateAccessToken(ApplicationUser user, AccountIdentity identity)
     {
         var expiresAt = _clock.GetCurrentInstant()
             .Plus(Duration.FromMinutes(_options.AccessTokenMinutes))
@@ -37,7 +44,12 @@ public sealed class JwtTokenService : IJwtTokenService
             new(ClaimTypes.Name, user.FullName),
         };
 
-        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+        claims.Add(new Claim(ClaimTypes.Role, identity.Role.ToString()));
+
+        if (identity.EmployeeId is { } employeeId)
+        {
+            claims.Add(new Claim(EmployeeIdClaim, employeeId.ToString()));
+        }
 
         if (user.MustChangePassword)
         {

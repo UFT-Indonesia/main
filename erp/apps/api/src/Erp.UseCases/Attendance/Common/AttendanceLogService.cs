@@ -38,6 +38,14 @@ internal static class AttendanceLogService
             return new Result<AttendanceResult>.NotFound("Employee was not found.");
         }
 
+        // New punches stop at termination; corrections to existing ones stay open so payroll
+        // can still close the final period out.
+        if (employee.Status == EmployeeStatus.Terminated)
+        {
+            return new Result<AttendanceResult>.Error(
+                "attendance.employee_terminated", "Cannot record attendance for a terminated employee.");
+        }
+
         AttendanceLog log;
         try
         {

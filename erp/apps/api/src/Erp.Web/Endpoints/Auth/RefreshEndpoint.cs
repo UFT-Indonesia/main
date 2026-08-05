@@ -1,7 +1,6 @@
 using Erp.Infrastructure.Authentication;
 using Erp.Infrastructure.Identity;
 using FastEndpoints;
-using Microsoft.AspNetCore.Identity;
 
 namespace Erp.Web.Endpoints.Auth;
 
@@ -9,18 +8,18 @@ public sealed class RefreshEndpoint : Endpoint<EmptyRequest, AuthResponse>
 {
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IJwtTokenService _jwtTokenService;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IAccountIdentityResolver _identityResolver;
     private readonly IHostEnvironment _environment;
 
     public RefreshEndpoint(
         IRefreshTokenService refreshTokenService,
         IJwtTokenService jwtTokenService,
-        UserManager<ApplicationUser> userManager,
+        IAccountIdentityResolver identityResolver,
         IHostEnvironment environment)
     {
         _refreshTokenService = refreshTokenService;
         _jwtTokenService = jwtTokenService;
-        _userManager = userManager;
+        _identityResolver = identityResolver;
         _environment = environment;
     }
 
@@ -52,8 +51,8 @@ public sealed class RefreshEndpoint : Endpoint<EmptyRequest, AuthResponse>
         switch (result)
         {
             case RefreshTokenRotationResult.Success success:
-                var roles = await _userManager.GetRolesAsync(success.User);
-                var accessToken = _jwtTokenService.CreateAccessToken(success.User, roles);
+                var identity = await _identityResolver.ResolveAsync(success.User, ct);
+                var accessToken = _jwtTokenService.CreateAccessToken(success.User, identity);
                 RefreshTokenCookie.Append(HttpContext, success.PlainTextToken, success.ExpiresAtUtc, _environment);
                 await SendOkAsync(new AuthResponse
                 {
@@ -61,7 +60,7 @@ public sealed class RefreshEndpoint : Endpoint<EmptyRequest, AuthResponse>
                     TokenType = "Bearer",
                     ExpiresAtUtc = accessToken.ExpiresAtUtc,
                     RefreshTokenExpiresAtUtc = success.ExpiresAtUtc.ToDateTimeOffset(),
-                    User = AuthUserResponse.From(success.User, roles),
+                    User = AuthUserResponse.From(success.User, identity),
                 }, ct);
                 return;
 

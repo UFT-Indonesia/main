@@ -32,6 +32,12 @@ public static class CreateLeaveRequestHandler
             return new Result<LeaveRequestResult>.NotFound("Employee was not found.");
         }
 
+        if (employee.Status == EmployeeStatus.Terminated)
+        {
+            return new Result<LeaveRequestResult>.Error(
+                "leave.employee_terminated", "Cannot file leave for a terminated employee.");
+        }
+
         // One open request per employee at a time.
         if (await leaveRequests.AnyAsync(new PendingLeaveForEmployeeSpec(employeeId), ct))
         {

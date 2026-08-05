@@ -11,6 +11,7 @@ public sealed class LoginEndpoint : Endpoint<LoginRequest, AuthResponse>
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
+    private readonly IAccountIdentityResolver _identityResolver;
     private readonly IHostEnvironment _env;
 
     public LoginEndpoint(
@@ -18,12 +19,14 @@ public sealed class LoginEndpoint : Endpoint<LoginRequest, AuthResponse>
         SignInManager<ApplicationUser> signInManager,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
+        IAccountIdentityResolver identityResolver,
         IHostEnvironment env)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _jwtTokenService = jwtTokenService;
         _refreshTokenService = refreshTokenService;
+        _identityResolver = identityResolver;
         _env = env;
     }
 
@@ -55,8 +58,8 @@ public sealed class LoginEndpoint : Endpoint<LoginRequest, AuthResponse>
             return;
         }
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var token = _jwtTokenService.CreateAccessToken(user, roles);
+        var identity = await _identityResolver.ResolveAsync(user, ct);
+        var token = _jwtTokenService.CreateAccessToken(user, identity);
 
         var refreshResult = await _refreshTokenService.IssueAsync(
             user,
@@ -72,7 +75,7 @@ public sealed class LoginEndpoint : Endpoint<LoginRequest, AuthResponse>
             TokenType = "Bearer",
             ExpiresAtUtc = token.ExpiresAtUtc,
             RefreshTokenExpiresAtUtc = refreshResult.ExpiresAtUtc.ToDateTimeOffset(),
-            User = AuthUserResponse.From(user, roles),
+            User = AuthUserResponse.From(user, identity),
         }, ct);
     }
 }

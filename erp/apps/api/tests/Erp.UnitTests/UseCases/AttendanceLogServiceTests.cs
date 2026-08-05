@@ -18,6 +18,8 @@ public class AttendanceLogServiceTests
     private static readonly DateTimeOffset Now = new(2025, 5, 12, 9, 0, 0, TimeSpan.FromHours(7));
     private static readonly EmployeeId ValidEmployeeId = EmployeeId.New();
 
+    private static readonly EmployeeId TerminatedEmployeeId = EmployeeId.New();
+
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
     private readonly IRepository<AttendanceLog> _attendanceLogs = Substitute.For<IRepository<AttendanceLog>>();
     private readonly IClock _clock = Substitute.For<IClock>();
@@ -37,7 +39,61 @@ public class AttendanceLogServiceTests
         _employees.GetByIdAsync(ValidEmployeeId, Arg.Any<CancellationToken>())
             .Returns(employee);
 
+        var terminated = Employee.Create(
+            "Gone Employee",
+            Nik.Create("3201234567890124"),
+            Money.Idr(5_000_000m),
+            LocalDate.FromDateTime(DateTime.Today),
+            EmployeeRole.Owner);
+        terminated.Terminate(LocalDate.FromDateTime(DateTime.Today));
+        _employees.GetByIdAsync(TerminatedEmployeeId, Arg.Any<CancellationToken>())
+            .Returns(terminated);
+
         _clock.GetCurrentInstant().Returns(Instant.FromDateTimeOffset(Now));
+    }
+
+    [Fact]
+    public async Task RecordAsync_rejects_a_device_punch_for_a_terminated_employee()
+    {
+        var result = await AttendanceLogService.RecordAsync(
+            TerminatedEmployeeId.Value,
+            Now,
+            "In",
+            recordedByUserId: null,
+            recordedByName: null,
+            deviceId: "esp32-1",
+            note: null,
+            _employees,
+            _attendanceLogs,
+            _clock,
+            _bus,
+            CancellationToken.None);
+
+        result.Should().BeOfType<Result<AttendanceResult>.Error>()
+            .Which.Code.Should().Be("attendance.employee_terminated");
+        await _attendanceLogs.DidNotReceive().AddAsync(Arg.Any<AttendanceLog>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordAsync_rejects_a_manual_punch_for_a_terminated_employee()
+    {
+        var result = await AttendanceLogService.RecordAsync(
+            TerminatedEmployeeId.Value,
+            Now,
+            "In",
+            recordedByUserId: Guid.NewGuid(),
+            recordedByName: "Manager",
+            deviceId: null,
+            note: "lupa absen",
+            _employees,
+            _attendanceLogs,
+            _clock,
+            _bus,
+            CancellationToken.None);
+
+        result.Should().BeOfType<Result<AttendanceResult>.Error>()
+            .Which.Code.Should().Be("attendance.employee_terminated");
+        await _attendanceLogs.DidNotReceive().AddAsync(Arg.Any<AttendanceLog>(), Arg.Any<CancellationToken>());
     }
 
     [Theory]
