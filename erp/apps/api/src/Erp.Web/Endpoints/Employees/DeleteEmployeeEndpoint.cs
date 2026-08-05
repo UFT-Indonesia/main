@@ -8,6 +8,10 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Employees;
 
+/// <summary>
+/// Owner-only by design — unlike update (see <see cref="Accounts.AccountRules.CanManage"/>),
+/// termination is never delegated to a Manager, so the blanket role gate is the whole rule.
+/// </summary>
 [Authorize(Roles = "Owner")]
 public sealed class DeleteEmployeeEndpoint : Endpoint<DeleteEmployeeRouteRequest, EmployeeResponse>
 {
@@ -26,13 +30,12 @@ public sealed class DeleteEmployeeEndpoint : Endpoint<DeleteEmployeeRouteRequest
 
     public override async Task HandleAsync(DeleteEmployeeRouteRequest req, CancellationToken ct)
     {
-        // TODO: Enforce RBS permission check — only authorized roles should be able to terminate employees.
         var result = await _bus.InvokeAsync<Result<EmployeeResult>>(
             new DeleteEmployeeCommand(req.Id, req.TerminationDate), ct);
 
         if (result is Result<EmployeeResult>.Success s)
         {
-            await SendOkAsync(EmployeeResponseMapper.ToResponse(s.Value), ct);
+            await SendOkAsync(EmployeeResponseMapper.ToResponse(s.Value, User), ct);
             return;
         }
 
