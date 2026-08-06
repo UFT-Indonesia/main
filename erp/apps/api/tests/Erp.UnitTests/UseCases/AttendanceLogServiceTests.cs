@@ -1,3 +1,4 @@
+using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Attendance.Events;
 using Erp.Core.Aggregates.Common;
@@ -101,6 +102,65 @@ public class AttendanceLogServiceTests
         result.Should().BeOfType<Result<AttendanceResult>.Error>()
             .Which.Code.Should().Be("attendance.employee_terminated");
         await _attendanceLogs.DidNotReceive().AddAsync(Arg.Any<AttendanceLog>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordAsync_returns_the_existing_punch_when_a_device_replays_the_same_request()
+    {
+        // A resent request is byte-identical, so it lands on the same (employee, device,
+        // instant) key. It must resolve to the original row, not a second punch.
+        var original = AttendanceLog.FromDevice(
+            ValidEmployeeId, Instant.FromDateTimeOffset(Now), PunchType.In, "esp32-1");
+        _attendanceLogs.FirstOrDefaultAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>())
+            .Returns(original);
+
+        var result = await AttendanceLogService.RecordAsync(
+            ValidEmployeeId.Value,
+            Now,
+            "In",
+            recordedByUserId: null,
+            recordedByName: null,
+            deviceId: "esp32-1",
+            note: null,
+            null,
+            _employees,
+            _attendanceLogs,
+            _clock,
+            _bus,
+            CancellationToken.None);
+
+        result.Should().BeOfType<Result<AttendanceResult>.Success>()
+            .Which.Value.Id.Should().Be(original.Id.Value);
+        await _attendanceLogs.DidNotReceive().AddAsync(Arg.Any<AttendanceLog>(), Arg.Any<CancellationToken>());
+        await _bus.DidNotReceive().PublishAsync(Arg.Any<AttendanceLogRecorded>());
+    }
+
+    [Fact]
+    public async Task RecordAsync_does_not_dedupe_manual_entries()
+    {
+        // Two people legitimately correcting the same punch twice is not a replay; only the
+        // device path is idempotent, and manual rows carry no device id to key on.
+        _attendanceLogs.FirstOrDefaultAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>())
+            .Returns(AttendanceLog.FromDevice(
+                ValidEmployeeId, Instant.FromDateTimeOffset(Now), PunchType.In, "esp32-1"));
+
+        var result = await AttendanceLogService.RecordAsync(
+            ValidEmployeeId.Value,
+            Now,
+            "In",
+            recordedByUserId: Guid.NewGuid(),
+            recordedByName: "Manager",
+            deviceId: null,
+            note: null,
+            OwnerCaller,
+            _employees,
+            _attendanceLogs,
+            _clock,
+            _bus,
+            CancellationToken.None);
+
+        result.Should().BeOfType<Result<AttendanceResult>.Success>();
+        await _attendanceLogs.Received(1).AddAsync(Arg.Any<AttendanceLog>(), Arg.Any<CancellationToken>());
     }
 
     [Theory]

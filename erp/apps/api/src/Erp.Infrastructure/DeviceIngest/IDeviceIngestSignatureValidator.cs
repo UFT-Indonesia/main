@@ -2,5 +2,10 @@ namespace Erp.Infrastructure.DeviceIngest;
 
 public interface IDeviceIngestSignatureValidator
 {
-    DeviceIngestSignatureResult Validate(string payload, string? timestamp, string? signature);
+    Task<DeviceIngestSignatureResult> ValidateAsync(
+        string payload,
+        string? deviceKey,
+        string? timestamp,
+        string? signature,
+        CancellationToken ct);
 }

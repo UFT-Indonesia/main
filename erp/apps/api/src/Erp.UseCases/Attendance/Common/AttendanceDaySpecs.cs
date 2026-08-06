@@ -30,6 +30,22 @@ internal sealed class AttendanceLogByIdWithNotesSpec : SingleResultSpecification
     }
 }
 
+/// <summary>
+/// The exact punch a device replay would collide with — same employee, device, and instant.
+/// Read-only: existence alone is enough to short-circuit a resend as idempotent.
+/// </summary>
+internal sealed class DevicePunchByKeySpec : SingleResultSpecification<AttendanceLog>
+{
+    public DevicePunchByKeySpec(EmployeeId employeeId, string deviceId, Instant punchedAtUtc)
+    {
+        Query.Where(log => log.EmployeeId == employeeId
+                           && log.DeviceId == deviceId
+                           && log.PunchedAtUtc == punchedAtUtc);
+        Query.Include(log => log.Notes);
+        Query.AsNoTracking();
+    }
+}
+
 /// <summary>The materialized day row for one employee + calendar date, tracked for mutation.</summary>
 internal sealed class AttendanceDayByEmployeeDateSpec : Specification<AttendanceDay>
 {

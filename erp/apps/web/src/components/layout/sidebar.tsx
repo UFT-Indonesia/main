@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound } from 'lucide-react';
+import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound, Cpu } from 'lucide-react';
 import type { Route } from 'next';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/lib/constants';
@@ -11,7 +11,14 @@ import { useAuthStore } from '@/lib/auth/store';
 
 interface NavItem {
   href: Route;
-  labelKey: 'dashboard' | 'employees' | 'attendance' | 'attendanceSettings' | 'leave' | 'accounts';
+  labelKey:
+    | 'dashboard'
+    | 'employees'
+    | 'attendance'
+    | 'attendanceSettings'
+    | 'attendanceDevices'
+    | 'leave'
+    | 'accounts';
   icon: typeof Users;
   /** Only shown to users with one of these roles; omitted means visible to everyone. */
   roles?: string[];
@@ -29,6 +36,13 @@ const NAV: NavItem[] = [
     labelKey: 'attendanceSettings',
     icon: Settings,
     roles: ['Owner', 'Manager'],
+  },
+  // A device secret can punch for any employee, so registering one is Owner-only.
+  {
+    href: '/attendance/devices' as Route,
+    labelKey: 'attendanceDevices',
+    icon: Cpu,
+    roles: ['Owner'],
   },
 ];
 

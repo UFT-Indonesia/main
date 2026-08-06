@@ -57,6 +57,49 @@ namespace Erp.Infrastructure.Persistence.Migrations
                     b.ToTable("AttendanceDays", (string)null);
                 });
 
+            modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendanceDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("DeviceKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("device_key");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("RegisteredByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registered_by_user_id");
+
+                    b.Property<string>("Secret")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("secret");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceKey")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceDevices", (string)null);
+                });
+
             modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendanceLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -94,6 +137,10 @@ namespace Erp.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("EmployeeId", "PunchedAtUtc");
+
+                    b.HasIndex("EmployeeId", "DeviceId", "PunchedAtUtc")
+                        .IsUnique()
+                        .HasFilter("device_id IS NOT NULL");
 
                     b.ToTable("AttendanceLogs", (string)null);
                 });

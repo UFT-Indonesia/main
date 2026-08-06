@@ -56,6 +56,20 @@ internal static class AttendanceLogService
                 ResultErrors.Forbidden, "You cannot record attendance for this employee.");
         }
 
+        // A resent device request is byte-identical to the original within the signature's
+        // tolerance window, so it lands on the exact same (employee, device, instant) key.
+        // Short-circuit it to the row that already exists instead of racing the DB's unique
+        // index — this is what makes a flaky-network retry safe to just fire again.
+        if (!recordedByUserId.HasValue && !string.IsNullOrWhiteSpace(deviceId))
+        {
+            var replay = await attendanceLogs.FirstOrDefaultAsync(
+                new DevicePunchByKeySpec(typedEmployeeId, deviceId, Instant.FromDateTimeOffset(punchedAtUtc)), ct);
+            if (replay is not null)
+            {
+                return new Result<AttendanceResult>.Success(ToResult(replay));
+            }
+        }
+
         AttendanceLog log;
         try
         {

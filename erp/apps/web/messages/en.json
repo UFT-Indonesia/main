@@ -19,7 +19,8 @@
     "attendance": "Attendance",
     "attendanceSettings": "Attendance policy",
     "leave": "Leave",
-    "accounts": "Accounts"
+    "accounts": "Accounts",
+    "attendanceDevices": "Attendance devices"
   },
   "home": {
     "title": "Welcome",
@@ -361,6 +362,47 @@
       "description": "Hand this password to {username}. They must change it at first sign-in.",
       "copy": "Copy",
       "shownOnce": "This password is shown only once and cannot be retrieved later."
+    }
+  },
+  "attendanceDevices": {
+    "title": "Attendance devices",
+    "subtitle": "Punch readers authorized to submit attendance.",
+    "empty": "No devices registered yet.",
+    "ownerOnly": "Only an Owner can manage attendance devices.",
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "table": {
+      "name": "Name",
+      "deviceKey": "Device id",
+      "status": "Status",
+      "registered": "Registered"
+    },
+    "register": {
+      "button": "Register device",
+      "title": "Register device",
+      "description": "Generates a secret this reader uses to sign its punches.",
+      "deviceKey": "Device id",
+      "deviceKeyPlaceholder": "esp32-front-door",
+      "deviceKeyHint": "Must match the id the reader sends on every punch.",
+      "name": "Name",
+      "namePlaceholder": "Front door reader",
+      "confirm": "Register",
+      "errorTitle": "Failed to register device"
+    },
+    "secret": {
+      "title": "Device secret",
+      "description": "Copy this into {name} now.",
+      "copy": "Copy secret",
+      "shownOnce": "Shown once. It cannot be retrieved again — re-register the device if it is lost."
+    },
+    "toggle": {
+      "enable": "Enable device",
+      "disable": "Disable device",
+      "enabledTitle": "Device enabled",
+      "disabledTitle": "Device disabled",
+      "errorTitle": "Failed to update device"
     }
   }
 }

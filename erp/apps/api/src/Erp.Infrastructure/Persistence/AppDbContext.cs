@@ -20,6 +20,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
 
     public DbSet<AttendanceLog> AttendanceLogs => Set<AttendanceLog>();
 
+    public DbSet<AttendanceDevice> AttendanceDevices => Set<AttendanceDevice>();
+
     public DbSet<AttendanceDay> AttendanceDays => Set<AttendanceDay>();
 
     public DbSet<AttendancePolicy> AttendancePolicies => Set<AttendancePolicy>();

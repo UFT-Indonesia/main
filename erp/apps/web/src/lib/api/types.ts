@@ -221,6 +221,30 @@ export interface AttendanceLogResponse {
   notes: AttendanceLogNote[];
 }
 
+export interface AttendanceDevice {
+  id: string;
+  /** The identifier the physical reader sends on every punch. */
+  deviceKey: string;
+  name: string;
+  enabled: boolean;
+  createdAtUtc: string;
+}
+
+export interface ListAttendanceDevicesResponse {
+  items: AttendanceDevice[];
+}
+
+export interface RegisterAttendanceDeviceBody {
+  deviceKey: string;
+  name: string;
+}
+
+export interface RegisterAttendanceDeviceResponse {
+  device: AttendanceDevice;
+  /** Shown exactly once; not retrievable afterwards. */
+  secret: string;
+}
+
 export type LeaveType = 'Annual' | 'Sick' | 'Permission' | 'Unpaid';
 export type LeaveRequestStatus = 'Pending' | 'Approved' | 'Denied' | 'Cancelled';
 

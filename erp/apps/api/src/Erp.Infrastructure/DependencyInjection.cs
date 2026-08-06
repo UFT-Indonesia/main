@@ -48,7 +48,6 @@ public static class DependencyInjection
 
         services.AddOptions<DeviceIngestOptions>()
             .Bind(configuration.GetSection(DeviceIngestOptions.SectionName))
-            .Validate(options => !string.IsNullOrWhiteSpace(options.HmacSecret), "Device ingest HMAC secret is required.")
             .Validate(options => options.ToleranceSeconds > 0, "Device ingest tolerance must be positive.")
             .ValidateOnStart();
 
@@ -117,6 +116,7 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IDeviceIngestSignatureValidator, DeviceIngestSignatureValidator>();
         services.AddScoped<IdentitySeeder>();
+        services.AddScoped<AttendanceDeviceSeeder>();
 
         return services;
     }

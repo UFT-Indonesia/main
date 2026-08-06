@@ -19,7 +19,8 @@
     "attendance": "Kehadiran",
     "attendanceSettings": "Kebijakan presensi",
     "leave": "Cuti",
-    "accounts": "Akun"
+    "accounts": "Akun",
+    "attendanceDevices": "Perangkat presensi"
   },
   "home": {
     "title": "Selamat datang",
@@ -361,6 +362,47 @@
       "description": "Serahkan password ini kepada {username}. Mereka wajib menggantinya saat pertama kali masuk.",
       "copy": "Salin",
       "shownOnce": "Password ini hanya ditampilkan sekali dan tidak dapat dilihat lagi."
+    }
+  },
+  "attendanceDevices": {
+    "title": "Perangkat presensi",
+    "subtitle": "Mesin absen yang berwenang mengirim data presensi.",
+    "empty": "Belum ada perangkat terdaftar.",
+    "ownerOnly": "Hanya Owner yang dapat mengelola perangkat presensi.",
+    "status": {
+      "enabled": "Aktif",
+      "disabled": "Nonaktif"
+    },
+    "table": {
+      "name": "Nama",
+      "deviceKey": "ID perangkat",
+      "status": "Status",
+      "registered": "Terdaftar"
+    },
+    "register": {
+      "button": "Daftarkan perangkat",
+      "title": "Daftarkan perangkat",
+      "description": "Membuat kunci rahasia yang dipakai mesin ini untuk menandatangani presensi.",
+      "deviceKey": "ID perangkat",
+      "deviceKeyPlaceholder": "esp32-pintu-depan",
+      "deviceKeyHint": "Harus sama dengan ID yang dikirim mesin pada setiap presensi.",
+      "name": "Nama",
+      "namePlaceholder": "Mesin pintu depan",
+      "confirm": "Daftarkan",
+      "errorTitle": "Gagal mendaftarkan perangkat"
+    },
+    "secret": {
+      "title": "Kunci rahasia perangkat",
+      "description": "Salin sekarang ke {name}.",
+      "copy": "Salin kunci",
+      "shownOnce": "Hanya ditampilkan sekali. Tidak dapat dilihat lagi — daftarkan ulang perangkat jika hilang."
+    },
+    "toggle": {
+      "enable": "Aktifkan perangkat",
+      "disable": "Nonaktifkan perangkat",
+      "enabledTitle": "Perangkat diaktifkan",
+      "disabledTitle": "Perangkat dinonaktifkan",
+      "errorTitle": "Gagal memperbarui perangkat"
     }
   }
 }

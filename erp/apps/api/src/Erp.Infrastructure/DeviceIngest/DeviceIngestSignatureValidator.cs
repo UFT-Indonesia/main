@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using Erp.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
@@ -9,16 +11,28 @@ namespace Erp.Infrastructure.DeviceIngest;
 public sealed class DeviceIngestSignatureValidator : IDeviceIngestSignatureValidator
 {
     private readonly DeviceIngestOptions _options;
+    private readonly AppDbContext _db;
     private readonly IClock _clock;
 
-    public DeviceIngestSignatureValidator(IOptions<DeviceIngestOptions> options, IClock clock)
+    public DeviceIngestSignatureValidator(IOptions<DeviceIngestOptions> options, AppDbContext db, IClock clock)
     {
         _options = options.Value;
+        _db = db;
         _clock = clock;
     }
 
-    public DeviceIngestSignatureResult Validate(string payload, string? timestamp, string? signature)
+    public async Task<DeviceIngestSignatureResult> ValidateAsync(
+        string payload,
+        string? deviceKey,
+        string? timestamp,
+        string? signature,
+        CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(deviceKey))
+        {
+            return DeviceIngestSignatureResult.Invalid("device_ingest.device_key_required");
+        }
+
         if (string.IsNullOrWhiteSpace(timestamp))
         {
             return DeviceIngestSignatureResult.Invalid("device_ingest.timestamp_required");
@@ -49,9 +63,23 @@ public sealed class DeviceIngestSignatureValidator : IDeviceIngestSignatureValid
             return DeviceIngestSignatureResult.Invalid("device_ingest.timestamp_out_of_tolerance");
         }
 
-        var expectedSignature = ComputeSignature(payload, timestamp, _options.HmacSecret);
+        // Checked after the timestamp, not before: a device that fails on tolerance shouldn't
+        // also leak whether its id happens to be registered.
+        var device = await _db.AttendanceDevices.AsNoTracking()
+            .SingleOrDefaultAsync(d => d.DeviceKey == deviceKey.Trim(), ct);
+        if (device is null)
+        {
+            return DeviceIngestSignatureResult.Invalid("device_ingest.device_unknown");
+        }
+
+        if (!device.Enabled)
+        {
+            return DeviceIngestSignatureResult.Invalid("device_ingest.device_disabled");
+        }
+
+        var expectedSignature = ComputeSignature(payload, timestamp, device.Secret);
         var normalizedSignature = signature.Trim().ToLowerInvariant();
-        
+
         if (!CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(expectedSignature),
             Encoding.UTF8.GetBytes(normalizedSignature)))
