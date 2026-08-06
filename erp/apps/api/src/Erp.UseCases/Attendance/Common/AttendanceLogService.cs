@@ -5,6 +5,7 @@ using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Common;
 using NodaTime;
 using Wolverine;
 
@@ -20,6 +21,7 @@ internal static class AttendanceLogService
         string? recordedByName,
         string? deviceId,
         string? note,
+        Caller? caller,
         IReadRepository<Employee> employees,
         IRepository<AttendanceLog> attendanceLogs,
         IClock clock,
@@ -44,6 +46,14 @@ internal static class AttendanceLogService
         {
             return new Result<AttendanceResult>.Error(
                 "attendance.employee_terminated", "Cannot record attendance for a terminated employee.");
+        }
+
+        // A manual punch asserts someone was physically present, so it stays inside the
+        // caller's reporting line. Device punches have no caller — the signature is the gate.
+        if (caller is { } writer && !AttendanceRules.CanWriteFor(writer, employee))
+        {
+            return new Result<AttendanceResult>.Error(
+                ResultErrors.Forbidden, "You cannot record attendance for this employee.");
         }
 
         AttendanceLog log;
@@ -72,6 +82,27 @@ internal static class AttendanceLogService
         }
 
         return new Result<AttendanceResult>.Success(ToResult(log));
+    }
+
+    /// <summary>
+    /// Write authority for an existing punch, which hangs off the employee it belongs to.
+    /// Returns null when permitted; otherwise the error to hand back.
+    /// </summary>
+    internal static async Task<Result<T>.Error?> CheckWriteAccessAsync<T>(
+        Caller caller,
+        EmployeeId employeeId,
+        IReadRepository<Employee> employees,
+        CancellationToken ct)
+    {
+        var employee = await employees.GetByIdAsync(employeeId, ct);
+        if (employee is null)
+        {
+            return new Result<T>.Error("attendance.employee_missing", "The employee this punch belongs to was not found.");
+        }
+
+        return AttendanceRules.CanWriteFor(caller, employee)
+            ? null
+            : new Result<T>.Error(ResultErrors.Forbidden, "You cannot change attendance for this employee.");
     }
 
     private static bool TryParsePunchType(string value, out PunchType punchType)

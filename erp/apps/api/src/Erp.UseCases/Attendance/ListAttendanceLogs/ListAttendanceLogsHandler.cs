@@ -54,11 +54,13 @@ public static class ListAttendanceLogsHandler
 
         // Step 1: count + paginate (employee name filter pushed into spec as JOIN)
         var totalCount = await attendanceLogs.CountAsync(
-            new AttendanceLogListCountSpec(query.EmployeeSearch, dateFrom, dateTo, sourceFilter, punchTypeFilter),
+            new AttendanceLogListCountSpec(
+                query.EmployeeSearch, dateFrom, dateTo, sourceFilter, punchTypeFilter, query.Caller),
             ct);
 
         var items = await attendanceLogs.ListAsync(
-            new AttendanceLogListSpec(page, pageSize, query.EmployeeSearch, dateFrom, dateTo, sourceFilter, punchTypeFilter),
+            new AttendanceLogListSpec(
+                page, pageSize, query.EmployeeSearch, dateFrom, dateTo, sourceFilter, punchTypeFilter, query.Caller),
             ct);
 
         var resultItems = items.Select(log => new AttendanceListItemResult
@@ -72,6 +74,8 @@ public static class ListAttendanceLogsHandler
             DeviceId = log.DeviceId,
             RecordedByUserId = log.RecordedByUserId,
             Notes = AttendanceLogNoteResult.FromLog(log),
+            CanWrite = log.Employee is not null
+                && AttendanceRules.CanWriteFor(query.Caller, log.Employee),
         }).ToList();
 
         return new Result<ListAttendanceLogsResult>.Success(new ListAttendanceLogsResult

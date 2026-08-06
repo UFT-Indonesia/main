@@ -1,5 +1,7 @@
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
+using Erp.UseCases.Attendance.Common;
+using Erp.UseCases.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Attendance.ListAttendanceDays;
@@ -12,9 +14,10 @@ internal sealed class AttendanceDayListSpec : Specification<AttendanceDay>
         string? employeeSearch,
         LocalDate? dateFrom,
         LocalDate? dateTo,
-        AttendanceDayStatus? status)
+        AttendanceDayStatus? status,
+        Caller caller)
     {
-        ApplyFilters(Query, employeeSearch, dateFrom, dateTo, status);
+        ApplyFilters(Query, employeeSearch, dateFrom, dateTo, status, caller);
         Query.Include(day => day.Employee);
         Query.OrderByDescending(day => day.CalendarDate)
             .ThenBy(day => day.Employee!.FullName);
@@ -27,8 +30,11 @@ internal sealed class AttendanceDayListSpec : Specification<AttendanceDay>
         string? employeeSearch,
         LocalDate? dateFrom,
         LocalDate? dateTo,
-        AttendanceDayStatus? status)
+        AttendanceDayStatus? status,
+        Caller caller)
     {
+        ApplyCallerScope(query, caller);
+
         if (!string.IsNullOrWhiteSpace(employeeSearch))
         {
             var needle = employeeSearch.Trim().ToLowerInvariant();
@@ -50,6 +56,23 @@ internal sealed class AttendanceDayListSpec : Specification<AttendanceDay>
             query.Where(day => day.Status == status.Value);
         }
     }
+
+    /// <summary>Staff never see anyone else's days; Owner and Manager see the whole company.</summary>
+    private static void ApplyCallerScope(ISpecificationBuilder<AttendanceDay> query, Caller caller)
+    {
+        if (AttendanceRules.CanReadAll(caller))
+        {
+            return;
+        }
+
+        if (caller.EmployeeId is not { } callerEmployeeId)
+        {
+            query.Where(_ => false);
+            return;
+        }
+
+        query.Where(day => day.EmployeeId == callerEmployeeId);
+    }
 }
 
 internal sealed class AttendanceDayListCountSpec : Specification<AttendanceDay>
@@ -58,9 +81,10 @@ internal sealed class AttendanceDayListCountSpec : Specification<AttendanceDay>
         string? employeeSearch,
         LocalDate? dateFrom,
         LocalDate? dateTo,
-        AttendanceDayStatus? status)
+        AttendanceDayStatus? status,
+        Caller caller)
     {
-        AttendanceDayListSpec.ApplyFilters(Query, employeeSearch, dateFrom, dateTo, status);
+        AttendanceDayListSpec.ApplyFilters(Query, employeeSearch, dateFrom, dateTo, status, caller);
         Query.AsNoTracking();
     }
 }

@@ -7,6 +7,7 @@ using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.ListAttendanceLogs;
+using Erp.UseCases.Common;
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
@@ -16,6 +17,10 @@ namespace Erp.UnitTests.UseCases;
 public class ListAttendanceLogsHandlerTests
 {
     private readonly IReadRepository<AttendanceLog> _logs = Substitute.For<IReadRepository<AttendanceLog>>();
+
+    /// <summary>Caller scoping lives in the spec; these tests cover the handler, so they read as an Owner.</summary>
+    private static readonly Caller OwnerCaller =
+        new(Guid.NewGuid(), EmployeeRole.Owner, EmployeeId.New(), "Owner");
 
     private static AttendanceLog MakeLog(EmployeeId employeeId)
         => AttendanceLog.FromDevice(employeeId, SystemClock.Instance.GetCurrentInstant(), PunchType.In, "DEV-01");
@@ -41,7 +46,7 @@ public class ListAttendanceLogsHandlerTests
         _logs.ListAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>()).Returns(new List<AttendanceLog> { log });
 
         var result = await ListAttendanceLogsHandler.Handle(
-            new ListAttendanceLogsQuery(Page: 1, PageSize: 20, EmployeeSearch: null, DateFrom: null, DateTo: null, PunchType: null, Source: null),
+            new ListAttendanceLogsQuery(Page: 1, PageSize: 20, EmployeeSearch: null, DateFrom: null, DateTo: null, PunchType: null, Source: null, Caller: OwnerCaller),
             _logs, CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<ListAttendanceLogsResult>.Success>().Subject;
@@ -58,7 +63,7 @@ public class ListAttendanceLogsHandlerTests
         _logs.ListAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>()).Returns(new List<AttendanceLog>());
 
         var result = await ListAttendanceLogsHandler.Handle(
-            new ListAttendanceLogsQuery(1, 1000, null, null, null, null, null),
+            new ListAttendanceLogsQuery(1, 1000, null, null, null, null, null, OwnerCaller),
             _logs, CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<ListAttendanceLogsResult>.Success>().Subject;
@@ -72,7 +77,7 @@ public class ListAttendanceLogsHandlerTests
         _logs.ListAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>()).Returns(new List<AttendanceLog>());
 
         var result = await ListAttendanceLogsHandler.Handle(
-            new ListAttendanceLogsQuery(0, 0, null, null, null, null, null),
+            new ListAttendanceLogsQuery(0, 0, null, null, null, null, null, OwnerCaller),
             _logs, CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<ListAttendanceLogsResult>.Success>().Subject;
@@ -84,7 +89,7 @@ public class ListAttendanceLogsHandlerTests
     public async Task Handle_returns_error_for_invalid_source()
     {
         var result = await ListAttendanceLogsHandler.Handle(
-            new ListAttendanceLogsQuery(1, 20, null, null, null, null, "Fax"),
+            new ListAttendanceLogsQuery(1, 20, null, null, null, null, "Fax", OwnerCaller),
             _logs, CancellationToken.None);
 
         result.Should().BeOfType<Result<ListAttendanceLogsResult>.Error>()
@@ -95,7 +100,7 @@ public class ListAttendanceLogsHandlerTests
     public async Task Handle_returns_error_for_invalid_punch_type()
     {
         var result = await ListAttendanceLogsHandler.Handle(
-            new ListAttendanceLogsQuery(1, 20, null, null, null, "Break", null),
+            new ListAttendanceLogsQuery(1, 20, null, null, null, "Break", null, OwnerCaller),
             _logs, CancellationToken.None);
 
         result.Should().BeOfType<Result<ListAttendanceLogsResult>.Error>()
@@ -109,7 +114,7 @@ public class ListAttendanceLogsHandlerTests
         _logs.ListAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>()).Returns(new List<AttendanceLog>());
 
         var result = await ListAttendanceLogsHandler.Handle(
-            new ListAttendanceLogsQuery(1, 20, "ghost", null, null, null, null),
+            new ListAttendanceLogsQuery(1, 20, "ghost", null, null, null, null, OwnerCaller),
             _logs, CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<ListAttendanceLogsResult>.Success>().Subject;
@@ -127,7 +132,7 @@ public class ListAttendanceLogsHandlerTests
         _logs.ListAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>()).Returns(new List<AttendanceLog> { log });
 
         var result = await ListAttendanceLogsHandler.Handle(
-            new ListAttendanceLogsQuery(1, 20, null, null, null, null, null),
+            new ListAttendanceLogsQuery(1, 20, null, null, null, null, null, OwnerCaller),
             _logs, CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<ListAttendanceLogsResult>.Success>().Subject;
@@ -143,7 +148,7 @@ public class ListAttendanceLogsHandlerTests
         _logs.ListAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>()).Returns(new List<AttendanceLog> { log });
 
         var result = await ListAttendanceLogsHandler.Handle(
-            new ListAttendanceLogsQuery(1, 20, null, null, null, null, null),
+            new ListAttendanceLogsQuery(1, 20, null, null, null, null, null, OwnerCaller),
             _logs, CancellationToken.None);
 
         var success = result.Should().BeOfType<Result<ListAttendanceLogsResult>.Success>().Subject;

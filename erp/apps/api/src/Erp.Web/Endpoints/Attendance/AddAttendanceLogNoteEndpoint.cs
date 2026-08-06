@@ -1,6 +1,6 @@
-using System.Security.Claims;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Common;
 using Erp.UseCases.Attendance.AddAttendanceLogNote;
 using Erp.UseCases.Attendance.Common;
 using FastEndpoints;
@@ -9,6 +9,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
+/// <summary>Owner writes for anyone; a Manager only for themselves and their direct Staff (enforced per-request by AttendanceRules).</summary>
 [Authorize(Roles = "Owner,Manager")]
 public sealed class AddAttendanceLogNoteEndpoint : Endpoint<AddAttendanceLogNoteRequest, AttendanceLogNoteResponse>
 {
@@ -27,17 +28,14 @@ public sealed class AddAttendanceLogNoteEndpoint : Endpoint<AddAttendanceLogNote
 
     public override async Task HandleAsync(AddAttendanceLogNoteRequest req, CancellationToken ct)
     {
-        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdValue, out var userId))
+        if (CallerFactory.From(User) is not { } caller)
         {
             await SendUnauthorizedAsync(ct);
             return;
         }
 
-        var userName = User.FindFirstValue(ClaimTypes.Name) ?? "—";
-
         var result = await _bus.InvokeAsync<Result<AttendanceLogNoteResult>>(
-            new AddAttendanceLogNoteCommand(req.LogId, req.Text, userId, userName), ct);
+            new AddAttendanceLogNoteCommand(req.LogId, req.Text, caller), ct);
 
         if (result is Result<AttendanceLogNoteResult>.Success s)
         {
@@ -54,6 +52,12 @@ public sealed class AddAttendanceLogNoteEndpoint : Endpoint<AddAttendanceLogNote
 
         if (result is Result<AttendanceLogNoteResult>.Error e)
         {
+            if (e.Code == ResultErrors.Forbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 

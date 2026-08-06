@@ -7,6 +7,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
+/// <summary>Staff see only their own punches; Owner and Manager see the whole company.</summary>
 [Authorize]
 public sealed class ListAttendanceLogsEndpoint : Endpoint<ListAttendanceLogsRequest, ListAttendanceLogsResponse>
 {
@@ -25,6 +26,12 @@ public sealed class ListAttendanceLogsEndpoint : Endpoint<ListAttendanceLogsRequ
 
     public override async Task HandleAsync(ListAttendanceLogsRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<ListAttendanceLogsResult>>(new ListAttendanceLogsQuery(
             req.Page,
             req.PageSize,
@@ -32,7 +39,8 @@ public sealed class ListAttendanceLogsEndpoint : Endpoint<ListAttendanceLogsRequ
             req.DateFrom,
             req.DateTo,
             req.PunchType,
-            req.Source), ct);
+            req.Source,
+            caller), ct);
 
         if (result is Result<ListAttendanceLogsResult>.Success s)
         {
@@ -49,6 +57,7 @@ public sealed class ListAttendanceLogsEndpoint : Endpoint<ListAttendanceLogsRequ
                     DeviceId = i.DeviceId,
                     RecordedByUserId = i.RecordedByUserId,
                     Notes = AttendanceLogNoteResponse.FromAll(i.Notes),
+                    CanWrite = i.CanWrite,
                 }).ToList(),
                 Page = s.Value.Page,
                 PageSize = s.Value.PageSize,

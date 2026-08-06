@@ -135,6 +135,8 @@ export interface AttendanceLogListItem {
   deviceId: string | null;
   recordedByUserId: string | null;
   notes: AttendanceLogNote[];
+  /** Server-computed: whether the caller may alter this employee's records. */
+  canWrite: boolean;
 }
 
 export interface ListAttendanceLogsResponse {
@@ -164,6 +166,8 @@ export interface AttendanceDayListItem {
   tapInUtc: string | null;
   tapOutUtc: string | null;
   status: AttendanceDayStatus;
+  /** Server-computed: whether the caller may alter this employee's records. */
+  canWrite: boolean;
 }
 
 export interface ListAttendanceDaysResponse {

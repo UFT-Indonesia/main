@@ -48,12 +48,8 @@ public static class LeaveRules
     public static bool IsRequester(Caller caller, Guid requestedByUserId) =>
         caller.UserId == requestedByUserId;
 
-    private static bool IsSelf(Caller caller, Employee subject) =>
-        caller.EmployeeId.HasValue && caller.EmployeeId.Value == subject.Id;
+    private static bool IsSelf(Caller caller, Employee subject) => OrgScope.IsSelf(caller, subject);
 
     private static bool IsDirectStaffOf(Caller caller, Employee subject) =>
-        caller.Role == EmployeeRole.Manager
-        && subject.Role == EmployeeRole.Staff
-        && caller.EmployeeId.HasValue
-        && subject.ParentId == caller.EmployeeId.Value;
+        OrgScope.IsDirectStaffOf(caller, subject);
 }

@@ -6,6 +6,7 @@ using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
+using Erp.UseCases.Common;
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
@@ -19,6 +20,10 @@ public class AttendanceLogServiceTests
     private static readonly EmployeeId ValidEmployeeId = EmployeeId.New();
 
     private static readonly EmployeeId TerminatedEmployeeId = EmployeeId.New();
+
+    /// <summary>Manual entries carry a caller; device punches deliberately do not.</summary>
+    private static readonly Caller OwnerCaller =
+        new(Guid.NewGuid(), EmployeeRole.Owner, EmployeeId.New(), "Owner");
 
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
     private readonly IRepository<AttendanceLog> _attendanceLogs = Substitute.For<IRepository<AttendanceLog>>();
@@ -63,6 +68,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -85,6 +91,7 @@ public class AttendanceLogServiceTests
             recordedByName: "Manager",
             deviceId: null,
             note: "lupa absen",
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -113,6 +120,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -140,6 +148,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -162,6 +171,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -183,6 +193,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "  ",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -206,6 +217,7 @@ public class AttendanceLogServiceTests
             recordedByName: "Test Recorder",
             deviceId: null,
             note: "Forgot to punch",
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -233,6 +245,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: null,
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -254,6 +267,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -276,6 +290,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,

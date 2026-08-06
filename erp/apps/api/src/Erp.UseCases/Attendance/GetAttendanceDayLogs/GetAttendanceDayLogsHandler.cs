@@ -4,6 +4,7 @@ using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
 using Erp.UseCases.Attendance.ListAttendanceLogs;
+using Erp.UseCases.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Attendance.GetAttendanceDayLogs;
@@ -16,6 +17,12 @@ public static class GetAttendanceDayLogsHandler
         AttendanceDayPolicy policy,
         CancellationToken ct)
     {
+        if (!AttendanceRules.CanRead(query.Caller, new EmployeeId(query.EmployeeId)))
+        {
+            return new Result<GetAttendanceDayLogsResult>.Error(
+                ResultErrors.Forbidden, "You cannot read another employee's attendance.");
+        }
+
         var calendarDate = LocalDate.FromDateOnly(query.Date);
         var dayStart = calendarDate.AtStartOfDayInZone(policy.TimeZone).ToInstant();
         var dayEnd = calendarDate.PlusDays(1).AtStartOfDayInZone(policy.TimeZone).ToInstant();
@@ -35,6 +42,8 @@ public static class GetAttendanceDayLogsHandler
             DeviceId = log.DeviceId,
             RecordedByUserId = log.RecordedByUserId,
             Notes = AttendanceLogNoteResult.FromLog(log),
+            CanWrite = log.Employee is not null
+                && AttendanceRules.CanWriteFor(query.Caller, log.Employee),
         }).ToList();
 
         return new Result<GetAttendanceDayLogsResult>.Success(

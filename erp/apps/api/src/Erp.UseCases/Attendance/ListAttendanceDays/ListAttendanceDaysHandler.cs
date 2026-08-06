@@ -1,5 +1,6 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Interfaces;
+using Erp.UseCases.Attendance.Common;
 using Erp.SharedKernel.Domain.Results;
 using NodaTime;
 
@@ -40,11 +41,11 @@ public static class ListAttendanceDaysHandler
             : null;
 
         var totalCount = await attendanceDays.CountAsync(
-            new AttendanceDayListCountSpec(query.EmployeeSearch, dateFrom, dateTo, statusFilter),
+            new AttendanceDayListCountSpec(query.EmployeeSearch, dateFrom, dateTo, statusFilter, query.Caller),
             ct);
 
         var items = await attendanceDays.ListAsync(
-            new AttendanceDayListSpec(page, pageSize, query.EmployeeSearch, dateFrom, dateTo, statusFilter),
+            new AttendanceDayListSpec(page, pageSize, query.EmployeeSearch, dateFrom, dateTo, statusFilter, query.Caller),
             ct);
 
         var resultItems = items.Select(day => new AttendanceDayListItemResult
@@ -55,6 +56,8 @@ public static class ListAttendanceDaysHandler
             TapInUtc = day.TapInUtc?.ToDateTimeOffset(),
             TapOutUtc = day.TapOutUtc?.ToDateTimeOffset(),
             Status = day.Status.ToString(),
+            CanWrite = day.Employee is not null
+                && AttendanceRules.CanWriteFor(query.Caller, day.Employee),
         }).ToList();
 
         return new Result<ListAttendanceDaysResult>.Success(new ListAttendanceDaysResult

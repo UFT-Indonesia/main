@@ -13,4 +13,7 @@ public sealed class AttendanceListItemResult
     public string? DeviceId { get; init; }
     public Guid? RecordedByUserId { get; init; }
     public IReadOnlyList<AttendanceLogNoteResult> Notes { get; init; } = [];
+
+    /// <summary>Server-computed: whether the caller may create or alter this employee's records.</summary>
+    public bool CanWrite { get; init; }
 }

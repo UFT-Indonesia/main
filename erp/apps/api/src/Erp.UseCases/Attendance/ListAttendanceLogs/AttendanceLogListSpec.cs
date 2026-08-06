@@ -1,5 +1,7 @@
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
+using Erp.UseCases.Attendance.Common;
+using Erp.UseCases.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Attendance.ListAttendanceLogs;
@@ -13,9 +15,10 @@ internal sealed class AttendanceLogListSpec : Specification<AttendanceLog>
         Instant? dateFrom,
         Instant? dateTo,
         AttendanceSource? source,
-        PunchType? punchType)
+        PunchType? punchType,
+        Caller caller)
     {
-        ApplyFilters(Query, employeeSearch, dateFrom, dateTo, source, punchType);
+        ApplyFilters(Query, employeeSearch, dateFrom, dateTo, source, punchType, caller);
         Query.Include(log => log.Employee);
         Query.Include(log => log.Notes);
         Query.OrderByDescending(log => log.PunchedAtUtc);
@@ -29,8 +32,11 @@ internal sealed class AttendanceLogListSpec : Specification<AttendanceLog>
         Instant? dateFrom,
         Instant? dateTo,
         AttendanceSource? source,
-        PunchType? punchType)
+        PunchType? punchType,
+        Caller caller)
     {
+        ApplyCallerScope(query, caller);
+
         if (!string.IsNullOrWhiteSpace(employeeSearch))
         {
             var needle = employeeSearch.Trim().ToLowerInvariant();
@@ -57,6 +63,23 @@ internal sealed class AttendanceLogListSpec : Specification<AttendanceLog>
             query.Where(log => log.PunchType == punchType.Value);
         }
     }
+
+    /// <summary>Staff never see anyone else's punches; Owner and Manager see the whole company.</summary>
+    private static void ApplyCallerScope(ISpecificationBuilder<AttendanceLog> query, Caller caller)
+    {
+        if (AttendanceRules.CanReadAll(caller))
+        {
+            return;
+        }
+
+        if (caller.EmployeeId is not { } callerEmployeeId)
+        {
+            query.Where(_ => false);
+            return;
+        }
+
+        query.Where(log => log.EmployeeId == callerEmployeeId);
+    }
 }
 
 internal sealed class AttendanceLogListCountSpec : Specification<AttendanceLog>
@@ -66,9 +89,10 @@ internal sealed class AttendanceLogListCountSpec : Specification<AttendanceLog>
         Instant? dateFrom,
         Instant? dateTo,
         AttendanceSource? source,
-        PunchType? punchType)
+        PunchType? punchType,
+        Caller caller)
     {
-        AttendanceLogListSpec.ApplyFilters(Query, employeeSearch, dateFrom, dateTo, source, punchType);
+        AttendanceLogListSpec.ApplyFilters(Query, employeeSearch, dateFrom, dateTo, source, punchType, caller);
         Query.AsNoTracking();
     }
 }

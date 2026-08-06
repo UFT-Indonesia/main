@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
@@ -12,6 +13,7 @@ public static class AddAttendanceLogNoteHandler
     public static async Task<Result<AttendanceLogNoteResult>> Handle(
         AddAttendanceLogNoteCommand command,
         IRepository<AttendanceLog> attendanceLogs,
+        IReadRepository<Employee> employees,
         IClock clock,
         CancellationToken ct)
     {
@@ -22,10 +24,17 @@ public static class AddAttendanceLogNoteHandler
             return new Result<AttendanceLogNoteResult>.NotFound("Attendance log was not found.");
         }
 
+        var denied = await AttendanceLogService.CheckWriteAccessAsync<AttendanceLogNoteResult>(
+            command.Caller, log.EmployeeId, employees, ct);
+        if (denied is not null)
+        {
+            return denied;
+        }
+
         // Domain validation errors (empty text, over-length, missing author) throw
         // DomainException and bubble to the global exception handler.
         var note = log.AddNote(
-            command.Text, command.CreatedByUserId, command.CreatedByName, clock.GetCurrentInstant());
+            command.Text, command.Caller.UserId, command.Caller.Name, clock.GetCurrentInstant());
         await attendanceLogs.UpdateAsync(log, ct);
 
         return new Result<AttendanceLogNoteResult>.Success(AttendanceLogNoteResult.From(note));

@@ -1,6 +1,7 @@
 using System.Text;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Common;
 using Erp.UseCases.Attendance.ExportAttendanceDays;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +9,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
+/// <summary>Capped at 500 keys. Staff may export only their own rows, and are refused rather than silently trimmed.</summary>
 [Authorize]
 public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDaysRequest>
 {
@@ -26,9 +28,16 @@ public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDays
 
     public override async Task HandleAsync(ExportAttendanceDaysRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<ExportAttendanceDaysResult>>(
             new ExportAttendanceDaysQuery(
-                req.Items.Select(i => new AttendanceDayKey(i.EmployeeId, i.Date)).ToList()),
+                req.Items.Select(i => new AttendanceDayKey(i.EmployeeId, i.Date)).ToList(),
+                caller),
             ct);
 
         if (result is Result<ExportAttendanceDaysResult>.Success s)
@@ -41,6 +50,12 @@ public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDays
 
         if (result is Result<ExportAttendanceDaysResult>.Error e)
         {
+            if (e.Code == ResultErrors.Forbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 
