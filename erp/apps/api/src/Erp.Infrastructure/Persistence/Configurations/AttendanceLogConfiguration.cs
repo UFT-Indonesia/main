@@ -56,6 +56,15 @@ public sealed class AttendanceLogConfiguration : IEntityTypeConfiguration<Attend
 
         builder.HasIndex(log => new { log.EmployeeId, log.PunchedAtUtc });
 
+        // Replay guard: a resent device request is byte-identical (same signed timestamp),
+        // so it collides here instead of inserting a duplicate punch. Filtered to device
+        // rows only — manual entries have no device_id and Postgres never treats NULLs as
+        // equal, so they were already exempt, but the filter makes that explicit rather
+        // than incidental.
+        builder.HasIndex(log => new { log.EmployeeId, log.DeviceId, log.PunchedAtUtc })
+            .IsUnique()
+            .HasFilter("device_id IS NOT NULL");
+
         builder.HasOne(log => log.Employee)
             .WithMany()
             .HasForeignKey(log => log.EmployeeId)

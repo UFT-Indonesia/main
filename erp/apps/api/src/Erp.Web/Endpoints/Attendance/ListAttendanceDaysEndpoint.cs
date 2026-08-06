@@ -7,6 +7,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
+/// <summary>Staff see only their own days; Owner and Manager see the whole company.</summary>
 [Authorize]
 public sealed class ListAttendanceDaysEndpoint : Endpoint<ListAttendanceDaysRequest, ListAttendanceDaysResponse>
 {
@@ -25,13 +26,20 @@ public sealed class ListAttendanceDaysEndpoint : Endpoint<ListAttendanceDaysRequ
 
     public override async Task HandleAsync(ListAttendanceDaysRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<ListAttendanceDaysResult>>(new ListAttendanceDaysQuery(
             req.Page,
             req.PageSize,
             req.EmployeeSearch,
             req.DateFrom,
             req.DateTo,
-            req.Status), ct);
+            req.Status,
+            caller), ct);
 
         if (result is Result<ListAttendanceDaysResult>.Success s)
         {
@@ -45,6 +53,7 @@ public sealed class ListAttendanceDaysEndpoint : Endpoint<ListAttendanceDaysRequ
                     TapInUtc = i.TapInUtc,
                     TapOutUtc = i.TapOutUtc,
                     Status = i.Status,
+                    CanWrite = i.CanWrite,
                 }).ToList(),
                 Page = s.Value.Page,
                 PageSize = s.Value.PageSize,

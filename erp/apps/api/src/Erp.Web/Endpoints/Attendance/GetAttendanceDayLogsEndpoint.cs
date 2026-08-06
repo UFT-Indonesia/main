@@ -1,5 +1,6 @@
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Common;
 using Erp.UseCases.Attendance.GetAttendanceDayLogs;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
@@ -7,6 +8,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
+/// <summary>Staff may open only their own day; Owner and Manager may open anyone's.</summary>
 [Authorize]
 public sealed class GetAttendanceDayLogsEndpoint : Endpoint<GetAttendanceDayLogsRequest, GetAttendanceDayLogsResponse>
 {
@@ -25,8 +27,14 @@ public sealed class GetAttendanceDayLogsEndpoint : Endpoint<GetAttendanceDayLogs
 
     public override async Task HandleAsync(GetAttendanceDayLogsRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<GetAttendanceDayLogsResult>>(
-            new GetAttendanceDayLogsQuery(req.EmployeeId, req.Date), ct);
+            new GetAttendanceDayLogsQuery(req.EmployeeId, req.Date, caller), ct);
 
         if (result is Result<GetAttendanceDayLogsResult>.Success s)
         {
@@ -43,6 +51,7 @@ public sealed class GetAttendanceDayLogsEndpoint : Endpoint<GetAttendanceDayLogs
                     DeviceId = i.DeviceId,
                     RecordedByUserId = i.RecordedByUserId,
                     Notes = AttendanceLogNoteResponse.FromAll(i.Notes),
+                    CanWrite = i.CanWrite,
                 }).ToList(),
             }, ct);
             return;
@@ -50,6 +59,12 @@ public sealed class GetAttendanceDayLogsEndpoint : Endpoint<GetAttendanceDayLogs
 
         if (result is Result<GetAttendanceDayLogsResult>.Error e)
         {
+            if (e.Code == ResultErrors.Forbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 

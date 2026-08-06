@@ -5,12 +5,16 @@ using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Attendance.Common;
 using Erp.UseCases.Attendance.RecordDeviceLog;
 using FastEndpoints;
+using Microsoft.AspNetCore.Http.Features;
 using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
 public sealed class RecordDeviceLogEndpoint : EndpointWithoutRequest<AttendanceLogResponse>
 {
+    /// <summary>Generous for one punch's JSON — guards against a client streaming an unbounded body.</summary>
+    private const long MaxBodyBytes = 8 * 1024;
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IDeviceIngestSignatureValidator _signatureValidator;
@@ -33,19 +37,14 @@ public sealed class RecordDeviceLogEndpoint : EndpointWithoutRequest<AttendanceL
 
     public override async Task HandleAsync(CancellationToken ct)
     {
+        var bodySizeFeature = HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        if (bodySizeFeature is { IsReadOnly: false })
+        {
+            bodySizeFeature.MaxRequestBodySize = MaxBodyBytes;
+        }
+
         using var reader = new StreamReader(HttpContext.Request.Body);
         var payload = await reader.ReadToEndAsync(ct);
-
-        var signatureResult = _signatureValidator.Validate(
-            payload,
-            HttpContext.Request.Headers["X-Device-Timestamp"].FirstOrDefault(),
-            HttpContext.Request.Headers["X-Device-Signature"].FirstOrDefault());
-
-        if (!signatureResult.IsValid)
-        {
-            await SendUnauthorizedAsync(ct);
-            return;
-        }
 
         DeviceAttendanceLogRequest? parsed;
         try
@@ -60,6 +59,21 @@ public sealed class RecordDeviceLogEndpoint : EndpointWithoutRequest<AttendanceL
         if (parsed is null)
         {
             throw new DomainException("attendance.invalid_payload", "Attendance payload must not be null.");
+        }
+
+        // The signature is still computed over the untouched raw body — parsing first only
+        // reads which device claims to be signing it, so the right secret can be looked up.
+        var signatureResult = await _signatureValidator.ValidateAsync(
+            payload,
+            parsed.DeviceId,
+            HttpContext.Request.Headers["X-Device-Timestamp"].FirstOrDefault(),
+            HttpContext.Request.Headers["X-Device-Signature"].FirstOrDefault(),
+            ct);
+
+        if (!signatureResult.IsValid)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
         }
 
         var result = await _bus.InvokeAsync<Result<AttendanceResult>>(new RecordDeviceLogCommand(

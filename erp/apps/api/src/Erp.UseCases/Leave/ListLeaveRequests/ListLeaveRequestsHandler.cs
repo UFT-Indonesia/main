@@ -1,6 +1,8 @@
 using Ardalis.Specification;
+using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Interfaces;
+using Erp.UseCases.Common;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Leave.Common;
@@ -39,9 +41,9 @@ public static class ListLeaveRequestsHandler
         var employeeFilter = query.EmployeeId.HasValue ? new EmployeeId(query.EmployeeId.Value) : (EmployeeId?)null;
 
         var totalCount = await leaveRequests.CountAsync(
-            new LeaveRequestListCountSpec(statusFilter, employeeFilter), ct);
+            new LeaveRequestListCountSpec(statusFilter, employeeFilter, query.Caller), ct);
         var items = await leaveRequests.ListAsync(
-            new LeaveRequestListSpec(page, pageSize, statusFilter, employeeFilter), ct);
+            new LeaveRequestListSpec(page, pageSize, statusFilter, employeeFilter, query.Caller), ct);
 
         // "Approved workdays this year" counter per employee on the page, one query.
         var year = clock.GetCurrentInstant().InUtc().Year;
@@ -56,9 +58,16 @@ public static class ListLeaveRequestsHandler
         return new Result<ListLeaveRequestsResult>.Success(new ListLeaveRequestsResult
         {
             Items = items
-                .Select(request => LeaveRequestResult.From(
-                    request,
-                    approvedDaysByEmployee.GetValueOrDefault(request.EmployeeId)))
+                .Select(request =>
+                {
+                    var (canDecide, canCancel) =
+                        LeaveRequestResult.PermissionsFor(query.Caller, request, request.Employee);
+                    return LeaveRequestResult.From(
+                        request,
+                        approvedDaysByEmployee.GetValueOrDefault(request.EmployeeId),
+                        canDecide: canDecide,
+                        canCancel: canCancel);
+                })
                 .ToList(),
             Page = page,
             PageSize = pageSize,
@@ -69,9 +78,14 @@ public static class ListLeaveRequestsHandler
 
 internal sealed class LeaveRequestListSpec : Specification<LeaveRequest>
 {
-    public LeaveRequestListSpec(int page, int pageSize, LeaveRequestStatus? status, EmployeeId? employeeId)
+    public LeaveRequestListSpec(
+        int page,
+        int pageSize,
+        LeaveRequestStatus? status,
+        EmployeeId? employeeId,
+        Caller caller)
     {
-        ApplyFilters(Query, status, employeeId);
+        ApplyFilters(Query, status, employeeId, caller);
         Query.Include(request => request.Employee);
         Query.OrderByDescending(request => request.RequestedAtUtc);
         Query.AsNoTracking();
@@ -81,8 +95,13 @@ internal sealed class LeaveRequestListSpec : Specification<LeaveRequest>
     internal static void ApplyFilters(
         ISpecificationBuilder<LeaveRequest> query,
         LeaveRequestStatus? status,
-        EmployeeId? employeeId)
+        EmployeeId? employeeId,
+        Caller caller)
     {
+        // Visibility mirrors authority: you see the leave you could act on, plus your own.
+        // Applied in the query so paging and totals stay honest.
+        ApplyCallerScope(query, caller);
+
         if (status.HasValue)
         {
             query.Where(request => request.Status == status.Value);
@@ -93,13 +112,37 @@ internal sealed class LeaveRequestListSpec : Specification<LeaveRequest>
             query.Where(request => request.EmployeeId == employeeId.Value);
         }
     }
+
+    private static void ApplyCallerScope(ISpecificationBuilder<LeaveRequest> query, Caller caller)
+    {
+        if (caller.Role == EmployeeRole.Owner)
+        {
+            return;
+        }
+
+        // An account with no employee cannot own or supervise leave, so it sees none.
+        if (caller.EmployeeId is not { } callerEmployeeId)
+        {
+            query.Where(_ => false);
+            return;
+        }
+
+        if (caller.Role == EmployeeRole.Manager)
+        {
+            query.Where(request => request.EmployeeId == callerEmployeeId
+                                   || request.Employee!.ParentId == callerEmployeeId);
+            return;
+        }
+
+        query.Where(request => request.EmployeeId == callerEmployeeId);
+    }
 }
 
 internal sealed class LeaveRequestListCountSpec : Specification<LeaveRequest>
 {
-    public LeaveRequestListCountSpec(LeaveRequestStatus? status, EmployeeId? employeeId)
+    public LeaveRequestListCountSpec(LeaveRequestStatus? status, EmployeeId? employeeId, Caller caller)
     {
-        LeaveRequestListSpec.ApplyFilters(Query, status, employeeId);
+        LeaveRequestListSpec.ApplyFilters(Query, status, employeeId, caller);
         Query.AsNoTracking();
     }
 }

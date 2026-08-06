@@ -1,3 +1,5 @@
+using Erp.UseCases.Common;
+
 namespace Erp.UseCases.Leave.CreateLeaveRequest;
 
 public sealed record CreateLeaveRequestCommand(
@@ -6,4 +8,4 @@ public sealed record CreateLeaveRequestCommand(
     DateOnly StartDate,
     DateOnly EndDate,
     string? Reason,
-    Guid RequestedByUserId);
+    Caller Caller);

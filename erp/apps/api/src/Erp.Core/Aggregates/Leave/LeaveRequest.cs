@@ -17,6 +17,9 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     public const int ReasonMaxLength = 500;
     public const int DecisionNoteMaxLength = 500;
 
+    /// <summary>Stands in for a human decider on decisions the system makes on its own.</summary>
+    public const string SystemDecider = "System";
+
     // EF Core constructor.
     private LeaveRequest() { }
 
@@ -150,6 +153,24 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
 
         SetDecision(decidedByUserId, decidedByName, nowUtc, note);
         Status = LeaveRequestStatus.Cancelled;
+    }
+
+    /// <summary>
+    /// Termination closes out anything still awaiting a decision — nobody is left with the
+    /// authority to approve it, so leaving it Pending would strand the row forever.
+    /// Already-decided requests keep their decision as the historical record.
+    /// </summary>
+    public void CancelForTermination(Instant nowUtc)
+    {
+        if (Status != LeaveRequestStatus.Pending)
+        {
+            return;
+        }
+
+        Status = LeaveRequestStatus.Cancelled;
+        DecidedAtUtc = nowUtc;
+        DecidedByName = SystemDecider;
+        DecisionNote = "Cancelled automatically: employee terminated.";
     }
 
     /// <summary>True when this request's date range overlaps the given inclusive range.</summary>

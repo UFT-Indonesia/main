@@ -24,6 +24,16 @@ public static class DeleteEmployeeHandler
             return new Result<EmployeeResult>.NotFound("Employee was not found.");
         }
 
+        var directReports = await employees.ListAsync(
+            new ActiveDirectReportsSpec(new EmployeeId(command.EmployeeId)), ct);
+        if (directReports.Count > 0)
+        {
+            return new Result<EmployeeResult>.Error(
+                "employee.has_active_reports",
+                "Reassign this employee's direct reports before terminating them: "
+                    + string.Join(", ", directReports.Select(report => report.FullName)) + ".");
+        }
+
         var terminationDate = command.TerminationDate.HasValue
             ? LocalDate.FromDateTime(command.TerminationDate.Value.ToDateTime(TimeOnly.MinValue))
             : clock.GetCurrentInstant().InUtc().Date;

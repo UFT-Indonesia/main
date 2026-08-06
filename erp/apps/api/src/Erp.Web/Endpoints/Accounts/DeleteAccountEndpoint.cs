@@ -12,13 +12,16 @@ public sealed class DeleteAccountEndpoint : Endpoint<AccountIdRequest>
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IRefreshTokenService _refreshTokenService;
+    private readonly IAccountIdentityResolver _identityResolver;
 
     public DeleteAccountEndpoint(
         UserManager<ApplicationUser> userManager,
-        IRefreshTokenService refreshTokenService)
+        IRefreshTokenService refreshTokenService,
+        IAccountIdentityResolver identityResolver)
     {
         _userManager = userManager;
         _refreshTokenService = refreshTokenService;
+        _identityResolver = identityResolver;
     }
 
     public override void Configure()
@@ -36,7 +39,8 @@ public sealed class DeleteAccountEndpoint : Endpoint<AccountIdRequest>
             return;
         }
 
-        if (!AccountRules.CanManage(User, AccountRules.RoleFromNames(await _userManager.GetRolesAsync(user))))
+        var identity = await _identityResolver.ResolveAsync(user, ct);
+        if (!AccountRules.CanManage(User, identity.Role))
         {
             await SendForbiddenAsync(ct);
             return;

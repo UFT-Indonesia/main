@@ -22,8 +22,9 @@ export default function NewEmployeePage() {
         fullName: values.fullName,
         nik: values.nik,
         npwp: values.npwp ? values.npwp : null,
-        monthlyWageAmount: values.monthlyWageAmount,
-        effectiveSalaryFrom: values.effectiveSalaryFrom,
+        // Creating employees is Owner-only, so the form always validated these as present.
+        monthlyWageAmount: values.monthlyWageAmount!,
+        effectiveSalaryFrom: values.effectiveSalaryFrom!,
         role: values.role,
         parentId: values.parentId ? values.parentId : null,
       });

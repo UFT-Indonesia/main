@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
@@ -14,6 +15,7 @@ public static class UpdateAttendanceLogHandler
         IRepository<AttendanceLog> attendanceLogs,
         IReadRepository<AttendanceLog> attendanceLogReader,
         IRepository<AttendanceDay> attendanceDays,
+        IReadRepository<Employee> employees,
         AttendanceDayPolicy policy,
         CancellationToken ct)
     {
@@ -28,6 +30,13 @@ public static class UpdateAttendanceLogHandler
         if (log is null)
         {
             return new Result<AttendanceResult>.NotFound("Attendance log was not found.");
+        }
+
+        var denied = await AttendanceLogService.CheckWriteAccessAsync<AttendanceResult>(
+            command.Caller, log.EmployeeId, employees, ct);
+        if (denied is not null)
+        {
+            return denied;
         }
 
         var newPunchedAt = Instant.FromDateTimeOffset(command.PunchedAtUtc);

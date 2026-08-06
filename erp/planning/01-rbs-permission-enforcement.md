@@ -15,17 +15,25 @@
 1. Split the Update/Delete authorization:
    - `[Authorize(Roles = "Owner,Manager")]` on `UpdateEmployeeEndpoint`.
    - Keep `[Authorize(Roles = "Owner")]` on `DeleteEmployeeEndpoint` (per your answer — no Manager delete rights).
-2. Add `EmployeeRules.CanManage(caller, targetRole)` (mirrors `AccountRules.CanManage`: `Owner.IsInRole` OR `Manager.IsInRole && targetRole == Staff`) for use inside `UpdateEmployeeEndpoint` — enforce before dispatching the command; `SendForbiddenAsync` on failure.
-3. Give Manager a way to actually reach the Update form without exposing salary. Recommendation (not asked as an open question — low-stakes implementation detail): redact `MonthlyWage`/`EffectiveSalaryFrom` from the list/detail DTO when the caller is a Manager, rather than standing up a second parallel endpoint set. This is consistent with the existing `ProvisionCandidatesEndpoint` precedent (Manager already only ever sees Staff, minus salary, there) and avoids duplicating list/detail logic.
-4. Replace both `// TODO` comments with a short doc comment referencing `EmployeeRules`/`AccountRules`.
-5. Tests: Owner update/delete-anyone; Manager update-only (forbidden on delete regardless of target); Staff no access.
+2. **Reuse `AccountRules.CanManage` directly — no new `EmployeeRules` class.** The rule is already role-generic (`ClaimsPrincipal` × `EmployeeRole`), it just happens to live in `AccountContracts.cs`. Duplicating it into an Employees-vertical twin buys nothing and gives us two copies to keep in sync.
+3. `UpdateEmployeeEndpoint` enforces, before dispatching the command (`SendForbiddenAsync` on any failure):
+   - `CanManage(User, employee.Role)` — the target's **current** role.
+   - `CanManage(User, req.Role)` — the **requested** role. Without this, a Manager could promote a Staff member to Owner/Manager in the same call, escaping their own scope.
+   - `CanManage(User, newParent.Role)` when `ParentId` changes. Net effect: **only Owner can reparent.** A Manager can only pass `CanManage` for a Staff parent, and `MaxDepth = 2` already makes Staff-under-Staff impossible — so every Manager reparent attempt is denied. That's the intended policy: org-chart structure is Owner's to change.
+   - Manager sending **any** wage field → forbidden (see 5).
+4. **Salary read redaction.** Open `ListEmployeesEndpoint`/`GetEmployeeEndpoint` to `Owner,Manager`; Manager sees **all rows** (org visibility) with `MonthlyWageAmount`/`MonthlyWageCurrency`/`EffectiveSalaryFrom` nulled out. Redaction lives in `EmployeeResponseMapper.ToResponse(result, caller)` — one place, all four endpoints route through it.
+5. **Salary write.** `MonthlyWageAmount`/`EffectiveSalaryFrom` become **nullable** on `UpdateEmployeeRouteRequest` + `UpdateEmployeeCommand`; `null` = "leave unchanged". Manager's form omits them entirely (it never received them), so the check is simply *"caller is not Owner AND a wage field is present → forbidden"* — no need to load and diff the stored wage.
+6. Replace both `// TODO` comments with a doc comment referencing `AccountRules.CanManage`.
+7. Tests: `AccountRules.CanManage` truth table (Owner/Manager/Staff caller × Owner/Manager/Staff target) as a unit test. Endpoint wiring stays uncovered — the repo has no HTTP-level test infra and standing the first one up is out of scope for this branch.
 
 ## Frontend plan
 - `Sidebar.tsx`: no change needed for the Employees nav item itself (see branch 03 for the actual sidebar bug found), but the **Edit** and **Delete** actions inside `EmployeeTable`/`app/employees/[id]/page.tsx` need role-gating that doesn't exist today:
   - Edit button/action: visible to Owner and Manager, hidden for Staff.
   - Delete/Terminate button/action: visible to Owner only, hidden for Manager and Staff.
   - Read role from `useAuthStore` (`user.roles`), same source `Sidebar.tsx` already uses for nav filtering.
-- If the salary-redaction approach from step 3 is chosen: `EmployeeForm`/`EmployeeTable` need a variant that hides wage/salary fields entirely when the logged-in user is a Manager (fields simply absent, not disabled-and-visible).
+- `EmployeeTable`: wage column hidden entirely for non-Owner (the API sends `null` anyway).
+- `EmployeeForm`: wage + effective-from fields absent for non-Owner (not disabled-and-visible), and the **Role** select locked to `Staff` for a Manager — matching the backend rule, so a Manager never submits into a guaranteed 403.
+- **ParentId change confirmation**: changing "Reporting to" prompts a confirm/cancel before submit, for **any** editor including Owner — reparenting is a structural change regardless of who does it. Termination already has its own confirm dialog (`DeleteEmployeeDialog`), so no new work there.
 
 ## Status
-Decisions locked — ready to implement once branch order/priority is set.
+Decisions locked — implementing.

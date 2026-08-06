@@ -10,10 +10,12 @@ namespace Erp.Web.Endpoints.Auth;
 public sealed class MeEndpoint : EndpointWithoutRequest<AuthUserResponse>
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IAccountIdentityResolver _identityResolver;
 
-    public MeEndpoint(UserManager<ApplicationUser> userManager)
+    public MeEndpoint(UserManager<ApplicationUser> userManager, IAccountIdentityResolver identityResolver)
     {
         _userManager = userManager;
+        _identityResolver = identityResolver;
     }
 
     public override void Configure()
@@ -38,8 +40,8 @@ public sealed class MeEndpoint : EndpointWithoutRequest<AuthUserResponse>
             return;
         }
 
-        var roles = await _userManager.GetRolesAsync(user);
+        var identity = await _identityResolver.ResolveAsync(user, ct);
 
-        await SendOkAsync(AuthUserResponse.From(user, roles), ct);
+        await SendOkAsync(AuthUserResponse.From(user, identity), ct);
     }
 }

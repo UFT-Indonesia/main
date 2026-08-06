@@ -1,10 +1,13 @@
+using Erp.UseCases.Common;
+
 namespace Erp.UseCases.Leave.ListLeaveRequests;
 
 public sealed record ListLeaveRequestsQuery(
     int Page,
     int PageSize,
     string? Status,
-    Guid? EmployeeId);
+    Guid? EmployeeId,
+    Caller Caller);
 
 public sealed class ListLeaveRequestsResult
 {

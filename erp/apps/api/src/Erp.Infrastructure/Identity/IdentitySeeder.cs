@@ -1,7 +1,11 @@
+using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees;
+using Erp.Infrastructure.Persistence;
+using Erp.SharedKernel.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using NodaTime;
 
 namespace Erp.Infrastructure.Identity;
 
@@ -9,15 +13,21 @@ public sealed class IdentitySeeder
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+    private readonly AppDbContext _db;
+    private readonly IClock _clock;
     private readonly IdentitySeedOptions _options;
 
     public IdentitySeeder(
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole<Guid>> roleManager,
+        AppDbContext db,
+        IClock clock,
         IOptions<IdentitySeedOptions> options)
     {
         _userManager = userManager;
         _roleManager = roleManager;
+        _db = db;
+        _clock = clock;
         _options = options.Value;
     }
 
@@ -25,9 +35,26 @@ public sealed class IdentitySeeder
     {
         await EnsureRolesAsync();
 
-        if (await _userManager.Users.AnyAsync(cancellationToken))
+        var owner = await EnsureOwnerAccountAsync(cancellationToken);
+        if (owner is null)
         {
             return;
+        }
+
+        // Authorization now reads Employee.Role, so the owner needs a real employee record
+        // — without one it cannot hold leave or be resolved as an approver.
+        await EnsureOwnerEmployeeAsync(owner, cancellationToken);
+    }
+
+    /// <summary>Returns the owner account, creating it on a fresh database. Null when nothing is configured.</summary>
+    private async Task<ApplicationUser?> EnsureOwnerAccountAsync(CancellationToken ct)
+    {
+        if (await _userManager.Users.AnyAsync(ct))
+        {
+            // Existing deployment: only the configured owner is a candidate for backfill.
+            return string.IsNullOrWhiteSpace(_options.Email)
+                ? null
+                : await _userManager.FindByNameAsync(_options.Email.Trim());
         }
 
         if (!_options.HasOwnerCredentials)
@@ -50,10 +77,36 @@ public sealed class IdentitySeeder
             throw new InvalidOperationException($"Failed to seed initial owner: {FormatErrors(createResult)}");
         }
 
-        var roleResult = await _userManager.AddToRoleAsync(user, EmployeeRole.Owner.ToString());
-        if (!roleResult.Succeeded)
+        return user;
+    }
+
+    private async Task EnsureOwnerEmployeeAsync(ApplicationUser owner, CancellationToken ct)
+    {
+        if (owner.EmployeeId.HasValue)
         {
-            throw new InvalidOperationException($"Failed to assign owner role to initial owner: {FormatErrors(roleResult)}");
+            var linkedId = new EmployeeId(owner.EmployeeId.Value);
+            if (await _db.Employees.AnyAsync(employee => employee.Id == linkedId, ct))
+            {
+                return;
+            }
+        }
+
+        var employee = Employee.Create(
+            string.IsNullOrWhiteSpace(owner.FullName) ? _options.FullName.Trim() : owner.FullName,
+            Nik.Create(_options.Nik),
+            Money.Idr(_options.MonthlyWage),
+            _clock.GetCurrentInstant().InUtc().Date,
+            EmployeeRole.Owner);
+
+        _db.Employees.Add(employee);
+        await _db.SaveChangesAsync(ct);
+
+        owner.EmployeeId = employee.Id.Value;
+        var linkResult = await _userManager.UpdateAsync(owner);
+        if (!linkResult.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"Failed to link the owner account to its employee record: {FormatErrors(linkResult)}");
         }
     }
 

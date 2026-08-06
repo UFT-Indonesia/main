@@ -25,6 +25,7 @@ public static class RecordDeviceLogHandler
             null,
             command.DeviceId,
             null,
+            null,
             employees,
             attendanceLogs,
             clock,

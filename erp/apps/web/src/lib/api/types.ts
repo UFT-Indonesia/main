@@ -28,9 +28,10 @@ export interface Employee {
   fullName: string;
   nik: string;
   npwp: string | null;
-  monthlyWageAmount: number;
-  monthlyWageCurrency: string;
-  effectiveSalaryFrom: string;
+  /** Null for non-Owner callers — pay is redacted server-side. */
+  monthlyWageAmount: number | null;
+  monthlyWageCurrency: string | null;
+  effectiveSalaryFrom: string | null;
   role: EmployeeRole;
   status: EmployeeStatus;
   parentId: string | null;
@@ -62,7 +63,11 @@ export interface CreateEmployeeBody {
   parentId?: string | null;
 }
 
-export type UpdateEmployeeBody = CreateEmployeeBody;
+export interface UpdateEmployeeBody extends Omit<CreateEmployeeBody, 'monthlyWageAmount' | 'effectiveSalaryFrom'> {
+  /** Omit or null to leave pay unchanged. Managers must omit it — only Owner may set pay. */
+  monthlyWageAmount?: number | null;
+  effectiveSalaryFrom?: string | null;
+}
 
 export interface DeleteEmployeeBody {
   terminationDate?: string | null;
@@ -130,6 +135,8 @@ export interface AttendanceLogListItem {
   deviceId: string | null;
   recordedByUserId: string | null;
   notes: AttendanceLogNote[];
+  /** Server-computed: whether the caller may alter this employee's records. */
+  canWrite: boolean;
 }
 
 export interface ListAttendanceLogsResponse {
@@ -159,6 +166,8 @@ export interface AttendanceDayListItem {
   tapInUtc: string | null;
   tapOutUtc: string | null;
   status: AttendanceDayStatus;
+  /** Server-computed: whether the caller may alter this employee's records. */
+  canWrite: boolean;
 }
 
 export interface ListAttendanceDaysResponse {
@@ -212,6 +221,30 @@ export interface AttendanceLogResponse {
   notes: AttendanceLogNote[];
 }
 
+export interface AttendanceDevice {
+  id: string;
+  /** The identifier the physical reader sends on every punch. */
+  deviceKey: string;
+  name: string;
+  enabled: boolean;
+  createdAtUtc: string;
+}
+
+export interface ListAttendanceDevicesResponse {
+  items: AttendanceDevice[];
+}
+
+export interface RegisterAttendanceDeviceBody {
+  deviceKey: string;
+  name: string;
+}
+
+export interface RegisterAttendanceDeviceResponse {
+  device: AttendanceDevice;
+  /** Shown exactly once; not retrievable afterwards. */
+  secret: string;
+}
+
 export type LeaveType = 'Annual' | 'Sick' | 'Permission' | 'Unpaid';
 export type LeaveRequestStatus = 'Pending' | 'Approved' | 'Denied' | 'Cancelled';
 
@@ -232,6 +265,9 @@ export interface LeaveRequest {
   decidedAtUtc: string | null;
   decisionNote: string | null;
   approvedWorkdaysThisYear: number;
+  /** Server-computed: the rules depend on the subject's role and reporting line, which the client cannot see. */
+  canDecide: boolean;
+  canCancel: boolean;
 }
 
 export interface ListLeaveRequestsResponse {

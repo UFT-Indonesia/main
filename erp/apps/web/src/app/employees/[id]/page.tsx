@@ -26,6 +26,7 @@ import {
 } from '@/hooks/use-employees';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
+import { useHasRole } from '@/lib/auth/store';
 import { cn } from '@/lib/utils';
 
 interface PageProps {
@@ -41,6 +42,8 @@ export default function EmployeeDetailPage({ params }: PageProps) {
   const tCommon = useTranslations('common');
   const toast = useToast();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // Termination is Owner-only; Manager may still edit the record.
+  const isOwner = useHasRole('Owner');
 
   const { data, isLoading, error } = useEmployee(id);
   const updateMutation = useUpdateEmployee(id);
@@ -52,8 +55,9 @@ export default function EmployeeDetailPage({ params }: PageProps) {
         fullName: values.fullName,
         nik: values.nik,
         npwp: values.npwp ? values.npwp : null,
-        monthlyWageAmount: values.monthlyWageAmount,
-        effectiveSalaryFrom: values.effectiveSalaryFrom,
+        // Undefined for a Manager — the API leaves the stored pay untouched.
+        monthlyWageAmount: values.monthlyWageAmount ?? null,
+        effectiveSalaryFrom: values.effectiveSalaryFrom ?? null,
         role: values.role,
         parentId: values.parentId ? values.parentId : null,
       });
@@ -112,7 +116,7 @@ export default function EmployeeDetailPage({ params }: PageProps) {
               </div>
             </div>
           </div>
-          {data && data.status !== 'Terminated' && (
+          {isOwner && data && data.status !== 'Terminated' && (
             <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
               <Trash2 className="h-4 w-4" />
               {tDetail('terminate')}

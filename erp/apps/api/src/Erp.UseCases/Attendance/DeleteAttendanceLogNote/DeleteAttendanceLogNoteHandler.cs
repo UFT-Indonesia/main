@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
@@ -11,6 +12,7 @@ public static class DeleteAttendanceLogNoteHandler
     public static async Task<Result<bool>> Handle(
         DeleteAttendanceLogNoteCommand command,
         IRepository<AttendanceLog> attendanceLogs,
+        IReadRepository<Employee> employees,
         CancellationToken ct)
     {
         var log = await attendanceLogs.FirstOrDefaultAsync(
@@ -18,6 +20,13 @@ public static class DeleteAttendanceLogNoteHandler
         if (log is null)
         {
             return new Result<bool>.NotFound("Attendance log was not found.");
+        }
+
+        var denied = await AttendanceLogService.CheckWriteAccessAsync<bool>(
+            command.Caller, log.EmployeeId, employees, ct);
+        if (denied is not null)
+        {
+            return denied;
         }
 
         if (!log.RemoveNote(command.NoteId))

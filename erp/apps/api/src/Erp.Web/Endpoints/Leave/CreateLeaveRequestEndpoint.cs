@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
 using Erp.UseCases.Leave.CreateLeaveRequest;
 using FastEndpoints;
@@ -9,7 +10,12 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Leave;
 
-[Authorize(Roles = "Owner,Manager")]
+/// <summary>
+/// Scoped by <see cref="LeaveRules.CanFileFor"/>: Staff file for themselves, a Manager for
+/// themselves or their own Staff, an Owner for anyone. An Owner's own leave is approved on
+/// creation — nobody outranks them to decide it.
+/// </summary>
+[Authorize]
 public sealed class CreateLeaveRequestEndpoint : Endpoint<CreateLeaveRequestRequest, LeaveRequestResponse>
 {
     private readonly IMessageBus _bus;
@@ -27,8 +33,7 @@ public sealed class CreateLeaveRequestEndpoint : Endpoint<CreateLeaveRequestRequ
 
     public override async Task HandleAsync(CreateLeaveRequestRequest req, CancellationToken ct)
     {
-        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdValue, out var userId))
+        if (CallerFactory.From(User) is not { } caller)
         {
             await SendUnauthorizedAsync(ct);
             return;
@@ -40,7 +45,7 @@ public sealed class CreateLeaveRequestEndpoint : Endpoint<CreateLeaveRequestRequ
             req.StartDate,
             req.EndDate,
             req.Reason,
-            userId), ct);
+            caller), ct);
 
         if (result is Result<LeaveRequestResult>.Success s)
         {
@@ -57,6 +62,12 @@ public sealed class CreateLeaveRequestEndpoint : Endpoint<CreateLeaveRequestRequ
 
         if (result is Result<LeaveRequestResult>.Error e)
         {
+            if (e.Code == ResultErrors.Forbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 

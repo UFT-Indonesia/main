@@ -4,5 +4,5 @@ namespace Erp.Infrastructure.Authentication;
 
 public interface IJwtTokenService
 {
-    JwtToken CreateAccessToken(ApplicationUser user, IEnumerable<string> roles);
+    JwtToken CreateAccessToken(ApplicationUser user, AccountIdentity identity);
 }

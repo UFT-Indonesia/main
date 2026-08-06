@@ -42,6 +42,10 @@ public sealed class LeaveRequestResponse
     public string? DecisionNote { get; init; }
     public int ApprovedWorkdaysThisYear { get; init; }
 
+    /// <summary>What the calling user may do with this request — drives which controls the UI renders.</summary>
+    public bool CanDecide { get; init; }
+    public bool CanCancel { get; init; }
+
     public static LeaveRequestResponse From(LeaveRequestResult result) => new()
     {
         Id = result.Id,
@@ -58,6 +62,8 @@ public sealed class LeaveRequestResponse
         DecidedAtUtc = result.DecidedAtUtc,
         DecisionNote = result.DecisionNote,
         ApprovedWorkdaysThisYear = result.ApprovedWorkdaysThisYear,
+        CanDecide = result.CanDecide,
+        CanCancel = result.CanCancel,
     };
 }
 

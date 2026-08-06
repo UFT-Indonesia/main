@@ -29,6 +29,7 @@ import { useLeaveRequests, useCreateLeaveRequest, useDecideLeaveRequest } from '
 import { useEmployees } from '@/hooks/use-employees';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
+import { useHasRole } from '@/lib/auth/store';
 import type { LeaveRequest, LeaveRequestStatus, LeaveType } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
@@ -56,7 +57,12 @@ export default function LeavePage() {
   const createMutation = useCreateLeaveRequest();
   const decideMutation = useDecideLeaveRequest();
 
-  const employeesQuery = useEmployees({ status: 'Active', search: empSearch, pageSize: 50 });
+  // Staff see only their own requests, so an employee filter has nothing to filter.
+  const canFilterByEmployee = useHasRole('Owner', 'Manager');
+  const employeesQuery = useEmployees(
+    { status: 'Active', search: empSearch, pageSize: 50 },
+    canFilterByEmployee,
+  );
   const empOptions = (employeesQuery.data?.items ?? []).map((e) => ({
     value: e.id,
     label: e.fullName,
@@ -107,18 +113,20 @@ export default function LeavePage() {
         </header>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="w-full md:w-64">
-            <Combobox
-              value={employeeId}
-              onChange={(v) => { setEmployeeId(v); setPage(1); }}
-              options={empOptions}
-              placeholder={t('filters.allEmployees')}
-              searchPlaceholder={tCommon('search')}
-              onSearchChange={setEmpSearch}
-              loading={employeesQuery.isLoading}
-              clearable
-            />
-          </div>
+          {canFilterByEmployee && (
+            <div className="w-full md:w-64">
+              <Combobox
+                value={employeeId}
+                onChange={(v) => { setEmployeeId(v); setPage(1); }}
+                options={empOptions}
+                placeholder={t('filters.allEmployees')}
+                searchPlaceholder={tCommon('search')}
+                onSearchChange={setEmpSearch}
+                loading={employeesQuery.isLoading}
+                clearable
+              />
+            </div>
+          )}
           <div className="w-full md:w-40">
             <Select
               value={status}
@@ -177,7 +185,9 @@ export default function LeavePage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        {item.status === 'Pending' && (
+                        {/* canDecide/canCancel come from the server, which is the only side
+                            that knows the subject's role and reporting line. */}
+                        {item.canDecide && (
                           <>
                             <Button
                               variant="ghost"
@@ -199,7 +209,7 @@ export default function LeavePage() {
                             </Button>
                           </>
                         )}
-                        {(item.status === 'Pending' || item.status === 'Approved') && (
+                        {item.canCancel && (
                           <Button
                             variant="ghost"
                             size="icon"

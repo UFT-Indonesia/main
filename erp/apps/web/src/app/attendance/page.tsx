@@ -14,7 +14,7 @@ import { useAttendanceDays, useRecordManualLog } from '@/hooks/use-attendance';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { exportAttendanceDays } from '@/lib/api/attendance';
-import { useAuthStore } from '@/lib/auth/store';
+import { useHasRole } from '@/lib/auth/store';
 import { downloadBlob } from '@/lib/csv';
 import type { AttendanceDayListItem, AttendanceDayStatus, PunchType } from '@/lib/api/types';
 
@@ -25,8 +25,9 @@ export default function AttendancePage() {
   const tCommon = useTranslations('common');
   const toast = useToast();
 
-  const user = useAuthStore((s) => s.user);
-  const canEdit = !!user?.roles.some((role) => role === 'Owner' || role === 'Manager');
+  // Coarse gate: Staff never write attendance at all. Whether a Manager may write for a
+  // *particular* employee is decided per row by the server's canWrite flag.
+  const canWriteSomething = useHasRole('Owner', 'Manager');
 
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -125,10 +126,12 @@ export default function AttendancePage() {
             <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
             <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4" />
-            {t('addManual')}
-          </Button>
+          {canWriteSomething && (
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              {t('addManual')}
+            </Button>
+          )}
         </header>
 
         <AttendanceDayFilters
@@ -221,7 +224,7 @@ export default function AttendancePage() {
         open={detailsDay !== null}
         onOpenChange={(o) => { if (!o) setDetailsDay(null); }}
         day={detailsDay}
-        canEdit={canEdit}
+        canEdit={detailsDay?.canWrite ?? false}
       />
     </AppShell>
   );

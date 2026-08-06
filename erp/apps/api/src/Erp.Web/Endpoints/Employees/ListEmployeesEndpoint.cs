@@ -7,7 +7,8 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Employees;
 
-[Authorize(Roles = "Owner")]
+/// <summary>Manager sees every employee so they can reach the edit form; pay is redacted for them by the mapper.</summary>
+[Authorize(Roles = "Owner,Manager")]
 public sealed class ListEmployeesEndpoint : Endpoint<ListEmployeesRequest, ListEmployeesResponse>
 {
     private readonly IMessageBus _bus;
@@ -36,7 +37,7 @@ public sealed class ListEmployeesEndpoint : Endpoint<ListEmployeesRequest, ListE
         {
             await SendOkAsync(new ListEmployeesResponse
             {
-                Items = s.Value.Items.Select(EmployeeResponseMapper.ToResponse).ToList(),
+                Items = s.Value.Items.Select(item => EmployeeResponseMapper.ToResponse(item, User)).ToList(),
                 Page = s.Value.Page,
                 PageSize = s.Value.PageSize,
                 TotalCount = s.Value.TotalCount,

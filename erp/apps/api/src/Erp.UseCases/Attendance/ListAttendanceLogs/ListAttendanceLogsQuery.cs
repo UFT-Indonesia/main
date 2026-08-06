@@ -1,3 +1,5 @@
+using Erp.UseCases.Common;
+
 namespace Erp.UseCases.Attendance.ListAttendanceLogs;
 
 public sealed record ListAttendanceLogsQuery(
@@ -7,4 +9,5 @@ public sealed record ListAttendanceLogsQuery(
     DateTimeOffset? DateFrom,
     DateTimeOffset? DateTo,
     string? PunchType,
-    string? Source);
+    string? Source,
+    Caller Caller);

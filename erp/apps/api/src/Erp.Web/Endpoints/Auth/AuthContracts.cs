@@ -38,14 +38,15 @@ public sealed class AuthUserResponse
     public bool MustChangePassword { get; init; }
     public IList<string> Roles { get; init; } = default!;
 
-    public static AuthUserResponse From(ApplicationUser user, IList<string> roles) => new()
+    /// <summary>Roles stay an array for the client's sake, but an account now resolves to exactly one.</summary>
+    public static AuthUserResponse From(ApplicationUser user, AccountIdentity identity) => new()
     {
         Id = user.Id,
         Username = user.UserName ?? string.Empty,
         Email = user.Email ?? string.Empty,
         FullName = user.FullName,
-        EmployeeId = user.EmployeeId,
+        EmployeeId = identity.EmployeeId,
         MustChangePassword = user.MustChangePassword,
-        Roles = roles,
+        Roles = [identity.Role.ToString()],
     };
 }

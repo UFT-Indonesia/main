@@ -57,6 +57,8 @@ public sealed class AttendanceLogListItemResponse
     public string? DeviceId { get; init; }
     public Guid? RecordedByUserId { get; init; }
     public IReadOnlyList<AttendanceLogNoteResponse> Notes { get; init; } = [];
+    /// <summary>Whether the calling user may create or alter this employee's records.</summary>
+    public bool CanWrite { get; init; }
 }
 
 public sealed class ListAttendanceLogsResponse
@@ -85,6 +87,8 @@ public sealed class AttendanceDayListItemResponse
     public DateTimeOffset? TapInUtc { get; init; }
     public DateTimeOffset? TapOutUtc { get; init; }
     public string Status { get; init; } = default!;
+    /// <summary>Whether the calling user may create or alter this employee's records.</summary>
+    public bool CanWrite { get; init; }
 }
 
 public sealed class ListAttendanceDaysResponse

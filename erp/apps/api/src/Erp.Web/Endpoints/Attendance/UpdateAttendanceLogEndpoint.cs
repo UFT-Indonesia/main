@@ -1,5 +1,6 @@
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Common;
 using Erp.UseCases.Attendance.Common;
 using Erp.UseCases.Attendance.UpdateAttendanceLog;
 using FastEndpoints;
@@ -8,6 +9,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
+/// <summary>Owner writes for anyone; a Manager only for themselves and their direct Staff (enforced per-request by AttendanceRules).</summary>
 [Authorize(Roles = "Owner,Manager")]
 public sealed class UpdateAttendanceLogEndpoint : Endpoint<UpdateAttendanceLogRequest, AttendanceLogResponse>
 {
@@ -26,10 +28,17 @@ public sealed class UpdateAttendanceLogEndpoint : Endpoint<UpdateAttendanceLogRe
 
     public override async Task HandleAsync(UpdateAttendanceLogRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<AttendanceResult>>(new UpdateAttendanceLogCommand(
             req.Id,
             req.PunchedAtUtc,
-            req.PunchType), ct);
+            req.PunchType,
+            caller), ct);
 
         if (result is Result<AttendanceResult>.Success s)
         {
@@ -55,6 +64,12 @@ public sealed class UpdateAttendanceLogEndpoint : Endpoint<UpdateAttendanceLogRe
 
         if (result is Result<AttendanceResult>.Error e)
         {
+            if (e.Code == ResultErrors.Forbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 

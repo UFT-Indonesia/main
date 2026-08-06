@@ -4,6 +4,8 @@ using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Attendance.Common;
+using Erp.UseCases.Common;
 using NodaTime;
 using NodaTime.Text;
 
@@ -72,6 +74,15 @@ public static class ExportAttendanceDaysHandler
         {
             return new Result<ExportAttendanceDaysResult>.Error(
                 "attendance.export_too_many", $"Cannot export more than {MaxKeys} rows at once.");
+        }
+
+        // Rejected rather than silently trimmed: a CSV that quietly omits rows the caller
+        // asked for is worse than being told no.
+        if (!AttendanceRules.CanReadAll(query.Caller)
+            && query.Items.Any(item => !AttendanceRules.CanRead(query.Caller, new EmployeeId(item.EmployeeId))))
+        {
+            return new Result<ExportAttendanceDaysResult>.Error(
+                ResultErrors.Forbidden, "You cannot export attendance for another employee.");
         }
 
         var keys = query.Items

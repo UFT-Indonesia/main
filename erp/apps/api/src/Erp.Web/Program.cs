@@ -1,6 +1,7 @@
 using Erp.Infrastructure;
 using Erp.Infrastructure.Authentication;
 using Erp.Infrastructure.Configuration;
+using Erp.Infrastructure.DeviceIngest;
 using Erp.Infrastructure.Exceptions;
 using Erp.Infrastructure.Identity;
 using Erp.UseCases.Attendance.Common;
@@ -82,6 +83,9 @@ try
     {
         var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
         await seeder.SeedAsync();
+
+        var deviceSeeder = scope.ServiceProvider.GetRequiredService<AttendanceDeviceSeeder>();
+        await deviceSeeder.SeedAsync();
     }
 
     // TLS terminates at the reverse proxy (nginx/Caddy), which also does the HTTP→HTTPS

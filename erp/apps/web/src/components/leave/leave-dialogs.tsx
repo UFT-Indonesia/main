@@ -16,6 +16,7 @@ import { Select } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
 import { Badge } from '@/components/ui/badge';
 import { useEmployees } from '@/hooks/use-employees';
+import { useAuthStore, useHasRole } from '@/lib/auth/store';
 import type { LeaveRequest, LeaveType } from '@/lib/api/types';
 
 export const LEAVE_TYPES: LeaveType[] = ['Annual', 'Sick', 'Permission', 'Unpaid'];
@@ -72,10 +73,17 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
   const t = useTranslations('leave');
   const tCommon = useTranslations('common');
 
+  // Staff file only for themselves, so they get no picker (and cannot read the employee list).
+  const canPickEmployee = useHasRole('Owner', 'Manager');
+  const self = useAuthStore((s) => s.user);
+
   const [form, setForm] = useState(EMPTY_FORM);
   const [empSearch, setEmpSearch] = useState('');
 
-  const employeesQuery = useEmployees({ status: 'Active', search: empSearch, pageSize: 50 });
+  const employeesQuery = useEmployees(
+    { status: 'Active', search: empSearch, pageSize: 50 },
+    canPickEmployee,
+  );
   const empOptions = (employeesQuery.data?.items ?? []).map((e) => ({
     value: e.id,
     label: e.fullName,
@@ -85,12 +93,12 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
   const workdays = countWorkdays(form.startDate, form.endDate);
   const canSubmit = !!form.employeeId && workdays > 0;
 
-  // Reset on every close, regardless of whether it closed via the dialog's own
+  // Reset on every open and close, regardless of whether it closed via the dialog's own
   // affordances or a parent driving `open` to false after a successful submit.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!open) setForm(EMPTY_FORM);
-  }, [open]);
+    setForm({ ...EMPTY_FORM, employeeId: canPickEmployee ? '' : (self?.employeeId ?? '') });
+  }, [open, canPickEmployee, self?.employeeId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -102,16 +110,22 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
       <div className="mt-4 space-y-3">
         <div className="flex flex-col gap-1.5">
           <Label>{t('create.employee')}</Label>
-          <Combobox
-            value={form.employeeId}
-            onChange={(v) => setForm((s) => ({ ...s, employeeId: v }))}
-            options={empOptions}
-            placeholder={t('create.employeePlaceholder')}
-            searchPlaceholder={tCommon('search')}
-            onSearchChange={setEmpSearch}
-            loading={employeesQuery.isLoading}
-            clearable
-          />
+          {canPickEmployee ? (
+            <Combobox
+              value={form.employeeId}
+              onChange={(v) => setForm((s) => ({ ...s, employeeId: v }))}
+              options={empOptions}
+              placeholder={t('create.employeePlaceholder')}
+              searchPlaceholder={tCommon('search')}
+              onSearchChange={setEmpSearch}
+              loading={employeesQuery.isLoading}
+              clearable
+            />
+          ) : (
+            <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+              {self?.fullName ?? '—'}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">

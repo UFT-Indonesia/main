@@ -1,3 +1,4 @@
+using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Attendance.Events;
 using Erp.Core.Aggregates.Common;
@@ -6,6 +7,7 @@ using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
+using Erp.UseCases.Common;
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
@@ -17,6 +19,12 @@ public class AttendanceLogServiceTests
 {
     private static readonly DateTimeOffset Now = new(2025, 5, 12, 9, 0, 0, TimeSpan.FromHours(7));
     private static readonly EmployeeId ValidEmployeeId = EmployeeId.New();
+
+    private static readonly EmployeeId TerminatedEmployeeId = EmployeeId.New();
+
+    /// <summary>Manual entries carry a caller; device punches deliberately do not.</summary>
+    private static readonly Caller OwnerCaller =
+        new(Guid.NewGuid(), EmployeeRole.Owner, EmployeeId.New(), "Owner");
 
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
     private readonly IRepository<AttendanceLog> _attendanceLogs = Substitute.For<IRepository<AttendanceLog>>();
@@ -37,7 +45,122 @@ public class AttendanceLogServiceTests
         _employees.GetByIdAsync(ValidEmployeeId, Arg.Any<CancellationToken>())
             .Returns(employee);
 
+        var terminated = Employee.Create(
+            "Gone Employee",
+            Nik.Create("3201234567890124"),
+            Money.Idr(5_000_000m),
+            LocalDate.FromDateTime(DateTime.Today),
+            EmployeeRole.Owner);
+        terminated.Terminate(LocalDate.FromDateTime(DateTime.Today));
+        _employees.GetByIdAsync(TerminatedEmployeeId, Arg.Any<CancellationToken>())
+            .Returns(terminated);
+
         _clock.GetCurrentInstant().Returns(Instant.FromDateTimeOffset(Now));
+    }
+
+    [Fact]
+    public async Task RecordAsync_rejects_a_device_punch_for_a_terminated_employee()
+    {
+        var result = await AttendanceLogService.RecordAsync(
+            TerminatedEmployeeId.Value,
+            Now,
+            "In",
+            recordedByUserId: null,
+            recordedByName: null,
+            deviceId: "esp32-1",
+            note: null,
+            null,
+            _employees,
+            _attendanceLogs,
+            _clock,
+            _bus,
+            CancellationToken.None);
+
+        result.Should().BeOfType<Result<AttendanceResult>.Error>()
+            .Which.Code.Should().Be("attendance.employee_terminated");
+        await _attendanceLogs.DidNotReceive().AddAsync(Arg.Any<AttendanceLog>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordAsync_rejects_a_manual_punch_for_a_terminated_employee()
+    {
+        var result = await AttendanceLogService.RecordAsync(
+            TerminatedEmployeeId.Value,
+            Now,
+            "In",
+            recordedByUserId: Guid.NewGuid(),
+            recordedByName: "Manager",
+            deviceId: null,
+            note: "lupa absen",
+            null,
+            _employees,
+            _attendanceLogs,
+            _clock,
+            _bus,
+            CancellationToken.None);
+
+        result.Should().BeOfType<Result<AttendanceResult>.Error>()
+            .Which.Code.Should().Be("attendance.employee_terminated");
+        await _attendanceLogs.DidNotReceive().AddAsync(Arg.Any<AttendanceLog>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordAsync_returns_the_existing_punch_when_a_device_replays_the_same_request()
+    {
+        // A resent request is byte-identical, so it lands on the same (employee, device,
+        // instant) key. It must resolve to the original row, not a second punch.
+        var original = AttendanceLog.FromDevice(
+            ValidEmployeeId, Instant.FromDateTimeOffset(Now), PunchType.In, "esp32-1");
+        _attendanceLogs.FirstOrDefaultAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>())
+            .Returns(original);
+
+        var result = await AttendanceLogService.RecordAsync(
+            ValidEmployeeId.Value,
+            Now,
+            "In",
+            recordedByUserId: null,
+            recordedByName: null,
+            deviceId: "esp32-1",
+            note: null,
+            null,
+            _employees,
+            _attendanceLogs,
+            _clock,
+            _bus,
+            CancellationToken.None);
+
+        result.Should().BeOfType<Result<AttendanceResult>.Success>()
+            .Which.Value.Id.Should().Be(original.Id.Value);
+        await _attendanceLogs.DidNotReceive().AddAsync(Arg.Any<AttendanceLog>(), Arg.Any<CancellationToken>());
+        await _bus.DidNotReceive().PublishAsync(Arg.Any<AttendanceLogRecorded>());
+    }
+
+    [Fact]
+    public async Task RecordAsync_does_not_dedupe_manual_entries()
+    {
+        // Two people legitimately correcting the same punch twice is not a replay; only the
+        // device path is idempotent, and manual rows carry no device id to key on.
+        _attendanceLogs.FirstOrDefaultAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>())
+            .Returns(AttendanceLog.FromDevice(
+                ValidEmployeeId, Instant.FromDateTimeOffset(Now), PunchType.In, "esp32-1"));
+
+        var result = await AttendanceLogService.RecordAsync(
+            ValidEmployeeId.Value,
+            Now,
+            "In",
+            recordedByUserId: Guid.NewGuid(),
+            recordedByName: "Manager",
+            deviceId: null,
+            note: null,
+            OwnerCaller,
+            _employees,
+            _attendanceLogs,
+            _clock,
+            _bus,
+            CancellationToken.None);
+
+        result.Should().BeOfType<Result<AttendanceResult>.Success>();
+        await _attendanceLogs.Received(1).AddAsync(Arg.Any<AttendanceLog>(), Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -57,6 +180,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -84,6 +208,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -106,6 +231,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -127,6 +253,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "  ",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -150,6 +277,7 @@ public class AttendanceLogServiceTests
             recordedByName: "Test Recorder",
             deviceId: null,
             note: "Forgot to punch",
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -177,6 +305,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: null,
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -198,6 +327,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,
@@ -220,6 +350,7 @@ public class AttendanceLogServiceTests
             recordedByName: null,
             deviceId: "esp32-1",
             note: null,
+            null,
             _employees,
             _attendanceLogs,
             _clock,

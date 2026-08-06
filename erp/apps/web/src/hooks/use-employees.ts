@@ -23,11 +23,13 @@ const employeeKeys = {
   detail: (id: string) => [...employeeKeys.details(), id] as const,
 };
 
-export function useEmployees(params: ListEmployeesParams) {
+/** `enabled` is false for callers (Staff) the employees endpoint would reject anyway. */
+export function useEmployees(params: ListEmployeesParams, enabled = true) {
   return useQuery({
     queryKey: employeeKeys.list(params),
     queryFn: () => listEmployees(params),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 

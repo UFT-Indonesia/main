@@ -1,3 +1,5 @@
+using Erp.UseCases.Common;
+
 namespace Erp.UseCases.Attendance.ListAttendanceDays;
 
 public sealed record ListAttendanceDaysQuery(
@@ -6,4 +8,5 @@ public sealed record ListAttendanceDaysQuery(
     string? EmployeeSearch,
     DateOnly? DateFrom,
     DateOnly? DateTo,
-    string? Status);
+    string? Status,
+    Caller Caller);

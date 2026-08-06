@@ -8,7 +8,8 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Employees;
 
-[Authorize(Roles = "Owner")]
+/// <summary>Manager may open any employee record; pay is redacted for them by the mapper.</summary>
+[Authorize(Roles = "Owner,Manager")]
 public sealed class GetEmployeeEndpoint : Endpoint<GetEmployeeByIdRequest, EmployeeResponse>
 {
     private readonly IMessageBus _bus;
@@ -31,7 +32,7 @@ public sealed class GetEmployeeEndpoint : Endpoint<GetEmployeeByIdRequest, Emplo
 
         if (result is Result<EmployeeResult>.Success s)
         {
-            await SendOkAsync(EmployeeResponseMapper.ToResponse(s.Value), ct);
+            await SendOkAsync(EmployeeResponseMapper.ToResponse(s.Value, User), ct);
             return;
         }
 

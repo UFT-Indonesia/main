@@ -13,17 +13,20 @@ public sealed class ChangePasswordEndpoint : Endpoint<ChangePasswordRequest, Aut
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
+    private readonly IAccountIdentityResolver _identityResolver;
     private readonly IHostEnvironment _env;
 
     public ChangePasswordEndpoint(
         UserManager<ApplicationUser> userManager,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
+        IAccountIdentityResolver identityResolver,
         IHostEnvironment env)
     {
         _userManager = userManager;
         _jwtTokenService = jwtTokenService;
         _refreshTokenService = refreshTokenService;
+        _identityResolver = identityResolver;
         _env = env;
     }
 
@@ -62,8 +65,8 @@ public sealed class ChangePasswordEndpoint : Endpoint<ChangePasswordRequest, Aut
 
         await _refreshTokenService.RevokeAllForUserAsync(user.Id, "password_changed", ct);
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var token = _jwtTokenService.CreateAccessToken(user, roles);
+        var identity = await _identityResolver.ResolveAsync(user, ct);
+        var token = _jwtTokenService.CreateAccessToken(user, identity);
 
         var refreshResult = await _refreshTokenService.IssueAsync(
             user,
@@ -79,7 +82,7 @@ public sealed class ChangePasswordEndpoint : Endpoint<ChangePasswordRequest, Aut
             TokenType = "Bearer",
             ExpiresAtUtc = token.ExpiresAtUtc,
             RefreshTokenExpiresAtUtc = refreshResult.ExpiresAtUtc.ToDateTimeOffset(),
-            User = AuthUserResponse.From(user, roles),
+            User = AuthUserResponse.From(user, identity),
         }, ct);
     }
 }

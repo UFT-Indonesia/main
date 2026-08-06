@@ -35,9 +35,6 @@ public static class UpdateEmployeeHandler
         try
         {
             var npwp = string.IsNullOrWhiteSpace(command.Npwp) ? null : Npwp.Create(command.Npwp);
-            var newWage = Money.Idr(command.MonthlyWageAmount);
-            var newEffectiveFrom = LocalDate.FromDateTime(
-                command.EffectiveSalaryFrom.ToDateTime(TimeOnly.MinValue));
             var newParentId = command.ParentId.HasValue
                 ? new EmployeeId(command.ParentId.Value)
                 : (EmployeeId?)null;
@@ -51,10 +48,20 @@ public static class UpdateEmployeeHandler
 
             employee.UpdateBasicInfo(command.FullName, npwp);
 
-            if (!Equals(employee.MonthlyWage, newWage)
-                || employee.EffectiveSalaryFrom != newEffectiveFrom)
+            if (command.MonthlyWageAmount.HasValue || command.EffectiveSalaryFrom.HasValue)
             {
-                employee.ChangeSalary(newWage, newEffectiveFrom);
+                var newWage = command.MonthlyWageAmount.HasValue
+                    ? Money.Idr(command.MonthlyWageAmount.Value)
+                    : employee.MonthlyWage;
+                var newEffectiveFrom = command.EffectiveSalaryFrom.HasValue
+                    ? LocalDate.FromDateTime(command.EffectiveSalaryFrom.Value.ToDateTime(TimeOnly.MinValue))
+                    : employee.EffectiveSalaryFrom;
+
+                if (!Equals(employee.MonthlyWage, newWage)
+                    || employee.EffectiveSalaryFrom != newEffectiveFrom)
+                {
+                    employee.ChangeSalary(newWage, newEffectiveFrom);
+                }
             }
 
             // Handle role/parent transitions in an order that satisfies invariants

@@ -7,7 +7,12 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Leave;
 
-[Authorize(Roles = "Owner,Manager")]
+/// <summary>
+/// Visibility mirrors authority: Staff see their own requests, a Manager sees their own plus
+/// their direct Staff, an Owner sees everything. Scoping happens in the query so paging and
+/// totals reflect what the caller may actually see.
+/// </summary>
+[Authorize]
 public sealed class ListLeaveRequestsEndpoint : Endpoint<ListLeaveRequestsRequest, ListLeaveRequestsResponse>
 {
     private readonly IMessageBus _bus;
@@ -25,11 +30,18 @@ public sealed class ListLeaveRequestsEndpoint : Endpoint<ListLeaveRequestsReques
 
     public override async Task HandleAsync(ListLeaveRequestsRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<ListLeaveRequestsResult>>(new ListLeaveRequestsQuery(
             req.Page,
             req.PageSize,
             req.Status,
-            req.EmployeeId), ct);
+            req.EmployeeId,
+            caller), ct);
 
         if (result is Result<ListLeaveRequestsResult>.Success s)
         {
