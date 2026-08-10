@@ -5,6 +5,7 @@ using Erp.Core.Aggregates.Employees.Events;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Common;
 using Erp.UseCases.Employees.Common;
 using Erp.UseCases.Employees.DeleteEmployee;
 using FluentAssertions;
@@ -16,6 +17,10 @@ namespace Erp.UnitTests.UseCases;
 
 public class DeleteEmployeeHandlerTests
 {
+    // Every employee command carries the caller now — it lands on the audit row.
+    private static readonly Caller Actor =
+        new(Guid.NewGuid(), EmployeeRole.Owner, EmployeeId.New(), "Owner Utama");
+
     private readonly IRepository<Employee> _employees = Substitute.For<IRepository<Employee>>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IMessageBus _bus = Substitute.For<IMessageBus>();
@@ -55,7 +60,7 @@ public class DeleteEmployeeHandlerTests
             .Returns((Employee?)null);
 
         var result = await DeleteEmployeeHandler.Handle(
-            new DeleteEmployeeCommand(Guid.NewGuid(), null),
+            new DeleteEmployeeCommand(Guid.NewGuid(), null, Actor),
             _employees,
             _clock,
             _bus,
@@ -71,7 +76,7 @@ public class DeleteEmployeeHandlerTests
         _employees.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(owner);
 
         var result = await DeleteEmployeeHandler.Handle(
-            new DeleteEmployeeCommand(owner.Id.Value, new DateOnly(2025, 6, 1)),
+            new DeleteEmployeeCommand(owner.Id.Value, new DateOnly(2025, 6, 1), Actor),
             _employees,
             _clock,
             _bus,
@@ -82,7 +87,7 @@ public class DeleteEmployeeHandlerTests
         success.Value.TerminationDate.Should().Be(new DateOnly(2025, 6, 1));
         owner.DomainEvents.OfType<EmployeeTerminated>().Should().HaveCount(1);
         await _employees.Received(1).UpdateAsync(owner, Arg.Any<CancellationToken>());
-        await _bus.Received(1).PublishAsync(Arg.Any<EmployeeTerminated>());
+        await _bus.Received(1).PublishAsync(Arg.Any<EmployeeTerminated>(), Arg.Any<DeliveryOptions>());
     }
 
     [Fact]
@@ -94,7 +99,7 @@ public class DeleteEmployeeHandlerTests
             Instant.FromUtc(2025, 7, 15, 0, 0));
 
         var result = await DeleteEmployeeHandler.Handle(
-            new DeleteEmployeeCommand(owner.Id.Value, null),
+            new DeleteEmployeeCommand(owner.Id.Value, null, Actor),
             _employees,
             _clock,
             _bus,
@@ -112,7 +117,7 @@ public class DeleteEmployeeHandlerTests
         _employees.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(owner);
 
         var result = await DeleteEmployeeHandler.Handle(
-            new DeleteEmployeeCommand(owner.Id.Value, new DateOnly(2025, 6, 1)),
+            new DeleteEmployeeCommand(owner.Id.Value, new DateOnly(2025, 6, 1), Actor),
             _employees,
             _clock,
             _bus,
@@ -132,7 +137,7 @@ public class DeleteEmployeeHandlerTests
             .Returns([NewReport("Budi", manager.Id), NewReport("Siti", manager.Id)]);
 
         var result = await DeleteEmployeeHandler.Handle(
-            new DeleteEmployeeCommand(manager.Id.Value, new DateOnly(2025, 6, 1)),
+            new DeleteEmployeeCommand(manager.Id.Value, new DateOnly(2025, 6, 1), Actor),
             _employees,
             _clock,
             _bus,

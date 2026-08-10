@@ -4,6 +4,7 @@ using Erp.Core.Aggregates.Employees.Events;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Common;
 using Erp.UseCases.Employees.Common;
 using Erp.UseCases.Employees.UpdateEmployee;
 using FluentAssertions;
@@ -15,6 +16,10 @@ namespace Erp.UnitTests.UseCases;
 
 public class UpdateEmployeeHandlerTests
 {
+    // Every employee command carries the caller now — it lands on the audit row.
+    private static readonly Caller Actor =
+        new(Guid.NewGuid(), EmployeeRole.Owner, EmployeeId.New(), "Owner Utama");
+
     private readonly IRepository<Employee> _employees = Substitute.For<IRepository<Employee>>();
     private readonly IEmployeeHierarchyLookup _hierarchy = Substitute.For<IEmployeeHierarchyLookup>();
     private readonly IMessageBus _bus = Substitute.For<IMessageBus>();
@@ -51,7 +56,8 @@ public class UpdateEmployeeHandlerTests
                 8_000_000m,
                 new DateOnly(2025, 1, 1),
                 "Owner",
-                null),
+                null,
+                Actor),
             _employees,
             _hierarchy,
             _bus,
@@ -71,7 +77,8 @@ public class UpdateEmployeeHandlerTests
                 8_000_000m,
                 new DateOnly(2025, 1, 1),
                 "Boss",
-                null),
+                null,
+                Actor),
             _employees,
             _hierarchy,
             _bus,
@@ -95,7 +102,8 @@ public class UpdateEmployeeHandlerTests
                 owner.MonthlyWage.Amount,
                 new DateOnly(2025, 1, 1),
                 "Owner",
-                null),
+                null,
+                Actor),
             _employees,
             _hierarchy,
             _bus,
@@ -105,7 +113,7 @@ public class UpdateEmployeeHandlerTests
         success.Value.FullName.Should().Be("Owner Baru");
         owner.DomainEvents.OfType<EmployeeBasicInfoChanged>().Should().HaveCount(1);
         await _employees.Received(1).UpdateAsync(owner, Arg.Any<CancellationToken>());
-        await _bus.Received(1).PublishAsync(Arg.Any<EmployeeBasicInfoChanged>());
+        await _bus.Received(1).PublishAsync(Arg.Any<EmployeeBasicInfoChanged>(), Arg.Any<DeliveryOptions>());
     }
 
     [Fact]
@@ -122,7 +130,8 @@ public class UpdateEmployeeHandlerTests
                 10_000_000m,
                 new DateOnly(2025, 6, 1),
                 "Owner",
-                null),
+                null,
+                Actor),
             _employees,
             _hierarchy,
             _bus,
@@ -146,7 +155,8 @@ public class UpdateEmployeeHandlerTests
                 10_000_000m,
                 new DateOnly(2024, 12, 1),
                 "Owner",
-                null),
+                null,
+                Actor),
             _employees,
             _hierarchy,
             _bus,
@@ -181,7 +191,8 @@ public class UpdateEmployeeHandlerTests
                 manager.MonthlyWage.Amount,
                 new DateOnly(2025, 1, 1),
                 "Manager",
-                newParentId.Value),
+                newParentId.Value,
+                Actor),
             _employees,
             _hierarchy,
             _bus,
