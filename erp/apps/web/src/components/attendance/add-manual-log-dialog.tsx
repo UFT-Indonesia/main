@@ -13,8 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { Combobox } from '@/components/ui/combobox';
-import { useEmployees } from '@/hooks/use-employees';
+import { EmployeePicker } from '@/components/employees/employee-picker';
 import type { PunchType } from '@/lib/api/types';
 
 interface ManualLogFormState {
@@ -54,14 +53,6 @@ export function AddManualLogDialog({
   const tCommon = useTranslations('common');
 
   const [form, setForm] = useState<ManualLogFormState>(defaultState);
-  const [empSearch, setEmpSearch] = useState('');
-
-  const allEmployeesQuery = useEmployees({ status: 'Active', search: empSearch, pageSize: 50 });
-  const empOptions = (allEmployeesQuery.data?.items ?? []).map((e) => ({
-    value: e.id,
-    label: e.fullName,
-    meta: e.role,
-  }));
 
   const canSubmit = !!form.employeeId && !!form.punchedAt;
 
@@ -86,15 +77,10 @@ export function AddManualLogDialog({
       <div className="mt-4 space-y-3">
         <div className="flex flex-col gap-1.5">
           <Label>{t('manualLog.employee')}</Label>
-          <Combobox
+          <EmployeePicker
             value={form.employeeId}
             onChange={(v) => setForm((s) => ({ ...s, employeeId: v }))}
-            options={empOptions}
             placeholder={t('manualLog.employeePlaceholder')}
-            searchPlaceholder={tCommon('search')}
-            onSearchChange={setEmpSearch}
-            loading={allEmployeesQuery.isLoading}
-            clearable
           />
         </div>
 

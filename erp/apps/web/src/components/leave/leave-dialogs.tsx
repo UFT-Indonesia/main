@@ -13,9 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { Combobox } from '@/components/ui/combobox';
 import { Badge } from '@/components/ui/badge';
-import { useEmployees } from '@/hooks/use-employees';
+import { EmployeePicker } from '@/components/employees/employee-picker';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
 import type { LeaveRequest, LeaveType } from '@/lib/api/types';
 
@@ -78,17 +77,6 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
   const self = useAuthStore((s) => s.user);
 
   const [form, setForm] = useState(EMPTY_FORM);
-  const [empSearch, setEmpSearch] = useState('');
-
-  const employeesQuery = useEmployees(
-    { status: 'Active', search: empSearch, pageSize: 50 },
-    canPickEmployee,
-  );
-  const empOptions = (employeesQuery.data?.items ?? []).map((e) => ({
-    value: e.id,
-    label: e.fullName,
-    meta: e.role,
-  }));
 
   const workdays = countWorkdays(form.startDate, form.endDate);
   const canSubmit = !!form.employeeId && workdays > 0;
@@ -111,15 +99,10 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
         <div className="flex flex-col gap-1.5">
           <Label>{t('create.employee')}</Label>
           {canPickEmployee ? (
-            <Combobox
+            <EmployeePicker
               value={form.employeeId}
               onChange={(v) => setForm((s) => ({ ...s, employeeId: v }))}
-              options={empOptions}
               placeholder={t('create.employeePlaceholder')}
-              searchPlaceholder={tCommon('search')}
-              onSearchChange={setEmpSearch}
-              loading={employeesQuery.isLoading}
-              clearable
             />
           ) : (
             <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
