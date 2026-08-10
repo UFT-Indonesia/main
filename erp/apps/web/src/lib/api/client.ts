@@ -65,6 +65,17 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // Blob-response requests (CSV exports) get their JSON error body back as a Blob, which
+    // hides the server's message from extractApiError. Unwrap it so the toast shows the real
+    // reason (e.g. "narrow your filters") instead of "Request failed with status code 400".
+    if (error.response?.data instanceof Blob && error.response.data.type.includes('json')) {
+      try {
+        error.response.data = JSON.parse(await error.response.data.text());
+      } catch {
+        // Not JSON after all — leave the blob alone and fall through to the generic message.
+      }
+    }
+
     return Promise.reject(error);
   },
 );
