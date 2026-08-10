@@ -30,8 +30,14 @@ public sealed class DeleteEmployeeEndpoint : Endpoint<DeleteEmployeeRouteRequest
 
     public override async Task HandleAsync(DeleteEmployeeRouteRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<EmployeeResult>>(
-            new DeleteEmployeeCommand(req.Id, req.TerminationDate), ct);
+            new DeleteEmployeeCommand(req.Id, req.TerminationDate, caller), ct);
 
         if (result is Result<EmployeeResult>.Success s)
         {

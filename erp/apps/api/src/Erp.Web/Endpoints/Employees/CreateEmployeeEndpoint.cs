@@ -26,6 +26,12 @@ public sealed class CreateEmployeeEndpoint : Endpoint<CreateEmployeeRequest, Emp
 
     public override async Task HandleAsync(CreateEmployeeRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<EmployeeResult>>(new CreateEmployeeCommand(
             req.FullName,
             req.Nik,
@@ -33,7 +39,8 @@ public sealed class CreateEmployeeEndpoint : Endpoint<CreateEmployeeRequest, Emp
             req.MonthlyWageAmount,
             req.EffectiveSalaryFrom,
             req.Role,
-            req.ParentId), ct);
+            req.ParentId,
+            caller), ct);
 
         if (result is Result<EmployeeResult>.Success s)
         {
