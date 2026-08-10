@@ -20,7 +20,8 @@
     "attendanceSettings": "Kebijakan presensi",
     "leave": "Cuti",
     "accounts": "Akun",
-    "attendanceDevices": "Perangkat presensi"
+    "attendanceDevices": "Perangkat presensi",
+    "employeeAuditLog": "Log audit"
   },
   "home": {
     "title": "Selamat datang",
@@ -403,6 +404,54 @@
       "enabledTitle": "Perangkat diaktifkan",
       "disabledTitle": "Perangkat dinonaktifkan",
       "errorTitle": "Gagal memperbarui perangkat"
+    }
+  },
+  "employeeAuditLog": {
+    "title": "Log audit",
+    "subtitle": "Riwayat pembuatan, info, gaji, peran, garis pelaporan, dan pemberhentian karyawan.",
+    "empty": "Belum ada riwayat audit.",
+    "ownerOnly": "Hanya Pemilik yang dapat melihat log audit.",
+    "export": {
+      "button": "Ekspor CSV",
+      "errorTitle": "Gagal mengekspor log audit"
+    },
+    "filters": {
+      "employeePlaceholder": "Saring berdasarkan karyawan...",
+      "dateFrom": "Dari tanggal",
+      "dateTo": "Sampai tanggal",
+      "allEventTypes": "Semua jenis peristiwa"
+    },
+    "table": {
+      "occurredAt": "Waktu kejadian",
+      "employee": "Karyawan",
+      "eventType": "Peristiwa",
+      "summary": "Perubahan",
+      "actor": "Diubah oleh",
+      "systemActor": "Sistem"
+    },
+    "pagination": {
+      "summary": "Menampilkan {from}-{to} dari {total}"
+    },
+    "eventType": {
+      "employee": {
+        "created": "Dibuat",
+        "basic_info_changed": "Data dasar diubah",
+        "salary_changed": "Gaji diubah",
+        "parent_changed": "Garis pelaporan diubah",
+        "role_changed": "Peran diubah",
+        "terminated": "Diberhentikan"
+      }
+    },
+    "summary": {
+      "none": "Tidak ada",
+      "created": "Dibuat — {role}, {wage}, melapor kepada {parent}",
+      "name": "Nama: {from} → {to}",
+      "npwp": "NPWP: {from} → {to}",
+      "basicInfoUpdated": "Data dasar diperbarui",
+      "wage": "Gaji: {from} → {to}",
+      "parent": "Atasan: {from} → {to}",
+      "role": "Peran: {from} → {to}",
+      "terminated": "Diberhentikan berlaku {date}"
     }
   }
 }

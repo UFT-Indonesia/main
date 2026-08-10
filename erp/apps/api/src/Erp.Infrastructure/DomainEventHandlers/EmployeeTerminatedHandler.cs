@@ -6,10 +6,11 @@ using Wolverine;
 
 namespace Erp.Infrastructure.DomainEventHandlers;
 
-public static class EmployeeBasicInfoChangedHandler
+public static class EmployeeTerminatedHandler
 {
+    // Employee.Status shows *that* someone was terminated; only this row shows who did it and when.
     public static Task Handle(
-        EmployeeBasicInfoChanged message,
+        EmployeeTerminated message,
         IRepository<EmployeeAuditLog> auditLogs,
         Envelope envelope,
         CancellationToken ct) =>
@@ -19,7 +20,7 @@ public static class EmployeeBasicInfoChangedHandler
             new EmployeeId(message.EmployeeId),
             message.EventType,
             message.RaisedAt,
-            oldValue: new BasicInfoAuditValue(message.OldFullName, message.OldNpwp),
-            newValue: new BasicInfoAuditValue(message.NewFullName, message.NewNpwp),
+            oldValue: null,
+            newValue: new TerminatedAuditValue(message.TerminationDate.ToDateOnly()),
             ct);
 }

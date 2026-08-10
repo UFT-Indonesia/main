@@ -88,6 +88,42 @@ export interface ListAccountsResponse {
   items: Account[];
 }
 
+export interface EmployeeAuditLogEntry {
+  id: string;
+  employeeId: string;
+  employeeFullName: string;
+  eventType: string;
+  occurredAtUtc: string;
+  oldValueJson: string | null;
+  newValueJson: string | null;
+  /** Null for changes with no interactive caller (seeding, background jobs). */
+  actorUserId: string | null;
+  actorName: string | null;
+}
+
+export interface ListEmployeeAuditLogResponse {
+  items: EmployeeAuditLogEntry[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface ListEmployeeAuditLogParams {
+  page?: number;
+  pageSize?: number;
+  employeeId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  eventType?: string;
+}
+
+export interface ExportEmployeeAuditLogParams {
+  employeeId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  eventType?: string;
+}
+
 export interface CreateAccountBody {
   employeeId: string;
   username: string;

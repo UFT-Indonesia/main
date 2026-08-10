@@ -1,3 +1,5 @@
+using Erp.UseCases.Common;
+
 namespace Erp.UseCases.Employees.UpdateEmployee;
 
 /// <summary>Null <paramref name="MonthlyWageAmount"/>/<paramref name="EffectiveSalaryFrom"/> leave the current salary untouched.</summary>
@@ -8,4 +10,5 @@ public sealed record UpdateEmployeeCommand(
     decimal? MonthlyWageAmount,
     DateOnly? EffectiveSalaryFrom,
     string Role,
-    Guid? ParentId);
+    Guid? ParentId,
+    Caller Caller);

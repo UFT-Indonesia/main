@@ -3,6 +3,7 @@ using Erp.Core.Aggregates.Employees.Events;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Common;
 using Erp.UseCases.Employees.Common;
 using Erp.UseCases.Employees.CreateEmployee;
 using FluentAssertions;
@@ -13,6 +14,10 @@ namespace Erp.UnitTests.UseCases;
 
 public class CreateEmployeeHandlerTests
 {
+    // Every employee command carries the caller now — it lands on the audit row.
+    private static readonly Caller Actor =
+        new(Guid.NewGuid(), EmployeeRole.Owner, EmployeeId.New(), "Owner Utama");
+
     private readonly IRepository<Employee> _employees = Substitute.For<IRepository<Employee>>();
     private readonly IEmployeeHierarchyLookup _hierarchy = Substitute.For<IEmployeeHierarchyLookup>();
     private readonly IMessageBus _bus = Substitute.For<IMessageBus>();
@@ -35,7 +40,8 @@ public class CreateEmployeeHandlerTests
             MonthlyWageAmount: 8_000_000m,
             EffectiveSalaryFrom: new DateOnly(2025, 1, 1),
             Role: "Owner",
-            ParentId: null);
+            ParentId: null,
+            Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
@@ -44,7 +50,12 @@ public class CreateEmployeeHandlerTests
         success.Value.Role.Should().Be("Owner");
         success.Value.Status.Should().Be("Active");
         await _employees.Received(1).AddAsync(Arg.Any<Employee>(), Arg.Any<CancellationToken>());
-        await _bus.Received(1).PublishAsync(Arg.Is<EmployeeCreated>(e => e.FullName == "Owner Satu"));
+        // The delivery options carry the actor the audit-log handler stamps onto its row.
+        await _bus.Received(1).PublishAsync(
+            Arg.Is<EmployeeCreated>(e => e.FullName == "Owner Satu"),
+            Arg.Is<DeliveryOptions>(o =>
+                o.Headers[EmployeeAuditHeaders.ActorUserId] == Actor.UserId.ToString()
+                && o.Headers[EmployeeAuditHeaders.ActorName] == Actor.Name));
     }
 
     [Fact]
@@ -57,7 +68,8 @@ public class CreateEmployeeHandlerTests
             8_000_000m,
             new DateOnly(2025, 1, 1),
             "Boss",
-            null);
+            null,
+            Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
@@ -76,7 +88,8 @@ public class CreateEmployeeHandlerTests
             8_000_000m,
             new DateOnly(2025, 1, 1),
             "Owner",
-            null);
+            null,
+            Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
@@ -94,7 +107,8 @@ public class CreateEmployeeHandlerTests
             8_000_000m,
             new DateOnly(2025, 1, 1),
             "Owner",
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
@@ -112,7 +126,8 @@ public class CreateEmployeeHandlerTests
             8_000_000m,
             new DateOnly(2025, 1, 1),
             "Manager",
-            null);
+            null,
+            Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
@@ -130,7 +145,8 @@ public class CreateEmployeeHandlerTests
             8_000_000m,
             new DateOnly(2025, 1, 1),
             "owner",
-            null);
+            null,
+            Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 
@@ -152,7 +168,8 @@ public class CreateEmployeeHandlerTests
             5_000_000m,
             new DateOnly(2025, 1, 1),
             "Staff",
-            parentId.Value);
+            parentId.Value,
+            Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
 

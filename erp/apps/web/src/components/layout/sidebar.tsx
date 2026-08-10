@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound, Cpu } from 'lucide-react';
+import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound, Cpu, History } from 'lucide-react';
 import type { Route } from 'next';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/lib/constants';
@@ -18,7 +18,8 @@ interface NavItem {
     | 'attendanceSettings'
     | 'attendanceDevices'
     | 'leave'
-    | 'accounts';
+    | 'accounts'
+    | 'employeeAuditLog';
   icon: typeof Users;
   /** Only shown to users with one of these roles; omitted means visible to everyone. */
   roles?: string[];
@@ -27,6 +28,13 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: '/' as Route, labelKey: 'dashboard', icon: LayoutDashboard },
   { href: '/employees' as Route, labelKey: 'employees', icon: Users },
+  // A change history exposes every salary/reporting-line change ever made, so it's Owner-only.
+  {
+    href: '/employees/audit-log' as Route,
+    labelKey: 'employeeAuditLog',
+    icon: History,
+    roles: ['Owner'],
+  },
   { href: '/attendance' as Route, labelKey: 'attendance', icon: Clock },
   // Everyone can reach leave now — Staff file their own; the list is scoped server-side.
   { href: '/leave' as Route, labelKey: 'leave', icon: CalendarDays },

@@ -53,6 +53,12 @@ try
             
         options.PersistMessagesWithPostgresql(connectionString);
         options.UseEntityFrameworkCoreTransactions();
+
+        // Local queues are in-memory by default: a handler throw or a restart silently drops
+        // the message. The audit log can't afford that, so envelopes are persisted before
+        // dispatch and retried. Note the enqueue is still a separate transaction from the
+        // aggregate save, so a crash in between can still lose a row.
+        options.Policies.UseDurableLocalQueues();
     });
 
     builder.Services

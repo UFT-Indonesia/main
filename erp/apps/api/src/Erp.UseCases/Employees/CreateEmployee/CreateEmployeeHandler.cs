@@ -57,7 +57,7 @@ public static class CreateEmployeeHandler
         }
 
         await employees.AddAsync(employee, ct);
-        await EmployeeDomainEventPublisher.PublishAsync(employee.DomainEvents, bus);
+        await EmployeeDomainEventPublisher.PublishAsync(employee.DomainEvents, bus, command.Caller);
 
         return new Result<EmployeeResult>.Success(EmployeeMapper.ToResult(employee));
     }

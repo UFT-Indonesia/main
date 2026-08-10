@@ -20,7 +20,8 @@
     "attendanceSettings": "Attendance policy",
     "leave": "Leave",
     "accounts": "Accounts",
-    "attendanceDevices": "Attendance devices"
+    "attendanceDevices": "Attendance devices",
+    "employeeAuditLog": "Audit log"
   },
   "home": {
     "title": "Welcome",
@@ -403,6 +404,54 @@
       "enabledTitle": "Device enabled",
       "disabledTitle": "Device disabled",
       "errorTitle": "Failed to update device"
+    }
+  },
+  "employeeAuditLog": {
+    "title": "Audit log",
+    "subtitle": "History of employee creation, info, salary, role, reporting-line, and termination changes.",
+    "empty": "No audit history yet.",
+    "ownerOnly": "Only an Owner can view the audit log.",
+    "export": {
+      "button": "Export CSV",
+      "errorTitle": "Failed to export audit log"
+    },
+    "filters": {
+      "employeePlaceholder": "Filter by employee...",
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "allEventTypes": "All event types"
+    },
+    "table": {
+      "occurredAt": "Occurred at",
+      "employee": "Employee",
+      "eventType": "Event",
+      "summary": "Change",
+      "actor": "Changed by",
+      "systemActor": "System"
+    },
+    "pagination": {
+      "summary": "Showing {from}-{to} of {total}"
+    },
+    "eventType": {
+      "employee": {
+        "created": "Created",
+        "basic_info_changed": "Basic info changed",
+        "salary_changed": "Salary changed",
+        "parent_changed": "Reporting line changed",
+        "role_changed": "Role changed",
+        "terminated": "Terminated"
+      }
+    },
+    "summary": {
+      "none": "None",
+      "created": "Created — {role}, {wage}, reports to {parent}",
+      "name": "Name: {from} → {to}",
+      "npwp": "NPWP: {from} → {to}",
+      "basicInfoUpdated": "Basic info updated",
+      "wage": "Wage: {from} → {to}",
+      "parent": "Parent: {from} → {to}",
+      "role": "Role: {from} → {to}",
+      "terminated": "Terminated effective {date}"
     }
   }
 }

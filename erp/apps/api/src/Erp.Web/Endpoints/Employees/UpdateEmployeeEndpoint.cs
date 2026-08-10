@@ -44,6 +44,12 @@ public sealed class UpdateEmployeeEndpoint : Endpoint<UpdateEmployeeRouteRequest
             return;
         }
 
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<EmployeeResult>>(new UpdateEmployeeCommand(
             req.Id,
             req.FullName,
@@ -51,7 +57,8 @@ public sealed class UpdateEmployeeEndpoint : Endpoint<UpdateEmployeeRouteRequest
             req.MonthlyWageAmount,
             req.EffectiveSalaryFrom,
             req.Role,
-            req.ParentId), ct);
+            req.ParentId,
+            caller), ct);
 
         if (result is Result<EmployeeResult>.Success s)
         {
