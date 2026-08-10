@@ -1,3 +1,5 @@
+using Erp.UseCases.Common;
+
 namespace Erp.UseCases.Employees.CreateEmployee;
 
 public sealed record CreateEmployeeCommand(
@@ -7,4 +9,5 @@ public sealed record CreateEmployeeCommand(
     decimal MonthlyWageAmount,
     DateOnly EffectiveSalaryFrom,
     string Role,
-    Guid? ParentId);
+    Guid? ParentId,
+    Caller Caller);
