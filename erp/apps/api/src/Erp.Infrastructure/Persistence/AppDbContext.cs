@@ -18,6 +18,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
 
     public DbSet<Employee> Employees => Set<Employee>();
 
+    public DbSet<EmployeeAuditLog> EmployeeAuditLogs => Set<EmployeeAuditLog>();
+
     public DbSet<AttendanceLog> AttendanceLogs => Set<AttendanceLog>();
 
     public DbSet<AttendanceDevice> AttendanceDevices => Set<AttendanceDevice>();
