@@ -21,7 +21,7 @@
     "leave": "Leave",
     "accounts": "Accounts",
     "attendanceDevices": "Attendance devices",
-    "employeeAuditLog": "Audit log"
+    "employeeAuditLog": "Employee audit log"
   },
   "home": {
     "title": "Welcome",
@@ -407,7 +407,7 @@
     }
   },
   "employeeAuditLog": {
-    "title": "Audit log",
+    "title": "Employee audit log",
     "subtitle": "History of employee creation, info, salary, role, reporting-line, and termination changes.",
     "empty": "No audit history yet.",
     "ownerOnly": "Only an Owner can view the audit log.",

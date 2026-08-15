@@ -21,7 +21,7 @@
     "leave": "Cuti",
     "accounts": "Akun",
     "attendanceDevices": "Perangkat presensi",
-    "employeeAuditLog": "Log audit"
+    "employeeAuditLog": "Log audit karyawan"
   },
   "home": {
     "title": "Selamat datang",
@@ -407,7 +407,7 @@
     }
   },
   "employeeAuditLog": {
-    "title": "Log audit",
+    "title": "Log audit karyawan",
     "subtitle": "Riwayat pembuatan, info, gaji, peran, garis pelaporan, dan pemberhentian karyawan.",
     "empty": "Belum ada riwayat audit.",
     "ownerOnly": "Hanya Pemilik yang dapat melihat log audit.",
