@@ -14,7 +14,7 @@ using Wolverine;
 namespace Erp.Web.Endpoints.Employees;
 
 /// <summary>
-/// Scoped by <see cref="AccountRules.CanManage"/>: Owner updates anyone, Manager only
+/// Scoped by <see cref="AccountRules.CanManage"/>: Owner updates anyone, Manager only their own direct
 /// Staff. The requested role and any new parent are checked too, so a Manager cannot
 /// promote a Staff member out of their own reach or restructure the org chart.
 /// Salary is Owner-only — a Manager sending any wage field is rejected outright.
@@ -62,7 +62,7 @@ public sealed class UpdateEmployeeEndpoint : Endpoint<UpdateEmployeeRouteRequest
 
         if (result is Result<EmployeeResult>.Success s)
         {
-            await SendOkAsync(EmployeeResponseMapper.ToResponse(s.Value, User), ct);
+            await SendOkAsync(EmployeeResponseMapper.ToResponse(s.Value, CallerFactory.From(User)!.Value), ct);
             return;
         }
 
@@ -100,7 +100,13 @@ public sealed class UpdateEmployeeEndpoint : Endpoint<UpdateEmployeeRouteRequest
             return false;
         }
 
-        if (!AccountRules.CanManage(User, target.Role))
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return false;
+        }
+
+        if (!AccountRules.CanManage(caller, target.Role, target.ParentId?.Value))
         {
             await SendForbiddenAsync(ct);
             return false;
@@ -109,7 +115,7 @@ public sealed class UpdateEmployeeEndpoint : Endpoint<UpdateEmployeeRouteRequest
         // Guard the *requested* role as well, otherwise a Manager could promote a Staff
         // member to Owner and escape their own scope in a single call.
         if (Enum.TryParse<EmployeeRole>(req.Role, ignoreCase: true, out var requestedRole)
-            && !AccountRules.CanManage(User, requestedRole))
+            && !AccountRules.CanGrantRole(caller, requestedRole))
         {
             await SendForbiddenAsync(ct);
             return false;
@@ -145,9 +151,10 @@ public sealed class UpdateEmployeeEndpoint : Endpoint<UpdateEmployeeRouteRequest
             return true;
         }
 
-        // In practice this makes reparenting Owner-only: a Manager only passes CanManage for a
-        // Staff parent, and the max-depth rule already forbids Staff-under-Staff.
-        if (!AccountRules.CanManage(User, parentRole.Value))
+        // In practice this makes reparenting Owner-only: a Manager only passes CanGrantRole for
+        // a Staff parent, and the max-depth rule already forbids Staff-under-Staff.
+        if (CallerFactory.From(User) is not { } caller
+            || !AccountRules.CanGrantRole(caller, parentRole.Value))
         {
             await SendForbiddenAsync(ct);
             return false;

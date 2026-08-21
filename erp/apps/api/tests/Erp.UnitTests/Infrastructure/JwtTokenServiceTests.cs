@@ -40,7 +40,7 @@ public class JwtTokenServiceTests
         var user = new ApplicationUser { FullName = "Budi" };
 
         var token = _service.CreateAccessToken(
-            user, new AccountIdentity(EmployeeRole.Manager, Guid.NewGuid()));
+            user, new AccountIdentity(EmployeeRole.Manager, Guid.NewGuid(), null));
 
         var roles = Decode(token.AccessToken).Claims
             .Where(claim => claim.Type == ClaimTypes.Role)
@@ -55,7 +55,7 @@ public class JwtTokenServiceTests
 
         var token = _service.CreateAccessToken(
             new ApplicationUser { FullName = "Budi" },
-            new AccountIdentity(EmployeeRole.Staff, employeeId));
+            new AccountIdentity(EmployeeRole.Staff, employeeId, null));
 
         Decode(token.AccessToken).Claims
             .Single(claim => claim.Type == JwtTokenService.EmployeeIdClaim)
@@ -67,7 +67,7 @@ public class JwtTokenServiceTests
     {
         var token = _service.CreateAccessToken(
             new ApplicationUser { FullName = "System" },
-            new AccountIdentity(EmployeeRole.Owner, null));
+            new AccountIdentity(EmployeeRole.Owner, null, null));
 
         Decode(token.AccessToken).Claims
             .Should().NotContain(claim => claim.Type == JwtTokenService.EmployeeIdClaim);
@@ -78,7 +78,7 @@ public class JwtTokenServiceTests
     {
         var token = _service.CreateAccessToken(
             new ApplicationUser { FullName = "Budi", MustChangePassword = true },
-            new AccountIdentity(EmployeeRole.Staff, Guid.NewGuid()));
+            new AccountIdentity(EmployeeRole.Staff, Guid.NewGuid(), null));
 
         Decode(token.AccessToken).Claims
             .Single(claim => claim.Type == JwtTokenService.MustChangePasswordClaim)

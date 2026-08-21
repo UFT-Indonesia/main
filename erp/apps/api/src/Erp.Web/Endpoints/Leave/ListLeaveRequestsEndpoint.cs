@@ -8,9 +8,11 @@ using Wolverine;
 namespace Erp.Web.Endpoints.Leave;
 
 /// <summary>
-/// Visibility mirrors authority: Staff see their own requests, a Manager sees their own plus
-/// their direct Staff, an Owner sees everything. Scoping happens in the query so paging and
-/// totals reflect what the caller may actually see.
+/// The company's leave calendar: every employee sees every row, so anyone can tell whether
+/// the colleague — or the Owner — they need is away. Authority is applied per row rather than
+/// per query: type, reason, decision note and the yearly balance are stripped from rows the
+/// caller has no standing to read (LeaveRules.CanReadDetails / CanReadBalance). Accounts with
+/// no employee record are not part of that audience and see nothing.
 /// </summary>
 [Authorize]
 public sealed class ListLeaveRequestsEndpoint : Endpoint<ListLeaveRequestsRequest, ListLeaveRequestsResponse>

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Erp.UseCases.Common;
 using System.Security.Cryptography;
 using Erp.Core.Aggregates.Employees;
 
@@ -52,15 +53,35 @@ public sealed class ResetAccountPasswordResponse
     public string TempPassword { get; init; } = default!;
 }
 
+/// <summary>
+/// Two different questions used to share one method, which is how a Manager ended up able to
+/// edit Staff outside their own line: "may you act on this person?" is scoped to the reporting
+/// line, while "may you hand out this role?" is about privilege alone.
+/// </summary>
 public static class AccountRules
 {
     /// <summary>
-    /// Owner manages any account; Manager only Staff-role accounts. The caller's role comes
-    /// from the token claim, which is stamped from <c>Employee.Role</c> at issue time.
+    /// May the caller act on this specific person? An Owner may act on anyone. A Manager may
+    /// act only on their own direct Staff — a Staff member with no manager assigned, or one in
+    /// another line, is the Owner's to handle until the org chart says otherwise.
     /// </summary>
-    public static bool CanManage(ClaimsPrincipal caller, EmployeeRole targetRole) =>
-        caller.IsInRole(nameof(EmployeeRole.Owner))
-        || (caller.IsInRole(nameof(EmployeeRole.Manager)) && targetRole == EmployeeRole.Staff);
+    public static bool CanManage(Caller caller, EmployeeRole targetRole, Guid? targetParentId) =>
+        caller.Role switch
+        {
+            EmployeeRole.Owner => true,
+            EmployeeRole.Manager => targetRole == EmployeeRole.Staff
+                && caller.EmployeeId is { } callerEmployeeId
+                && targetParentId == callerEmployeeId.Value,
+            _ => false,
+        };
+
+    /// <summary>
+    /// May the caller hand out this role at all? Deliberately line-agnostic — it guards
+    /// privilege escalation (a Manager promoting someone to Owner), not who reports to whom.
+    /// </summary>
+    public static bool CanGrantRole(Caller caller, EmployeeRole role) =>
+        caller.Role == EmployeeRole.Owner
+        || (caller.Role == EmployeeRole.Manager && role == EmployeeRole.Staff);
 }
 
 public static class TempPassword

@@ -9,6 +9,9 @@ namespace Erp.IntegrationTests;
 /// PR2 rules end to end: who may file, who may decide, and — the part unit tests cannot
 /// reach — what the list query actually returns for each caller.
 /// </summary>
+// NOTE (unverified): the calendar-visibility and field-gating tests below have never been
+// executed — these run on Testcontainers and Docker was unavailable when they were written.
+// Run `dotnet test apps/api/tests/Erp.IntegrationTests` with Docker up before trusting them.
 public class LeaveAuthorizationTests : IntegrationTestBase
 {
     public LeaveAuthorizationTests(ErpApiFactory factory) : base(factory) { }
@@ -20,6 +23,7 @@ public class LeaveAuthorizationTests : IntegrationTestBase
         string Status,
         bool CanDecide,
         bool CanCancel,
+        string? Type,
         string? Reason,
         int? ApprovedWorkdaysThisYear);
 
@@ -180,8 +184,9 @@ public class LeaveAuthorizationTests : IntegrationTestBase
 
         list!.Items.Single(item => item.EmployeeId == staff.Id.Value)
             .Reason.Should().Be("cuti", "it is their own request");
-        list.Items.Single(item => item.EmployeeId == colleague.Id.Value)
-            .Reason.Should().BeNull("the reason is private to the employee and their approvers");
+        var colleagueRow = list.Items.Single(item => item.EmployeeId == colleague.Id.Value);
+        colleagueRow.Reason.Should().BeNull("the reason is private to the employee and their approvers");
+        colleagueRow.Type.Should().BeNull("Sick would disclose health information");
     }
 
     [Fact]
@@ -256,6 +261,47 @@ public class LeaveAuthorizationTests : IntegrationTestBase
 
         list!.Items.Should().OnlyContain(item => item.Reason == "cuti");
         list.Items.Should().OnlyContain(item => item.ApprovedWorkdaysThisYear != null);
+    }
+
+    [Fact]
+    public async Task An_account_with_no_employee_record_is_not_in_the_calendars_audience()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", owner.Id);
+
+        var ownerClient = await CreateClientForAsync(owner);
+        await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(staff.Id.Value));
+
+        var detached = await CreateClientForAccountWithoutEmployeeAsync(EmployeeRole.Manager);
+        var list = await detached.GetFromJsonAsync<LeaveList>("/api/leave/?status=");
+
+        list!.Items.Should().BeEmpty("an account with no employee is not a colleague");
+        list.TotalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task The_open_filter_covers_pending_and_approved_but_nothing_terminal()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
+        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", manager.Id);
+
+        var ownerClient = await CreateClientForAsync(owner);
+        // The owner's own request is approved on filing; the staff one stays pending.
+        await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(owner.Id.Value));
+        var pending = await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(staff.Id.Value));
+        var managerRequest = await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(manager.Id.Value));
+
+        // Deny the manager's so there is something terminal to exclude.
+        var denied = await managerRequest.Content.ReadFromJsonAsync<LeaveItem>();
+        await ownerClient.PostAsJsonAsync($"/api/leave/{denied!.Id}/deny", new { });
+
+        var open = await ownerClient.GetFromJsonAsync<LeaveList>("/api/leave/?status=Open");
+
+        open!.Items.Select(item => item.EmployeeId)
+            .Should().BeEquivalentTo([owner.Id.Value, staff.Id.Value]);
+        open.TotalCount.Should().Be(2, "paging totals must match the filtered set");
+        _ = pending;
     }
 
     [Fact]

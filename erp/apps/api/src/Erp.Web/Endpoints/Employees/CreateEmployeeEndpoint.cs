@@ -46,7 +46,7 @@ public sealed class CreateEmployeeEndpoint : Endpoint<CreateEmployeeRequest, Emp
         {
             await SendCreatedAtAsync<CreateEmployeeEndpoint>(
                 null,
-                EmployeeResponseMapper.ToResponse(s.Value, User),
+                EmployeeResponseMapper.ToResponse(s.Value, CallerFactory.From(User)!.Value),
                 cancellation: ct);
             return;
         }

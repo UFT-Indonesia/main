@@ -29,6 +29,12 @@ public sealed class CreateAccountEndpoint : Endpoint<CreateAccountRequest, Creat
 
     public override async Task HandleAsync(CreateAccountRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(req.Username))
         {
             ThrowError("Username is required.", 400);
@@ -47,7 +53,7 @@ public sealed class CreateAccountEndpoint : Endpoint<CreateAccountRequest, Creat
             ThrowError("Cannot create an account for a terminated employee.", 400);
         }
 
-        if (!AccountRules.CanManage(User, employee.Role))
+        if (!AccountRules.CanManage(caller, employee.Role, employee.ParentId?.Value))
         {
             await SendForbiddenAsync(ct);
             return;

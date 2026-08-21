@@ -93,8 +93,12 @@ public static class CreateLeaveRequestHandler
         return new Result<LeaveRequestResult>.Success(
             LeaveRequestResult.From(
                 request,
+                // Single-request responses do not run the yearly rollup query.
+                approvedWorkdaysThisYear: null,
                 employeeFullName: employee.FullName,
                 canDecide: canDecide,
-                canCancel: canCancel));
+                canCancel: canCancel,
+                // CanFileFor already passed, which implies the filer may read what they wrote.
+                canReadDetails: true));
     }
 }

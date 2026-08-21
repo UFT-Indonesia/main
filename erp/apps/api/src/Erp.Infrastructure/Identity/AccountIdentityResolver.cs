@@ -6,8 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Erp.Infrastructure.Identity;
 
-/// <summary>The authoritative role for an account, plus the employee it speaks for.</summary>
-public readonly record struct AccountIdentity(EmployeeRole Role, Guid? EmployeeId);
+/// <summary>
+/// The authoritative role for an account, plus the employee it speaks for and who that
+/// employee reports to — managing someone is scoped to the reporting line, not just the role.
+/// </summary>
+public readonly record struct AccountIdentity(EmployeeRole Role, Guid? EmployeeId, Guid? ParentId);
 
 public interface IAccountIdentityResolver
 {
@@ -37,19 +40,19 @@ public sealed class AccountIdentityResolver : IAccountIdentityResolver
         if (user.EmployeeId is { } employeeId)
         {
             var typedId = new EmployeeId(employeeId);
-            var role = await _db.Employees.AsNoTracking()
+            var record = await _db.Employees.AsNoTracking()
                 .Where(employee => employee.Id == typedId)
-                .Select(employee => (EmployeeRole?)employee.Role)
+                .Select(employee => new { employee.Role, employee.ParentId })
                 .FirstOrDefaultAsync(ct);
 
-            if (role.HasValue)
+            if (record is not null)
             {
-                return new AccountIdentity(role.Value, employeeId);
+                return new AccountIdentity(record.Role, employeeId, record.ParentId?.Value);
             }
         }
 
         var storedRoles = await _userManager.GetRolesAsync(user);
-        return new AccountIdentity(EmployeeRoleNames.MostPrivileged(storedRoles), user.EmployeeId);
+        return new AccountIdentity(EmployeeRoleNames.MostPrivileged(storedRoles), user.EmployeeId, null);
     }
 }
 

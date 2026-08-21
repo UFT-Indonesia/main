@@ -1,5 +1,4 @@
-using System.Security.Claims;
-using Erp.Core.Aggregates.Employees;
+using Erp.UseCases.Common;
 using Erp.UseCases.Employees.Common;
 
 namespace Erp.Web.Endpoints.Employees;
@@ -7,26 +6,27 @@ namespace Erp.Web.Endpoints.Employees;
 internal static class EmployeeResponseMapper
 {
     /// <summary>
-    /// Pay fields are redacted for anyone but an Owner — Managers can read the employee
-    /// list to reach the edit form, but salary stays Owner-only.
+    /// The directory is readable by every employee so pickers can name people, but personal
+    /// details are stripped for anyone without standing, and pay stays Owner-only.
     /// </summary>
-    internal static EmployeeResponse ToResponse(EmployeeResult result, ClaimsPrincipal caller)
+    internal static EmployeeResponse ToResponse(EmployeeResult result, Caller caller)
     {
-        var showWage = caller.IsInRole(nameof(EmployeeRole.Owner));
+        var showWage = EmployeeVisibility.CanReadWage(caller);
+        var showDetails = EmployeeVisibility.CanReadDetails(caller, result);
 
         return new EmployeeResponse
         {
             Id = result.Id,
             FullName = result.FullName,
-            Nik = result.Nik,
-            Npwp = result.Npwp,
+            Role = result.Role,
+            Status = result.Status,
+            Nik = showDetails ? result.Nik : null,
+            Npwp = showDetails ? result.Npwp : null,
             MonthlyWageAmount = showWage ? result.MonthlyWageAmount : null,
             MonthlyWageCurrency = showWage ? result.MonthlyWageCurrency : null,
             EffectiveSalaryFrom = showWage ? result.EffectiveSalaryFrom : null,
-            Role = result.Role,
-            Status = result.Status,
-            ParentId = result.ParentId,
-            TerminationDate = result.TerminationDate,
+            ParentId = showDetails ? result.ParentId : null,
+            TerminationDate = showDetails ? result.TerminationDate : null,
         };
     }
 }

@@ -30,7 +30,9 @@ public sealed class LeaveRequestResponse
     public Guid Id { get; init; }
     public Guid EmployeeId { get; init; }
     public string EmployeeFullName { get; init; } = default!;
-    public string Type { get; init; } = default!;
+
+    /// <summary>Null when the caller may not read this request's details — Sick is health data.</summary>
+    public string? Type { get; init; }
     public DateOnly StartDate { get; init; }
     public DateOnly EndDate { get; init; }
     public int WorkdayCount { get; init; }

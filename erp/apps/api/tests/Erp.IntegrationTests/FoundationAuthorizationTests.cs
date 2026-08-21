@@ -14,6 +14,17 @@ public class FoundationAuthorizationTests : IntegrationTestBase
 {
     public FoundationAuthorizationTests(ErpApiFactory factory) : base(factory) { }
 
+    private sealed record EmployeeItem(
+        Guid Id,
+        string FullName,
+        string Role,
+        string Status,
+        string? Nik,
+        string? Npwp,
+        decimal? MonthlyWageAmount);
+
+    private sealed record EmployeeList(EmployeeItem[] Items, int TotalCount);
+
     [Fact]
     public async Task Token_carries_the_role_and_employee_from_the_employee_record()
     {
@@ -48,14 +59,123 @@ public class FoundationAuthorizationTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Staff_cannot_read_the_employees_list()
+    public async Task Staff_read_the_directory_as_names_without_personal_details()
     {
-        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa");
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", owner.Id);
         var client = await CreateClientForAsync(staff);
 
-        var response = await client.GetAsync("/api/employees/");
+        var list = await client.GetFromJsonAsync<EmployeeList>("/api/employees/");
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        // Open so pickers can name people...
+        list!.Items.Select(item => item.FullName)
+            .Should().Contain(["Owner Utama", "Staff Biasa"]);
+
+        // ...but a colleague is a name, not a national ID or a salary.
+        var colleague = list.Items.Single(item => item.Id == owner.Id.Value);
+        colleague.Nik.Should().BeNull("a national ID is not directory data");
+        colleague.Npwp.Should().BeNull();
+        colleague.MonthlyWageAmount.Should().BeNull("pay is Owner-only");
+        colleague.FullName.Should().Be("Owner Utama");
+        colleague.Role.Should().Be("Owner");
+
+        // Their own record is still their own to read.
+        list.Items.Single(item => item.Id == staff.Id.Value)
+            .Nik.Should().NotBeNull("an employee may read their own record");
+    }
+
+    [Fact]
+    public async Task Staff_still_cannot_create_update_or_delete_an_employee()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", owner.Id);
+        var client = await CreateClientForAsync(staff);
+
+        var create = await client.PostAsJsonAsync("/api/employees/", new
+        {
+            fullName = "Orang Baru",
+            nik = "3204010101900001",
+            monthlyWageAmount = 5_000_000m,
+            effectiveSalaryFrom = "2026-01-01",
+            role = "Staff",
+            parentId = owner.Id.Value,
+        });
+        create.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var delete = await client.DeleteAsync($"/api/employees/{staff.Id.Value}");
+        delete.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task A_manager_may_only_edit_their_own_direct_staff()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
+        var outsider = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Lain", owner.Id);
+        var ownStaff = await CreateEmployeeAsync(EmployeeRole.Staff, "Anak Buah", manager.Id);
+        var foreignStaff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Asing", outsider.Id);
+
+        var client = await CreateClientForAsync(manager);
+
+        var own = await client.PutAsJsonAsync($"/api/employees/{ownStaff.Id.Value}", new
+        {
+            fullName = "Anak Buah Baru",
+            role = "Staff",
+            parentId = manager.Id.Value,
+        });
+        own.StatusCode.Should().Be(HttpStatusCode.OK, "their own direct report");
+
+        var foreign = await client.PutAsJsonAsync($"/api/employees/{foreignStaff.Id.Value}", new
+        {
+            fullName = "Diubah Diam-diam",
+            role = "Staff",
+            parentId = outsider.Id.Value,
+        });
+        foreign.StatusCode.Should().Be(
+            HttpStatusCode.Forbidden, "another manager's line is not theirs to edit");
+    }
+
+    [Fact]
+    public async Task A_manager_cannot_edit_staff_who_have_no_manager_assigned()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
+        // Placed directly under the owner, so no manager owns this person yet.
+        var unassigned = await CreateEmployeeAsync(EmployeeRole.Staff, "Belum Ditempatkan", owner.Id);
+
+        var client = await CreateClientForAsync(manager);
+        var response = await client.PutAsJsonAsync($"/api/employees/{unassigned.Id.Value}", new
+        {
+            fullName = "Diubah",
+            role = "Staff",
+            parentId = owner.Id.Value,
+        });
+
+        response.StatusCode.Should().Be(
+            HttpStatusCode.Forbidden, "the owner assigns them before a manager may act");
+    }
+
+    [Fact]
+    public async Task A_manager_reads_details_for_their_own_staff_but_not_another_line()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
+        var outsider = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Lain", owner.Id);
+        var ownStaff = await CreateEmployeeAsync(EmployeeRole.Staff, "Anak Buah", manager.Id);
+        var foreignStaff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Asing", outsider.Id);
+
+        var client = await CreateClientForAsync(manager);
+        var list = await client.GetFromJsonAsync<EmployeeList>("/api/employees/");
+
+        list!.Items.Single(item => item.Id == ownStaff.Id.Value)
+            .Nik.Should().NotBeNull("their own direct staff");
+        list.Items.Single(item => item.Id == foreignStaff.Id.Value)
+            .Nik.Should().BeNull("another manager's line");
+        list.Items.Single(item => item.Id == owner.Id.Value)
+            .Nik.Should().BeNull("nobody below the owner reads the owner's record");
+        list.Items.Single(item => item.Id == manager.Id.Value)
+            .Nik.Should().NotBeNull("their own record");
+        list.Items.Should().OnlyContain(item => item.MonthlyWageAmount == null, "pay is Owner-only");
     }
 
     [Fact]

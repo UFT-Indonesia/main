@@ -9,7 +9,8 @@ public sealed class LeaveRequestResult
     public Guid Id { get; init; }
     public Guid EmployeeId { get; init; }
     public string EmployeeFullName { get; init; } = default!;
-    public string Type { get; init; } = default!;
+    /// <summary>Null when the caller may not read this request's details — Sick is health data.</summary>
+    public string? Type { get; init; }
     public DateOnly StartDate { get; init; }
     public DateOnly EndDate { get; init; }
     public int WorkdayCount { get; init; }
@@ -42,12 +43,12 @@ public sealed class LeaveRequestResult
         string? employeeFullName = null,
         bool canDecide = false,
         bool canCancel = false,
-        bool canReadDetails = true) => new()
+        bool canReadDetails = false) => new()
     {
         Id = request.Id.Value,
         EmployeeId = request.EmployeeId.Value,
         EmployeeFullName = employeeFullName ?? request.Employee?.FullName ?? "—",
-        Type = request.Type.ToString(),
+        Type = canReadDetails ? request.Type.ToString() : null,
         StartDate = request.StartDate.ToDateOnly(),
         EndDate = request.EndDate.ToDateOnly(),
         WorkdayCount = request.WorkdayCount,

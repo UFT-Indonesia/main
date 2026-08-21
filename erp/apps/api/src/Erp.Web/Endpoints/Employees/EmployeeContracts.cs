@@ -44,18 +44,25 @@ public sealed class ListEmployeesRequest
     public string? Status { get; init; }
 }
 
+/// <summary>
+/// Fields are redacted rather than omitted, so the shape is stable whoever asks. Everything
+/// nullable here is withheld from callers without standing — see EmployeeVisibility.
+/// </summary>
 public sealed class EmployeeResponse
 {
     public Guid Id { get; init; }
     public string FullName { get; init; } = default!;
-    public string Nik { get; init; } = default!;
+    public string Role { get; init; } = default!;
+    public string Status { get; init; } = default!;
+
+    /// <summary>National ID. Null unless the caller may read this employee's details.</summary>
+    public string? Nik { get; init; }
     public string? Npwp { get; init; }
+
     /// <summary>Null for non-Owner callers — pay is redacted rather than omitted from the contract.</summary>
     public decimal? MonthlyWageAmount { get; init; }
     public string? MonthlyWageCurrency { get; init; }
     public DateOnly? EffectiveSalaryFrom { get; init; }
-    public string Role { get; init; } = default!;
-    public string Status { get; init; } = default!;
     public Guid? ParentId { get; init; }
     public DateOnly? TerminationDate { get; init; }
 }

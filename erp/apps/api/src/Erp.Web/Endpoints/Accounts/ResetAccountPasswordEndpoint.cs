@@ -31,6 +31,12 @@ public sealed class ResetAccountPasswordEndpoint : Endpoint<AccountIdRequest, Re
 
     public override async Task HandleAsync(AccountIdRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var user = await _userManager.FindByIdAsync(req.Id.ToString());
         if (user is null)
         {
@@ -39,7 +45,7 @@ public sealed class ResetAccountPasswordEndpoint : Endpoint<AccountIdRequest, Re
         }
 
         var identity = await _identityResolver.ResolveAsync(user, ct);
-        if (!AccountRules.CanManage(User, identity.Role))
+        if (!AccountRules.CanManage(caller, identity.Role, identity.ParentId))
         {
             await SendForbiddenAsync(ct);
             return;

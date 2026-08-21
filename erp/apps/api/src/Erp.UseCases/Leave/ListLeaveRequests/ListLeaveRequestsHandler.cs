@@ -1,5 +1,4 @@
 using Ardalis.Specification;
-using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Interfaces;
 using Erp.UseCases.Common;
@@ -15,6 +14,9 @@ public static class ListLeaveRequestsHandler
     private const int DefaultPageSize = 20;
     private const int MaxPageSize = 100;
 
+    /// <summary>Pseudo-status meaning Pending or Approved — see the note in Handle.</summary>
+    public const string OpenStatus = "Open";
+
     public static async Task<Result<ListLeaveRequestsResult>> Handle(
         ListLeaveRequestsQuery query,
         IReadRepository<LeaveRequest> leaveRequests,
@@ -26,13 +28,19 @@ public static class ListLeaveRequestsHandler
             ? DefaultPageSize
             : Math.Min(query.PageSize, MaxPageSize);
 
+        // "Open" is the calendar's default view: everything still standing, i.e. not yet
+        // decided plus already granted. It is the set a planner cares about — a denied or
+        // cancelled request means nobody is away, so it is noise on a "who is out" screen.
+        var openOnly = string.Equals(query.Status, OpenStatus, StringComparison.OrdinalIgnoreCase);
+
         LeaveRequestStatus? statusFilter = null;
-        if (!string.IsNullOrWhiteSpace(query.Status))
+        if (!openOnly && !string.IsNullOrWhiteSpace(query.Status))
         {
             if (!Enum.TryParse<LeaveRequestStatus>(query.Status, ignoreCase: true, out var parsed))
             {
                 return new Result<ListLeaveRequestsResult>.Error(
-                    "leave.status_invalid", "Status must be Pending, Approved, Denied, or Cancelled.");
+                    "leave.status_invalid",
+                    "Status must be Open, Pending, Approved, Denied, or Cancelled.");
             }
 
             statusFilter = parsed;
@@ -41,9 +49,9 @@ public static class ListLeaveRequestsHandler
         var employeeFilter = query.EmployeeId.HasValue ? new EmployeeId(query.EmployeeId.Value) : (EmployeeId?)null;
 
         var totalCount = await leaveRequests.CountAsync(
-            new LeaveRequestListCountSpec(statusFilter, employeeFilter, query.Caller), ct);
+            new LeaveRequestListCountSpec(statusFilter, openOnly, employeeFilter, query.Caller), ct);
         var items = await leaveRequests.ListAsync(
-            new LeaveRequestListSpec(page, pageSize, statusFilter, employeeFilter, query.Caller), ct);
+            new LeaveRequestListSpec(page, pageSize, statusFilter, openOnly, employeeFilter, query.Caller), ct);
 
         // "Approved workdays this year" counter per employee on the page, one query.
         var year = clock.GetCurrentInstant().InUtc().Year;
@@ -93,10 +101,11 @@ internal sealed class LeaveRequestListSpec : Specification<LeaveRequest>
         int page,
         int pageSize,
         LeaveRequestStatus? status,
+        bool openOnly,
         EmployeeId? employeeId,
         Caller caller)
     {
-        ApplyFilters(Query, status, employeeId, caller);
+        ApplyFilters(Query, status, openOnly, employeeId, caller);
         Query.Include(request => request.Employee);
         Query.OrderByDescending(request => request.RequestedAtUtc);
         Query.AsNoTracking();
@@ -106,14 +115,28 @@ internal sealed class LeaveRequestListSpec : Specification<LeaveRequest>
     internal static void ApplyFilters(
         ISpecificationBuilder<LeaveRequest> query,
         LeaveRequestStatus? status,
+        bool openOnly,
         EmployeeId? employeeId,
         Caller caller)
     {
-        // Every authenticated user sees every row: the list doubles as the company's leave
-        // calendar, so "is the Owner out on Thursday?" is answerable without asking anyone.
-        // Rows are not filtered by authority — the sensitive fields on them are, per row, by
+        // Every colleague sees every row: the list doubles as the company's leave calendar, so
+        // "is the Owner out on Thursday?" is answerable without asking anyone. Rows are not
+        // filtered by authority — the sensitive fields on them are, per row, by
         // LeaveRules.CanReadDetails / CanReadBalance in the handler's projection.
-        if (status.HasValue)
+        //
+        // An account with no employee record is not a colleague (see Caller), so it is not in
+        // the calendar's audience and sees nothing.
+        if (caller.EmployeeId is null)
+        {
+            query.Where(_ => false);
+        }
+
+        if (openOnly)
+        {
+            query.Where(request => request.Status == LeaveRequestStatus.Pending
+                                   || request.Status == LeaveRequestStatus.Approved);
+        }
+        else if (status.HasValue)
         {
             query.Where(request => request.Status == status.Value);
         }
@@ -128,9 +151,10 @@ internal sealed class LeaveRequestListSpec : Specification<LeaveRequest>
 
 internal sealed class LeaveRequestListCountSpec : Specification<LeaveRequest>
 {
-    public LeaveRequestListCountSpec(LeaveRequestStatus? status, EmployeeId? employeeId, Caller caller)
+    public LeaveRequestListCountSpec(
+        LeaveRequestStatus? status, bool openOnly, EmployeeId? employeeId, Caller caller)
     {
-        LeaveRequestListSpec.ApplyFilters(Query, status, employeeId, caller);
+        LeaveRequestListSpec.ApplyFilters(Query, status, openOnly, employeeId, caller);
         Query.AsNoTracking();
     }
 }
