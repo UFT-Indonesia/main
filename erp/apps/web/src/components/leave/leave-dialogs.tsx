@@ -256,20 +256,26 @@ export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialog
 
   if (!request) return null;
 
+  // The server strips type, reason and note together, so a null type is the tell that this
+  // row's details are withheld. "Not shown" and "none given" are different claims — a blank
+  // reason on a colleague's row must not read as "they gave no reason".
+  const detailsHidden = request.type === null;
+  const withheld = t('details.hidden');
+
   const rows: [string, string][] = [
     [t('columns.employee'), request.employeeFullName],
-    [t('columns.type'), t(`type.${request.type}`)],
+    [t('columns.type'), t(`type.${request.type ?? 'Undisclosed'}`)],
     [t('columns.dates'), `${formatLeaveDate(request.startDate)} – ${formatLeaveDate(request.endDate)}`],
     [t('columns.workdays'), String(request.workdayCount)],
-    [t('columns.approvedThisYear'), request.approvedWorkdaysThisYear?.toString() ?? '–'],
-    [t('details.reason'), request.reason || '–'],
+    [t('columns.approvedThisYear'), request.approvedWorkdaysThisYear?.toString() ?? withheld],
+    [t('details.reason'), detailsHidden ? withheld : request.reason || '–'],
     [t('details.requestedAt'), dateTimeFormatter.format(new Date(request.requestedAtUtc))],
     [t('details.decidedBy'), request.decidedByName || '–'],
     [
       t('details.decidedAt'),
       request.decidedAtUtc ? dateTimeFormatter.format(new Date(request.decidedAtUtc)) : '–',
     ],
-    [t('details.decisionNote'), request.decisionNote || '–'],
+    [t('details.decisionNote'), detailsHidden ? withheld : request.decisionNote || '–'],
   ];
 
   return (

@@ -32,7 +32,8 @@
       "managers": "Managers",
       "staff": "Staff",
       "todayLogs": "Attendance punches today"
-    }
+    },
+    "subtitleStaff": "Your attendance and leave at a glance."
   },
   "login": {
     "subtitle": "Sign in to continue",
@@ -241,13 +242,15 @@
       "Annual": "Annual",
       "Sick": "Sick",
       "Permission": "Permission",
-      "Unpaid": "Unpaid"
+      "Unpaid": "Unpaid",
+      "Undisclosed": "Away"
     },
     "status": {
       "Pending": "Pending",
       "Approved": "Approved",
       "Denied": "Denied",
-      "Cancelled": "Cancelled"
+      "Cancelled": "Cancelled",
+      "Open": "Pending & approved"
     },
     "create": {
       "button": "Request leave",
@@ -296,11 +299,13 @@
       "requestedAt": "Requested at",
       "decidedBy": "Decided by",
       "decidedAt": "Decided at",
-      "decisionNote": "Decision note"
+      "decisionNote": "Decision note",
+      "hidden": "Not shown"
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
-    }
+    },
+    "subtitleStaff": "Submit your own leave and see who else is away."
   },
   "changePassword": {
     "subtitle": "Set a new password to continue",

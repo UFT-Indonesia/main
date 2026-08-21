@@ -43,7 +43,9 @@ export default function HomePage() {
       <div className="space-y-4">
         <header>
           <h1 className="text-2xl font-semibold tracking-tight">{tNav('dashboard')}</h1>
-          <p className="text-sm text-muted-foreground">{tHome('subtitle')}</p>
+          <p className="text-sm text-muted-foreground">
+            {canSeeHeadcount ? tHome('subtitle') : tHome('subtitleStaff')}
+          </p>
         </header>
 
         {canSeeHeadcount && (

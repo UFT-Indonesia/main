@@ -30,17 +30,23 @@ import { useEmployees } from '@/hooks/use-employees';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { useHasRole } from '@/lib/auth/store';
-import type { LeaveRequest, LeaveRequestStatus, LeaveType } from '@/lib/api/types';
+import type { LeaveRequest, LeaveStatusFilter, LeaveType } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
-const STATUSES: LeaveRequestStatus[] = ['Pending', 'Approved', 'Denied', 'Cancelled'];
+const STATUSES: LeaveStatusFilter[] = ['Open', 'Pending', 'Approved', 'Denied', 'Cancelled'];
 
 export default function LeavePage() {
   const t = useTranslations('leave');
   const tCommon = useTranslations('common');
   const toast = useToast();
 
-  const [status, setStatus] = useState<LeaveRequestStatus | ''>('Pending');
+  // Owners and managers land on everything still standing, so they can spot the day where
+  // half the team booked leave before granting one more. Staff only need to know who is out,
+  // and a pending request is not yet an absence.
+  const canDecideSomething = useHasRole('Owner', 'Manager');
+  const [status, setStatus] = useState<LeaveStatusFilter | ''>(
+    canDecideSomething ? 'Open' : 'Approved',
+  );
   const [employeeId, setEmployeeId] = useState('');
   const [empSearch, setEmpSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -57,13 +63,9 @@ export default function LeavePage() {
   const createMutation = useCreateLeaveRequest();
   const decideMutation = useDecideLeaveRequest();
 
-  // Staff read the whole calendar but cannot list employees (that endpoint is Owner,Manager),
-  // so there is no way to populate a picker for them.
-  const canFilterByEmployee = useHasRole('Owner', 'Manager');
-  const employeesQuery = useEmployees(
-    { status: 'Active', search: empSearch, pageSize: 50 },
-    canFilterByEmployee,
-  );
+  // The directory is open to every employee (names only for staff), so anyone browsing the
+  // calendar can narrow it to one person.
+  const employeesQuery = useEmployees({ status: 'Active', search: empSearch, pageSize: 50 });
   const empOptions = (employeesQuery.data?.items ?? []).map((e) => ({
     value: e.id,
     label: e.fullName,
@@ -105,7 +107,9 @@ export default function LeavePage() {
         <header className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
-            <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
+            <p className="text-sm text-muted-foreground">
+              {canDecideSomething ? t('subtitle') : t('subtitleStaff')}
+            </p>
           </div>
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -114,24 +118,22 @@ export default function LeavePage() {
         </header>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          {canFilterByEmployee && (
-            <div className="w-full md:w-64">
-              <Combobox
-                value={employeeId}
-                onChange={(v) => { setEmployeeId(v); setPage(1); }}
-                options={empOptions}
-                placeholder={t('filters.allEmployees')}
-                searchPlaceholder={tCommon('search')}
-                onSearchChange={setEmpSearch}
-                loading={employeesQuery.isLoading}
-                clearable
-              />
-            </div>
-          )}
+          <div className="w-full md:w-64">
+            <Combobox
+              value={employeeId}
+              onChange={(v) => { setEmployeeId(v); setPage(1); }}
+              options={empOptions}
+              placeholder={t('filters.allEmployees')}
+              searchPlaceholder={tCommon('search')}
+              onSearchChange={setEmpSearch}
+              loading={employeesQuery.isLoading}
+              clearable
+            />
+          </div>
           <div className="w-full md:w-40">
             <Select
               value={status}
-              onChange={(e) => { setStatus(e.target.value as LeaveRequestStatus | ''); setPage(1); }}
+              onChange={(e) => { setStatus(e.target.value as LeaveStatusFilter | ''); setPage(1); }}
             >
               <option value="">{t('filters.allStatuses')}</option>
               {STATUSES.map((s) => (
@@ -173,13 +175,13 @@ export default function LeavePage() {
                 {data!.items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.employeeFullName}</TableCell>
-                    <TableCell>{t(`type.${item.type}`)}</TableCell>
+                    <TableCell>{t(`type.${item.type ?? 'Undisclosed'}`)}</TableCell>
                     <TableCell className="tabular-nums">
                       {formatLeaveDate(item.startDate)} – {formatLeaveDate(item.endDate)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{item.workdayCount}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {item.approvedWorkdaysThisYear ?? '–'}
+                      {item.approvedWorkdaysThisYear ?? t('details.hidden')}
                     </TableCell>
                     <TableCell>
                       <Badge variant={LEAVE_STATUS_VARIANT[item.status]}>
