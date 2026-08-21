@@ -60,13 +60,24 @@ public static class ListLeaveRequestsHandler
             Items = items
                 .Select(request =>
                 {
+                    var subject = request.Employee;
                     var (canDecide, canCancel) =
-                        LeaveRequestResult.PermissionsFor(query.Caller, request, request.Employee);
+                        LeaveRequestResult.PermissionsFor(query.Caller, request, subject);
+
+                    // No subject means no way to judge authority, so nothing sensitive is shown.
+                    var canReadDetails = subject is not null
+                        && LeaveRules.CanReadDetails(query.Caller, subject);
+                    var canReadBalance = subject is not null
+                        && LeaveRules.CanReadBalance(query.Caller, subject);
+
                     return LeaveRequestResult.From(
                         request,
-                        approvedDaysByEmployee.GetValueOrDefault(request.EmployeeId),
+                        canReadBalance
+                            ? approvedDaysByEmployee.GetValueOrDefault(request.EmployeeId)
+                            : null,
                         canDecide: canDecide,
-                        canCancel: canCancel);
+                        canCancel: canCancel,
+                        canReadDetails: canReadDetails);
                 })
                 .ToList(),
             Page = page,
@@ -98,10 +109,10 @@ internal sealed class LeaveRequestListSpec : Specification<LeaveRequest>
         EmployeeId? employeeId,
         Caller caller)
     {
-        // Visibility mirrors authority: you see the leave you could act on, plus your own.
-        // Applied in the query so paging and totals stay honest.
-        ApplyCallerScope(query, caller);
-
+        // Every authenticated user sees every row: the list doubles as the company's leave
+        // calendar, so "is the Owner out on Thursday?" is answerable without asking anyone.
+        // Rows are not filtered by authority — the sensitive fields on them are, per row, by
+        // LeaveRules.CanReadDetails / CanReadBalance in the handler's projection.
         if (status.HasValue)
         {
             query.Where(request => request.Status == status.Value);
@@ -113,29 +124,6 @@ internal sealed class LeaveRequestListSpec : Specification<LeaveRequest>
         }
     }
 
-    private static void ApplyCallerScope(ISpecificationBuilder<LeaveRequest> query, Caller caller)
-    {
-        if (caller.Role == EmployeeRole.Owner)
-        {
-            return;
-        }
-
-        // An account with no employee cannot own or supervise leave, so it sees none.
-        if (caller.EmployeeId is not { } callerEmployeeId)
-        {
-            query.Where(_ => false);
-            return;
-        }
-
-        if (caller.Role == EmployeeRole.Manager)
-        {
-            query.Where(request => request.EmployeeId == callerEmployeeId
-                                   || request.Employee!.ParentId == callerEmployeeId);
-            return;
-        }
-
-        query.Where(request => request.EmployeeId == callerEmployeeId);
-    }
 }
 
 internal sealed class LeaveRequestListCountSpec : Specification<LeaveRequest>

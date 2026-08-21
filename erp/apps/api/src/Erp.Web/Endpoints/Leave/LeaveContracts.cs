@@ -40,7 +40,8 @@ public sealed class LeaveRequestResponse
     public string? DecidedByName { get; init; }
     public DateTimeOffset? DecidedAtUtc { get; init; }
     public string? DecisionNote { get; init; }
-    public int ApprovedWorkdaysThisYear { get; init; }
+    /// <summary>Null when the caller may not read this employee's leave balance.</summary>
+    public int? ApprovedWorkdaysThisYear { get; init; }
 
     /// <summary>What the calling user may do with this request — drives which controls the UI renders.</summary>
     public bool CanDecide { get; init; }
