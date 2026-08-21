@@ -45,6 +45,12 @@ public sealed class ProvisionCandidatesEndpoint : EndpointWithoutRequest<ListPro
 
     public override async Task HandleAsync(CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var linkedEmployeeIds = await _userManager.Users.AsNoTracking()
             .Where(u => u.EmployeeId != null)
             .Select(u => u.EmployeeId!.Value)
@@ -56,7 +62,7 @@ public sealed class ProvisionCandidatesEndpoint : EndpointWithoutRequest<ListPro
             .ToListAsync(ct);
 
         var items = employees
-            .Where(e => !linkedEmployeeIds.Contains(e.Id.Value) && AccountRules.CanManage(User, e.Role))
+            .Where(e => !linkedEmployeeIds.Contains(e.Id.Value) && AccountRules.CanManage(caller, e.Role, e.ParentId?.Value))
             .Select(e => new ProvisionCandidateResponse
             {
                 EmployeeId = e.Id.Value,

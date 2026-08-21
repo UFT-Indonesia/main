@@ -7,8 +7,8 @@ using NodaTime;
 namespace Erp.Core.Aggregates.Leave;
 
 /// <summary>
-/// A full-day leave request entered on behalf of an employee (no self-service yet —
-/// employees have no login accounts). Lifecycle:
+/// A full-day leave request, filed by the employee themselves or on their behalf by
+/// someone with the authority to (see LeaveRules.CanFileFor). Lifecycle:
 /// Pending → Approved | Denied | Cancelled, and Approved → Cancelled.
 /// Denied/Cancelled are terminal; wrong dates are fixed by cancel + resubmit, never edit.
 /// </summary>
@@ -177,7 +177,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     public bool Overlaps(LocalDate startDate, LocalDate endDate) =>
         StartDate <= endDate && startDate <= EndDate;
 
-    // ponytail: workweek hardcoded to Mon–Fri; lift into AttendancePolicy when the
+    // Workweek hardcoded to Mon–Fri; lift into AttendancePolicy when the
     // office's working days actually vary (Saturday shifts, etc.).
     public static int CountWorkdays(LocalDate startDate, LocalDate endDate)
     {

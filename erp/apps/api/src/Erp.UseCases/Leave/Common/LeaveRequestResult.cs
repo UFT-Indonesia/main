@@ -9,7 +9,8 @@ public sealed class LeaveRequestResult
     public Guid Id { get; init; }
     public Guid EmployeeId { get; init; }
     public string EmployeeFullName { get; init; } = default!;
-    public string Type { get; init; } = default!;
+    /// <summary>Null when the caller may not read this request's details — Sick is health data.</summary>
+    public string? Type { get; init; }
     public DateOnly StartDate { get; init; }
     public DateOnly EndDate { get; init; }
     public int WorkdayCount { get; init; }
@@ -21,8 +22,12 @@ public sealed class LeaveRequestResult
     public DateTimeOffset? DecidedAtUtc { get; init; }
     public string? DecisionNote { get; init; }
 
-    /// <summary>Approved Mon–Fri days for this employee in the current calendar year.</summary>
-    public int ApprovedWorkdaysThisYear { get; init; }
+    /// <summary>
+    /// Approved Mon–Fri days for this employee in the current calendar year, or null when the
+    /// caller may not read this employee's balance. Null rather than 0 — 0 would read as
+    /// "has taken no leave", which is a different claim from "you may not see this".
+    /// </summary>
+    public int? ApprovedWorkdaysThisYear { get; init; }
 
     /// <summary>
     /// What the calling user may do with this request. Computed server-side because the
@@ -34,25 +39,26 @@ public sealed class LeaveRequestResult
 
     public static LeaveRequestResult From(
         LeaveRequest request,
-        int approvedWorkdaysThisYear = 0,
+        int? approvedWorkdaysThisYear = 0,
         string? employeeFullName = null,
         bool canDecide = false,
-        bool canCancel = false) => new()
+        bool canCancel = false,
+        bool canReadDetails = false) => new()
     {
         Id = request.Id.Value,
         EmployeeId = request.EmployeeId.Value,
         EmployeeFullName = employeeFullName ?? request.Employee?.FullName ?? "—",
-        Type = request.Type.ToString(),
+        Type = canReadDetails ? request.Type.ToString() : null,
         StartDate = request.StartDate.ToDateOnly(),
         EndDate = request.EndDate.ToDateOnly(),
         WorkdayCount = request.WorkdayCount,
-        Reason = request.Reason,
+        Reason = canReadDetails ? request.Reason : null,
         Status = request.Status.ToString(),
         RequestedByUserId = request.RequestedByUserId,
         RequestedAtUtc = request.RequestedAtUtc.ToDateTimeOffset(),
         DecidedByName = request.DecidedByName,
         DecidedAtUtc = request.DecidedAtUtc?.ToDateTimeOffset(),
-        DecisionNote = request.DecisionNote,
+        DecisionNote = canReadDetails ? request.DecisionNote : null,
         ApprovedWorkdaysThisYear = approvedWorkdaysThisYear,
         CanDecide = canDecide,
         CanCancel = canCancel,

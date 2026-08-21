@@ -32,7 +32,8 @@
       "managers": "Manajer",
       "staff": "Staf",
       "todayLogs": "Presensi hari ini"
-    }
+    },
+    "subtitleStaff": "Ringkasan absensi dan cuti Anda."
   },
   "login": {
     "subtitle": "Masuk untuk melanjutkan",
@@ -241,13 +242,15 @@
       "Annual": "Cuti tahunan",
       "Sick": "Sakit",
       "Permission": "Izin",
-      "Unpaid": "Di luar tanggungan"
+      "Unpaid": "Di luar tanggungan",
+      "Undisclosed": "Tidak masuk"
     },
     "status": {
       "Pending": "Menunggu",
       "Approved": "Disetujui",
       "Denied": "Ditolak",
-      "Cancelled": "Dibatalkan"
+      "Cancelled": "Dibatalkan",
+      "Open": "Menunggu & disetujui"
     },
     "create": {
       "button": "Ajukan cuti",
@@ -296,11 +299,13 @@
       "requestedAt": "Diajukan pada",
       "decidedBy": "Diputuskan oleh",
       "decidedAt": "Diputuskan pada",
-      "decisionNote": "Catatan keputusan"
+      "decisionNote": "Catatan keputusan",
+      "hidden": "Tidak ditampilkan"
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
-    }
+    },
+    "subtitleStaff": "Ajukan cuti Anda dan lihat siapa saja yang sedang tidak masuk."
   },
   "changePassword": {
     "subtitle": "Buat password baru untuk melanjutkan",

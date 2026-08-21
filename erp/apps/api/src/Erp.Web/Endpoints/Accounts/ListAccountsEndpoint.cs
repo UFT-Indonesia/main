@@ -28,6 +28,12 @@ public sealed class ListAccountsEndpoint : EndpointWithoutRequest<ListAccountsRe
 
     public override async Task HandleAsync(CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var users = await _userManager.Users.AsNoTracking().OrderBy(u => u.UserName).ToListAsync(ct);
 
         // ponytail: one employee lookup per account — fine for a small org, batch into a
@@ -35,9 +41,9 @@ public sealed class ListAccountsEndpoint : EndpointWithoutRequest<ListAccountsRe
         var items = new List<AccountResponse>(users.Count);
         foreach (var user in users)
         {
-            var role = (await _identityResolver.ResolveAsync(user, ct)).Role;
+            var identity = await _identityResolver.ResolveAsync(user, ct);
 
-            if (!AccountRules.CanManage(User, role))
+            if (!AccountRules.CanManage(caller, identity.Role, identity.ParentId))
             {
                 continue; // Managers only see accounts they can manage.
             }
@@ -49,7 +55,7 @@ public sealed class ListAccountsEndpoint : EndpointWithoutRequest<ListAccountsRe
                 Email = user.Email,
                 FullName = user.FullName,
                 EmployeeId = user.EmployeeId,
-                Role = role.ToString(),
+                Role = identity.Role.ToString(),
                 IsEnabled = user.LockoutEnd is null || user.LockoutEnd <= DateTimeOffset.UtcNow,
                 MustChangePassword = user.MustChangePassword,
             });

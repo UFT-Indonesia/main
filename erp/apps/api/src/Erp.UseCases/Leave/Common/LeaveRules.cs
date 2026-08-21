@@ -42,6 +42,27 @@ public static class LeaveRules
         IsSelf(caller, subject) || CanDecideFor(caller, subject);
 
     /// <summary>
+    /// Who may read a request's free text — the reason and the decision note. Everyone can see
+    /// *that* a colleague is away (the list is a company-wide calendar), but "Sick — surgery
+    /// Thursday" is only for the employee themselves and whoever has the standing to decide it.
+    /// An Owner reads everything, including another Owner's.
+    /// </summary>
+    public static bool CanReadDetails(Caller caller, Employee subject) =>
+        caller.Role == EmployeeRole.Owner || IsSelf(caller, subject) || CanDecideFor(caller, subject);
+
+    /// <summary>
+    /// Who may read someone's running leave balance for the year. Wider than the reason — a
+    /// Manager sees the whole staff's so they can plan cover, not just their own reports — but
+    /// an Owner's balance is not something the people below them get to tally.
+    /// </summary>
+    public static bool CanReadBalance(Caller caller, Employee subject) => caller.Role switch
+    {
+        EmployeeRole.Owner => true,
+        EmployeeRole.Manager => subject.Role != EmployeeRole.Owner,
+        _ => IsSelf(caller, subject),
+    };
+
+    /// <summary>
     /// Filing a request is not authorizing it. Whoever submitted it is excluded from deciding
     /// it, so a Manager who files for their own Staff still needs an Owner to approve.
     /// </summary>

@@ -32,7 +32,7 @@ public sealed class GetEmployeeEndpoint : Endpoint<GetEmployeeByIdRequest, Emplo
 
         if (result is Result<EmployeeResult>.Success s)
         {
-            await SendOkAsync(EmployeeResponseMapper.ToResponse(s.Value, User), ct);
+            await SendOkAsync(EmployeeResponseMapper.ToResponse(s.Value, CallerFactory.From(User)!.Value), ct);
             return;
         }
 

@@ -74,7 +74,7 @@ export function EmployeeTable({ employees, onDelete }: EmployeeTableProps) {
           {employees.map((employee) => (
             <TableRow key={employee.id}>
               <TableCell className="font-medium">{employee.fullName}</TableCell>
-              <TableCell className="font-mono text-xs">{employee.nik}</TableCell>
+              <TableCell className="font-mono text-xs">{employee.nik ?? '–'}</TableCell>
               <TableCell>
                 <Badge variant="outline">{tForm(`roleOptions.${employee.role}`)}</Badge>
               </TableCell>

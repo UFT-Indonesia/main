@@ -30,7 +30,9 @@ public sealed class LeaveRequestResponse
     public Guid Id { get; init; }
     public Guid EmployeeId { get; init; }
     public string EmployeeFullName { get; init; } = default!;
-    public string Type { get; init; } = default!;
+
+    /// <summary>Null when the caller may not read this request's details — Sick is health data.</summary>
+    public string? Type { get; init; }
     public DateOnly StartDate { get; init; }
     public DateOnly EndDate { get; init; }
     public int WorkdayCount { get; init; }
@@ -40,7 +42,8 @@ public sealed class LeaveRequestResponse
     public string? DecidedByName { get; init; }
     public DateTimeOffset? DecidedAtUtc { get; init; }
     public string? DecisionNote { get; init; }
-    public int ApprovedWorkdaysThisYear { get; init; }
+    /// <summary>Null when the caller may not read this employee's leave balance.</summary>
+    public int? ApprovedWorkdaysThisYear { get; init; }
 
     /// <summary>What the calling user may do with this request — drives which controls the UI renders.</summary>
     public bool CanDecide { get; init; }

@@ -7,8 +7,12 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Employees;
 
-/// <summary>Manager sees every employee so they can reach the edit form; pay is redacted for them by the mapper.</summary>
-[Authorize(Roles = "Owner,Manager")]
+/// <summary>
+/// Open to every employee: pickers and the leave calendar need to put names to ids. What comes
+/// back is stripped per row by the mapper — a colleague gets a name, a role and a status, while
+/// national ID, tax ID and pay need standing (EmployeeVisibility).
+/// </summary>
+[Authorize]
 public sealed class ListEmployeesEndpoint : Endpoint<ListEmployeesRequest, ListEmployeesResponse>
 {
     private readonly IMessageBus _bus;
@@ -26,6 +30,12 @@ public sealed class ListEmployeesEndpoint : Endpoint<ListEmployeesRequest, ListE
 
     public override async Task HandleAsync(ListEmployeesRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<ListEmployeesResult>>(new ListEmployeesQuery(
             req.Page,
             req.PageSize,
@@ -37,7 +47,7 @@ public sealed class ListEmployeesEndpoint : Endpoint<ListEmployeesRequest, ListE
         {
             await SendOkAsync(new ListEmployeesResponse
             {
-                Items = s.Value.Items.Select(item => EmployeeResponseMapper.ToResponse(item, User)).ToList(),
+                Items = s.Value.Items.Select(item => EmployeeResponseMapper.ToResponse(item, caller)).ToList(),
                 Page = s.Value.Page,
                 PageSize = s.Value.PageSize,
                 TotalCount = s.Value.TotalCount,

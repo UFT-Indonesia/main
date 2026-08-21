@@ -9,6 +9,9 @@ namespace Erp.IntegrationTests;
 /// PR2 rules end to end: who may file, who may decide, and — the part unit tests cannot
 /// reach — what the list query actually returns for each caller.
 /// </summary>
+// NOTE (unverified): the calendar-visibility and field-gating tests below have never been
+// executed — these run on Testcontainers and Docker was unavailable when they were written.
+// Run `dotnet test apps/api/tests/Erp.IntegrationTests` with Docker up before trusting them.
 public class LeaveAuthorizationTests : IntegrationTestBase
 {
     public LeaveAuthorizationTests(ErpApiFactory factory) : base(factory) { }
@@ -19,7 +22,10 @@ public class LeaveAuthorizationTests : IntegrationTestBase
         string EmployeeFullName,
         string Status,
         bool CanDecide,
-        bool CanCancel);
+        bool CanCancel,
+        string? Type,
+        string? Reason,
+        int? ApprovedWorkdaysThisYear);
 
     private sealed record LeaveList(LeaveItem[] Items, int TotalCount);
 
@@ -139,7 +145,7 @@ public class LeaveAuthorizationTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task The_list_shows_staff_only_their_own_requests()
+    public async Task The_list_is_a_company_wide_calendar_every_role_can_read()
     {
         var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
         var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
@@ -149,16 +155,69 @@ public class LeaveAuthorizationTests : IntegrationTestBase
         var ownerClient = await CreateClientForAsync(owner);
         await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(staff.Id.Value));
         await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(colleague.Id.Value));
+        await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(owner.Id.Value));
 
+        // The point of the calendar: staff can tell their own boss is away without asking.
         var staffClient = await CreateClientForAsync(staff);
         var list = await staffClient.GetFromJsonAsync<LeaveList>("/api/leave/?status=");
 
-        list!.Items.Should().OnlyContain(item => item.EmployeeId == staff.Id.Value);
-        list.TotalCount.Should().Be(1);
+        list!.Items.Select(item => item.EmployeeId)
+            .Should().BeEquivalentTo([staff.Id.Value, colleague.Id.Value, owner.Id.Value]);
+        list.TotalCount.Should().Be(3);
     }
 
     [Fact]
-    public async Task The_list_shows_a_manager_their_own_staff_but_not_other_lines()
+    public async Task Staff_see_that_a_colleague_is_away_but_never_why()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
+        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", manager.Id);
+        var colleague = await CreateEmployeeAsync(EmployeeRole.Staff, "Rekan Kerja", manager.Id);
+
+        var ownerClient = await CreateClientForAsync(owner);
+        await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(colleague.Id.Value));
+
+        var staffClient = await CreateClientForAsync(staff);
+        await staffClient.PostAsJsonAsync("/api/leave/", NewRequestFor(staff.Id.Value));
+
+        var list = await staffClient.GetFromJsonAsync<LeaveList>("/api/leave/?status=");
+
+        list!.Items.Single(item => item.EmployeeId == staff.Id.Value)
+            .Reason.Should().Be("cuti", "it is their own request");
+        var colleagueRow = list.Items.Single(item => item.EmployeeId == colleague.Id.Value);
+        colleagueRow.Reason.Should().BeNull("the reason is private to the employee and their approvers");
+        colleagueRow.Type.Should().BeNull("Sick would disclose health information");
+    }
+
+    [Fact]
+    public async Task A_leave_balance_is_hidden_from_everyone_the_employee_does_not_answer_to()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
+        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", manager.Id);
+
+        var ownerClient = await CreateClientForAsync(owner);
+        // An Owner's own leave is approved on filing, so it lands in their yearly balance.
+        await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(owner.Id.Value));
+        await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(staff.Id.Value));
+
+        var staffList = await (await CreateClientForAsync(staff))
+            .GetFromJsonAsync<LeaveList>("/api/leave/?status=");
+        staffList!.Items.Single(item => item.EmployeeId == staff.Id.Value)
+            .ApprovedWorkdaysThisYear.Should().NotBeNull("their own balance is theirs to see");
+        staffList.Items.Single(item => item.EmployeeId == owner.Id.Value)
+            .ApprovedWorkdaysThisYear.Should().BeNull("staff do not tally anyone else's leave");
+
+        var managerList = await (await CreateClientForAsync(manager))
+            .GetFromJsonAsync<LeaveList>("/api/leave/?status=");
+        managerList!.Items.Single(item => item.EmployeeId == staff.Id.Value)
+            .ApprovedWorkdaysThisYear.Should().NotBeNull("a manager plans cover across the staff");
+        managerList.Items.Single(item => item.EmployeeId == owner.Id.Value)
+            .ApprovedWorkdaysThisYear.Should().BeNull("nobody below the owner tallies the owner");
+    }
+
+    [Fact]
+    public async Task A_manager_reads_the_reason_only_inside_their_own_line()
     {
         var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
         var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
@@ -174,8 +233,75 @@ public class LeaveAuthorizationTests : IntegrationTestBase
         var managerClient = await CreateClientForAsync(manager);
         var list = await managerClient.GetFromJsonAsync<LeaveList>("/api/leave/?status=");
 
-        list!.Items.Select(item => item.EmployeeId).Should().BeEquivalentTo([ownStaff.Id.Value]);
-        list.TotalCount.Should().Be(1);
+        // Every row is visible — the calendar is company-wide — but the free text is not.
+        list!.Items.Select(item => item.EmployeeId).Should().BeEquivalentTo(
+            [ownStaff.Id.Value, foreignStaff.Id.Value, owner.Id.Value]);
+
+        list.Items.Single(item => item.EmployeeId == ownStaff.Id.Value)
+            .Reason.Should().Be("cuti", "a manager decides their own staff's leave");
+        list.Items.Single(item => item.EmployeeId == foreignStaff.Id.Value)
+            .Reason.Should().BeNull("another manager's line is not theirs to read");
+        list.Items.Single(item => item.EmployeeId == owner.Id.Value)
+            .Reason.Should().BeNull("nobody below the owner reads the owner's reason");
+    }
+
+    [Fact]
+    public async Task An_owner_reads_every_reason_including_another_owners()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var coOwner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Kedua");
+        var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
+
+        var coOwnerClient = await CreateClientForAsync(coOwner);
+        await coOwnerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(coOwner.Id.Value));
+        await coOwnerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(manager.Id.Value));
+
+        var list = await (await CreateClientForAsync(owner))
+            .GetFromJsonAsync<LeaveList>("/api/leave/?status=");
+
+        list!.Items.Should().OnlyContain(item => item.Reason == "cuti");
+        list.Items.Should().OnlyContain(item => item.ApprovedWorkdaysThisYear != null);
+    }
+
+    [Fact]
+    public async Task An_account_with_no_employee_record_is_not_in_the_calendars_audience()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", owner.Id);
+
+        var ownerClient = await CreateClientForAsync(owner);
+        await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(staff.Id.Value));
+
+        var detached = await CreateClientForAccountWithoutEmployeeAsync(EmployeeRole.Manager);
+        var list = await detached.GetFromJsonAsync<LeaveList>("/api/leave/?status=");
+
+        list!.Items.Should().BeEmpty("an account with no employee is not a colleague");
+        list.TotalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task The_open_filter_covers_pending_and_approved_but_nothing_terminal()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
+        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", manager.Id);
+
+        var ownerClient = await CreateClientForAsync(owner);
+        // The owner's own request is approved on filing; the staff one stays pending.
+        await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(owner.Id.Value));
+        var pending = await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(staff.Id.Value));
+        var managerRequest = await ownerClient.PostAsJsonAsync("/api/leave/", NewRequestFor(manager.Id.Value));
+
+        // Deny the manager's so there is something terminal to exclude.
+        var denied = await managerRequest.Content.ReadFromJsonAsync<LeaveItem>();
+        await ownerClient.PostAsJsonAsync($"/api/leave/{denied!.Id}/deny", new { });
+
+        var open = await ownerClient.GetFromJsonAsync<LeaveList>("/api/leave/?status=Open");
+
+        open!.Items.Select(item => item.EmployeeId)
+            .Should().BeEquivalentTo([owner.Id.Value, staff.Id.Value]);
+        open.TotalCount.Should().Be(2, "paging totals must match the filtered set");
+        _ = pending;
     }
 
     [Fact]

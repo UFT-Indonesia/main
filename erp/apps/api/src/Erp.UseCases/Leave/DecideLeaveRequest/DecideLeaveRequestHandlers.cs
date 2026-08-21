@@ -123,8 +123,12 @@ internal static class DecideLeaveRequestService
         return new Result<LeaveRequestResult>.Success(
             LeaveRequestResult.From(
                 request,
+                // Single-request responses do not run the yearly rollup query.
+                approvedWorkdaysThisYear: null,
                 employeeFullName: subject.FullName,
                 canDecide: canDecide,
-                canCancel: canCancel));
+                canCancel: canCancel,
+                // Only reachable once authority to decide or cancel has been established.
+                canReadDetails: true));
     }
 }

@@ -26,7 +26,8 @@ export type EmployeeStatus = 'Active' | 'OnLeave' | 'Terminated';
 export interface Employee {
   id: string;
   fullName: string;
-  nik: string;
+  /** National ID. Null unless the caller may read this employee's details. */
+  nik: string | null;
   npwp: string | null;
   /** Null for non-Owner callers — pay is redacted server-side. */
   monthlyWageAmount: number | null;
@@ -283,12 +284,15 @@ export interface RegisterAttendanceDeviceResponse {
 
 export type LeaveType = 'Annual' | 'Sick' | 'Permission' | 'Unpaid';
 export type LeaveRequestStatus = 'Pending' | 'Approved' | 'Denied' | 'Cancelled';
+/** Server-side pseudo-status: Pending or Approved, i.e. everything still standing. */
+export type LeaveStatusFilter = LeaveRequestStatus | 'Open';
 
 export interface LeaveRequest {
   id: string;
   employeeId: string;
   employeeFullName: string;
-  type: LeaveType;
+  /** Null when the caller may not read this request's details — Sick is health data. */
+  type: LeaveType | null;
   /** "YYYY-MM-DD" inclusive. */
   startDate: string;
   /** "YYYY-MM-DD" inclusive. */
@@ -300,7 +304,8 @@ export interface LeaveRequest {
   decidedByName: string | null;
   decidedAtUtc: string | null;
   decisionNote: string | null;
-  approvedWorkdaysThisYear: number;
+  /** Null when the caller may not read this employee's balance. */
+  approvedWorkdaysThisYear: number | null;
   /** Server-computed: the rules depend on the subject's role and reporting line, which the client cannot see. */
   canDecide: boolean;
   canCancel: boolean;
@@ -316,7 +321,7 @@ export interface ListLeaveRequestsResponse {
 export interface ListLeaveRequestsParams {
   page?: number;
   pageSize?: number;
-  status?: LeaveRequestStatus | '';
+  status?: LeaveStatusFilter | '';
   employeeId?: string;
 }
 

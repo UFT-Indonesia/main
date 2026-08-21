@@ -94,6 +94,40 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         return await LoginAsync($"user-{employee.Id.Value:N}", TestPassword);
     }
 
+    /// <summary>
+    /// A login with no employee record behind it — the legacy shape Caller documents, where
+    /// AccountIdentityResolver falls back to the stored Identity roles.
+    /// </summary>
+    protected async Task<HttpClient> CreateClientForAccountWithoutEmployeeAsync(EmployeeRole role)
+    {
+        var username = $"detached-{Guid.NewGuid():N}";
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = new ApplicationUser
+            {
+                UserName = username,
+                Email = $"{username}@erp.test",
+                EmailConfirmed = true,
+                FullName = "Detached Account",
+                EmployeeId = null,
+                MustChangePassword = false,
+            };
+
+            var created = await userManager.CreateAsync(user, TestPassword);
+            if (!created.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    "Failed to create detached test account: "
+                        + string.Join("; ", created.Errors.Select(error => error.Description)));
+            }
+
+            await userManager.AddToRoleAsync(user, role.ToString());
+        }
+
+        return await LoginAsync(username, TestPassword);
+    }
+
     /// <summary>Logs in through the real endpoint, so tokens carry whatever claims the app stamps.</summary>
     protected async Task<HttpClient> LoginAsync(string username, string password)
     {
