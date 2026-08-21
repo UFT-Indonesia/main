@@ -27,7 +27,8 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: '/' as Route, labelKey: 'dashboard', icon: LayoutDashboard },
-  { href: '/employees' as Route, labelKey: 'employees', icon: Users },
+  // ListEmployeesEndpoint is Owner,Manager — Staff would only get a 403 from this item.
+  { href: '/employees' as Route, labelKey: 'employees', icon: Users, roles: ['Owner', 'Manager'] },
   // A change history exposes every salary/reporting-line change ever made, so it's Owner-only.
   {
     href: '/employees/audit-log' as Route,

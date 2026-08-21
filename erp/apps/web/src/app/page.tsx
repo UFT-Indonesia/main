@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEmployees } from '@/hooks/use-employees';
 import { useAttendanceLogs } from '@/hooks/use-attendance';
+import { useHasRole } from '@/lib/auth/store';
 
 function todayJakartaRange(): { dateFrom: string; dateTo: string } {
   const dateStr = new Intl.DateTimeFormat('en-CA', {
@@ -28,10 +29,13 @@ export default function HomePage() {
   const tNav = useTranslations('nav');
   const tHome = useTranslations('home');
 
-  const activeQuery = useEmployees({ status: 'Active', pageSize: 1 });
-  const ownerQuery = useEmployees({ status: 'Active', role: 'Owner', pageSize: 1 });
-  const managerQuery = useEmployees({ status: 'Active', role: 'Manager', pageSize: 1 });
-  const staffQuery = useEmployees({ status: 'Active', role: 'Staff', pageSize: 1 });
+  // Headcount comes from the employees endpoint, which is Owner,Manager — Staff would just
+  // collect four 403s on their landing page, so they don't ask.
+  const canSeeHeadcount = useHasRole('Owner', 'Manager');
+  const activeQuery = useEmployees({ status: 'Active', pageSize: 1 }, canSeeHeadcount);
+  const ownerQuery = useEmployees({ status: 'Active', role: 'Owner', pageSize: 1 }, canSeeHeadcount);
+  const managerQuery = useEmployees({ status: 'Active', role: 'Manager', pageSize: 1 }, canSeeHeadcount);
+  const staffQuery = useEmployees({ status: 'Active', role: 'Staff', pageSize: 1 }, canSeeHeadcount);
   const todayLogsQuery = useAttendanceLogs({ dateFrom, dateTo, pageSize: 1 });
 
   return (
@@ -42,6 +46,7 @@ export default function HomePage() {
           <p className="text-sm text-muted-foreground">{tHome('subtitle')}</p>
         </header>
 
+        {canSeeHeadcount && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
             icon={<Users className="h-4 w-4 text-muted-foreground" />}
@@ -68,6 +73,7 @@ export default function HomePage() {
             loading={staffQuery.isLoading}
           />
         </div>
+        )}
 
         <Card>
           <CardHeader>

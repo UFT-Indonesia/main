@@ -57,7 +57,8 @@ export default function LeavePage() {
   const createMutation = useCreateLeaveRequest();
   const decideMutation = useDecideLeaveRequest();
 
-  // Staff see only their own requests, so an employee filter has nothing to filter.
+  // Staff read the whole calendar but cannot list employees (that endpoint is Owner,Manager),
+  // so there is no way to populate a picker for them.
   const canFilterByEmployee = useHasRole('Owner', 'Manager');
   const employeesQuery = useEmployees(
     { status: 'Active', search: empSearch, pageSize: 50 },
@@ -177,7 +178,9 @@ export default function LeavePage() {
                       {formatLeaveDate(item.startDate)} – {formatLeaveDate(item.endDate)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{item.workdayCount}</TableCell>
-                    <TableCell className="text-right tabular-nums">{item.approvedWorkdaysThisYear}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {item.approvedWorkdaysThisYear ?? '–'}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={LEAVE_STATUS_VARIANT[item.status]}>
                         {t(`status.${item.status}`)}

@@ -300,7 +300,8 @@ export interface LeaveRequest {
   decidedByName: string | null;
   decidedAtUtc: string | null;
   decisionNote: string | null;
-  approvedWorkdaysThisYear: number;
+  /** Null when the caller may not read this employee's balance. */
+  approvedWorkdaysThisYear: number | null;
   /** Server-computed: the rules depend on the subject's role and reporting line, which the client cannot see. */
   canDecide: boolean;
   canCancel: boolean;

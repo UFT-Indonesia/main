@@ -261,7 +261,7 @@ export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialog
     [t('columns.type'), t(`type.${request.type}`)],
     [t('columns.dates'), `${formatLeaveDate(request.startDate)} – ${formatLeaveDate(request.endDate)}`],
     [t('columns.workdays'), String(request.workdayCount)],
-    [t('columns.approvedThisYear'), String(request.approvedWorkdaysThisYear)],
+    [t('columns.approvedThisYear'), request.approvedWorkdaysThisYear?.toString() ?? '–'],
     [t('details.reason'), request.reason || '–'],
     [t('details.requestedAt'), dateTimeFormatter.format(new Date(request.requestedAtUtc))],
     [t('details.decidedBy'), request.decidedByName || '–'],
