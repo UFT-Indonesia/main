@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Leave.Events;
 using Erp.SharedKernel.Domain;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Identity;
@@ -80,6 +81,12 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     /// <summary>Optional note recorded on deny/cancel.</summary>
     public string? DecisionNote { get; private set; }
 
+    /// <summary>
+    /// Set only by <see cref="Cancel"/>. Null on every other status, and on the system's own
+    /// termination cleanup — neither reason is true of a request nobody chose to call off.
+    /// </summary>
+    public LeaveCancellationReason? CancellationReason { get; private set; }
+
     public static LeaveRequest Create(
         EmployeeId employeeId,
         LeaveType type,
@@ -133,6 +140,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         EnsurePending("approve");
         SetDecision(decidedByUserId, decidedByName, nowUtc, null);
         Status = LeaveRequestStatus.Approved;
+        RaiseDomainEvent(new LeaveRequestApproved(Id.Value, EmployeeId.Value, StartDate, EndDate));
     }
 
     public void Deny(Guid decidedByUserId, string decidedByName, Instant nowUtc, string? note)
@@ -143,7 +151,12 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     }
 
     /// <summary>Allowed while Pending (withdrawn) or after approval (plans changed).</summary>
-    public void Cancel(Guid decidedByUserId, string decidedByName, Instant nowUtc, string? note)
+    public void Cancel(
+        Guid decidedByUserId,
+        string decidedByName,
+        Instant nowUtc,
+        string? note,
+        LeaveCancellationReason reason)
     {
         if (Status is not (LeaveRequestStatus.Pending or LeaveRequestStatus.Approved))
         {
@@ -151,8 +164,17 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
                 "leave.not_cancellable", $"Only pending or approved requests can be cancelled (status: {Status}).");
         }
 
+        // Only approved leave ever reached attendance, so only it has anything to undo.
+        var wasApproved = Status == LeaveRequestStatus.Approved;
+
         SetDecision(decidedByUserId, decidedByName, nowUtc, note);
         Status = LeaveRequestStatus.Cancelled;
+        CancellationReason = reason;
+
+        if (wasApproved)
+        {
+            RaiseDomainEvent(new LeaveRequestCancelled(Id.Value, EmployeeId.Value));
+        }
     }
 
     /// <summary>
@@ -179,19 +201,19 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
 
     // Workweek hardcoded to Mon–Fri; lift into AttendancePolicy when the
     // office's working days actually vary (Saturday shifts, etc.).
-    public static int CountWorkdays(LocalDate startDate, LocalDate endDate)
+    public static IEnumerable<LocalDate> Workdays(LocalDate startDate, LocalDate endDate)
     {
-        var count = 0;
         for (var date = startDate; date <= endDate; date = date.PlusDays(1))
         {
             if (date.DayOfWeek is not (IsoDayOfWeek.Saturday or IsoDayOfWeek.Sunday))
             {
-                count++;
+                yield return date;
             }
         }
-
-        return count;
     }
+
+    public static int CountWorkdays(LocalDate startDate, LocalDate endDate) =>
+        Workdays(startDate, endDate).Count();
 
     private void EnsurePending(string action)
     {

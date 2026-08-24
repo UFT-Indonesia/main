@@ -91,6 +91,11 @@ public sealed class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRe
             .HasColumnName("decision_note")
             .HasMaxLength(LeaveRequest.DecisionNoteMaxLength);
 
+        builder.Property(request => request.CancellationReason)
+            .HasColumnName("cancellation_reason")
+            .HasConversion<string>()
+            .HasMaxLength(32);
+
         builder.HasIndex(request => new { request.EmployeeId, request.Status });
 
         builder.HasOne(request => request.Employee)

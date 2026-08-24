@@ -35,6 +35,10 @@ namespace Erp.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("employee_id");
 
+                    b.Property<Guid?>("LeaveRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("leave_request_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -50,6 +54,8 @@ namespace Erp.Infrastructure.Persistence.Migrations
                         .HasColumnName("tap_out_utc");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LeaveRequestId");
 
                     b.HasIndex("EmployeeId", "CalendarDate")
                         .IsUnique();
@@ -442,6 +448,11 @@ namespace Erp.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("cancellation_reason");
+
                     b.Property<DateTimeOffset?>("DecidedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("decided_at_utc");
@@ -725,7 +736,14 @@ namespace Erp.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Erp.Core.Aggregates.Leave.LeaveRequest", "LeaveRequest")
+                        .WithMany()
+                        .HasForeignKey("LeaveRequestId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Employee");
+
+                    b.Navigation("LeaveRequest");
                 });
 
             modelBuilder.Entity("Erp.Core.Aggregates.Attendance.AttendanceLog", b =>

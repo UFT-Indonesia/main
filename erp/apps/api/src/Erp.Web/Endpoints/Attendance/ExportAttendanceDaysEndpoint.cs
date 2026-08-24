@@ -65,7 +65,7 @@ public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDays
     internal static string BuildCsv(IReadOnlyList<ExportAttendanceDayRowResult> rows)
     {
         var builder = new StringBuilder();
-        builder.AppendLine("Employee,Date,TapIn,TapOut,Status");
+        builder.AppendLine("Employee,Date,TapIn,TapOut,Status,LeaveType");
 
         foreach (var row in rows)
         {
@@ -74,7 +74,8 @@ public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDays
                 .Append(EscapeCsv(row.Date)).Append(',')
                 .Append(EscapeCsv(row.TapIn)).Append(',')
                 .Append(EscapeCsv(row.TapOut)).Append(',')
-                .Append(EscapeCsv(row.Status))
+                .Append(EscapeCsv(row.Status)).Append(',')
+                .Append(EscapeCsv(row.LeaveType))
                 .AppendLine();
         }
 

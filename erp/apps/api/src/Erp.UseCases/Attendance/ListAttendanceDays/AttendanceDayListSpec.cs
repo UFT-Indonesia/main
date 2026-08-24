@@ -19,6 +19,7 @@ internal sealed class AttendanceDayListSpec : Specification<AttendanceDay>
     {
         ApplyFilters(Query, employeeSearch, dateFrom, dateTo, status, caller);
         Query.Include(day => day.Employee);
+        Query.Include(day => day.LeaveRequest);
         Query.OrderByDescending(day => day.CalendarDate)
             .ThenBy(day => day.Employee!.FullName);
         Query.AsNoTracking();

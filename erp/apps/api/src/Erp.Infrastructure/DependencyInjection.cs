@@ -94,6 +94,7 @@ public static class DependencyInjection
         });
         services.AddHangfireServer();
         services.AddScoped<RecomputeAttendanceDaysJob>();
+        services.AddScoped<SyncEmployeeLeaveStatusJob>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {

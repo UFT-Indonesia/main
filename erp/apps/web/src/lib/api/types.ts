@@ -193,7 +193,7 @@ export interface ListAttendanceLogsParams {
   source?: AttendanceSource | '';
 }
 
-export type AttendanceDayStatus = 'Complete' | 'Incomplete';
+export type AttendanceDayStatus = 'Complete' | 'Incomplete' | 'OnLeave';
 
 export interface AttendanceDayListItem {
   employeeId: string;
@@ -203,6 +203,8 @@ export interface AttendanceDayListItem {
   tapInUtc: string | null;
   tapOutUtc: string | null;
   status: AttendanceDayStatus;
+  /** The kind of leave covering this day (Annual/Sick/…), empty when none does. */
+  leaveType: LeaveType | '';
   /** Server-computed: whether the caller may alter this employee's records. */
   canWrite: boolean;
 }
@@ -286,6 +288,7 @@ export type LeaveType = 'Annual' | 'Sick' | 'Permission' | 'Unpaid';
 export type LeaveRequestStatus = 'Pending' | 'Approved' | 'Denied' | 'Cancelled';
 /** Server-side pseudo-status: Pending or Approved, i.e. everything still standing. */
 export type LeaveStatusFilter = LeaveRequestStatus | 'Open';
+export type LeaveCancellationReason = 'WithdrawnByEmployee' | 'RecalledForWork';
 
 export interface LeaveRequest {
   id: string;
@@ -304,6 +307,8 @@ export interface LeaveRequest {
   decidedByName: string | null;
   decidedAtUtc: string | null;
   decisionNote: string | null;
+  /** Set only once status is Cancelled. */
+  cancellationReason: LeaveCancellationReason | null;
   /** Null when the caller may not read this employee's balance. */
   approvedWorkdaysThisYear: number | null;
   /** Server-computed: the rules depend on the subject's role and reporting line, which the client cannot see. */

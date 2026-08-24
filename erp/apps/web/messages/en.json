@@ -167,7 +167,8 @@
     },
     "status": {
       "Complete": "Complete",
-      "Incomplete": "Incomplete"
+      "Incomplete": "Incomplete",
+      "OnLeave": "On leave"
     },
     "actions": {
       "viewLogDetails": "View log details",
@@ -252,6 +253,10 @@
       "Cancelled": "Cancelled",
       "Open": "Pending & approved"
     },
+    "cancellationReason": {
+      "WithdrawnByEmployee": "Withdrawn by employee",
+      "RecalledForWork": "Recalled for work"
+    },
     "create": {
       "button": "Request leave",
       "title": "Request leave",
@@ -300,6 +305,7 @@
       "decidedBy": "Decided by",
       "decidedAt": "Decided at",
       "decisionNote": "Decision note",
+      "cancellationReason": "Cancellation reason",
       "hidden": "Not shown"
     },
     "pagination": {

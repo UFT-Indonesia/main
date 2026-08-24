@@ -1,4 +1,5 @@
 using Erp.Infrastructure;
+using Erp.Infrastructure.Attendance;
 using Erp.Infrastructure.Authentication;
 using Erp.Infrastructure.Configuration;
 using Erp.Infrastructure.DeviceIngest;
@@ -118,6 +119,15 @@ try
                 Authorization = [new HangfireDashboardAuthorizationFilter()],
             });
     }
+
+    // Leave that simply ran out raises no event, so the OnLeave badge is re-derived on a
+    // schedule. Hourly rather than daily-at-midnight: Hangfire's cron runs in the server's
+    // zone, which need not be the shift zone the leave dates are read in, and the query only
+    // touches employees whose flag could actually be wrong.
+    app.Services.GetRequiredService<IRecurringJobManager>().AddOrUpdate<SyncEmployeeLeaveStatusJob>(
+        "sync-employee-leave-status",
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Hourly());
 
     app.UseFastEndpoints();
 

@@ -87,6 +87,7 @@ export function AttendanceDayFilters({
           <option value="">{t('filters.allStatuses')}</option>
           <option value="Complete">{t('status.Complete')}</option>
           <option value="Incomplete">{t('status.Incomplete')}</option>
+          <option value="OnLeave">{t('status.OnLeave')}</option>
         </Select>
       </div>
     </div>

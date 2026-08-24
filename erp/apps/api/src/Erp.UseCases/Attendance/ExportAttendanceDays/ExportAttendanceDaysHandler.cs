@@ -24,6 +24,7 @@ internal sealed class AttendanceDayExportSpec : Specification<AttendanceDay>
     {
         Query.Where(BuildKeyPredicate(keys));
         Query.Include(day => day.Employee);
+        Query.Include(day => day.LeaveRequest);
         Query.OrderBy(day => day.CalendarDate).ThenBy(day => day.Employee!.FullName);
         Query.AsNoTracking();
     }
@@ -99,6 +100,7 @@ public static class ExportAttendanceDaysHandler
                 TapIn = FormatLocal(day.TapInUtc, policy.TimeZone),
                 TapOut = FormatLocal(day.TapOutUtc, policy.TimeZone),
                 Status = day.Status.ToString(),
+                LeaveType = day.LeaveRequest?.Type.ToString() ?? string.Empty,
             })
             .ToList();
 

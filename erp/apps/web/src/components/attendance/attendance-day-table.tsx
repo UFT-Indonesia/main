@@ -28,9 +28,12 @@ interface AttendanceDayTableProps {
   onViewDetails: (item: AttendanceDayListItem) => void;
 }
 
-const STATUS_VARIANT: Record<AttendanceDayStatus, 'success' | 'destructive'> = {
+const STATUS_VARIANT: Record<AttendanceDayStatus, 'success' | 'destructive' | 'warning'> = {
   Complete: 'success',
   Incomplete: 'destructive',
+  // Matches the employee table's OnLeave badge — an absence that was approved is neither
+  // a completed day nor a failure to show up.
+  OnLeave: 'warning',
 };
 
 // ymd is a calendar date only (no time), already derived server-side under the policy's
@@ -55,6 +58,7 @@ export function AttendanceDayTable({
   onViewDetails,
 }: AttendanceDayTableProps) {
   const t = useTranslations('attendance');
+  const tLeave = useTranslations('leave');
   const { data: policy } = useAttendancePolicy();
 
   if (items.length === 0) {
@@ -108,9 +112,17 @@ export function AttendanceDayTable({
                 <TableCell className="tabular-nums">{formatTime(item.tapInUtc, policy?.timeZoneId)}</TableCell>
                 <TableCell className="tabular-nums">{formatTime(item.tapOutUtc, policy?.timeZoneId)}</TableCell>
                 <TableCell>
-                  <Badge variant={STATUS_VARIANT[item.status]}>
-                    {t(`status.${item.status}`)}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant={STATUS_VARIANT[item.status]}>
+                      {t(`status.${item.status}`)}
+                    </Badge>
+                    {item.leaveType && (
+                      // Punches outrank leave for Status, but the day stays attributable to
+                      // the leave — this badge is the only place a Complete-during-leave day
+                      // is visible outside the export.
+                      <Badge variant="outline">{tLeave(`type.${item.leaveType}`)}</Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">

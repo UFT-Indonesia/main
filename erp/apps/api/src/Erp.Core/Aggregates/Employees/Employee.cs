@@ -296,6 +296,21 @@ public sealed class Employee : AggregateRoot<EmployeeId>
         RaiseDomainEvent(new EmployeeTerminated(Id.Value, terminationDate));
     }
 
+    /// <summary>
+    /// Reflects whether approved leave covers today. Driven by the leave module rather than
+    /// set by hand, and deliberately silent on a terminated employee: termination is the end
+    /// of the record, not a state leave gets to flip in and out of.
+    /// </summary>
+    public void SetOnLeave(bool onLeave)
+    {
+        if (Status == EmployeeStatus.Terminated)
+        {
+            return;
+        }
+
+        Status = onLeave ? EmployeeStatus.OnLeave : EmployeeStatus.Active;
+    }
+
     private void EnsureActive()
     {
         if (Status == EmployeeStatus.Terminated)
