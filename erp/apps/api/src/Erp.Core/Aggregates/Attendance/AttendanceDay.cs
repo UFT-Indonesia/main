@@ -1,5 +1,6 @@
 using Erp.Core.Aggregates.Attendance.Events;
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Leave;
 using Erp.SharedKernel.Domain;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Identity;
@@ -12,6 +13,12 @@ namespace Erp.Core.Aggregates.Attendance;
 /// calendar day (in the configured shift time zone). Tap-In is the day's first
 /// punch, Tap-Out the day's last punch (only when more than one punch exists).
 /// Status is derived from the configurable shift grace windows.
+/// <para>
+/// Approved leave is the one thing that materializes a row without punches (see
+/// <see cref="CreateForLeave"/>). Punches still win the status on a day leave covers — the
+/// employee demonstrably worked — but <see cref="LeaveRequestId"/> stays put so the day
+/// remains attributable to the leave that covered it.
+/// </para>
 /// </summary>
 public sealed class AttendanceDay : AggregateRoot<AttendanceDayId>
 {
@@ -44,6 +51,12 @@ public sealed class AttendanceDay : AggregateRoot<AttendanceDayId>
 
     public AttendanceDayStatus Status { get; private set; }
 
+    /// <summary>The approved leave covering this day, when one does.</summary>
+    public LeaveRequestId? LeaveRequestId { get; private set; }
+
+    // EF Core navigation — read-only, not part of domain behavior.
+    public LeaveRequest? LeaveRequest { get; private set; }
+
     public static AttendanceDay Create(
         EmployeeId employeeId,
         LocalDate calendarDate,
@@ -62,11 +75,62 @@ public sealed class AttendanceDay : AggregateRoot<AttendanceDayId>
         return day;
     }
 
+    /// <summary>
+    /// A day the employee is on approved leave for and has not punched on. No punches means
+    /// no shift windows to judge, so the status is stated rather than computed.
+    /// </summary>
+    public static AttendanceDay CreateForLeave(
+        EmployeeId employeeId,
+        LocalDate calendarDate,
+        LeaveRequestId leaveRequestId)
+    {
+        if (employeeId == EmployeeId.Empty)
+        {
+            throw new DomainException("attendance_day.employee_id", "Employee id is required.");
+        }
+
+        // `default` rather than LeaveRequestId.Empty: inside this type the name resolves to
+        // the property, not the struct.
+        if (leaveRequestId == default)
+        {
+            throw new DomainException("attendance_day.leave_request_id", "Leave request id is required.");
+        }
+
+        return new AttendanceDay(AttendanceDayId.New(), employeeId, calendarDate)
+        {
+            Status = AttendanceDayStatus.OnLeave,
+            LeaveRequestId = leaveRequestId,
+        };
+    }
+
     public void Recompute(IReadOnlyList<AttendanceLog> punchesForDay, AttendanceDayPolicy policy)
     {
         EnsurePunches(punchesForDay);
         Apply(punchesForDay, policy, force: false);
     }
+
+    /// <summary>
+    /// The day's last punch was moved away or deleted, but leave still covers it — fall back
+    /// to the leave view instead of dropping a day the employee is legitimately away for.
+    /// </summary>
+    public void RevertToLeave()
+    {
+        if (LeaveRequestId is null)
+        {
+            throw new DomainException(
+                "attendance_day.no_leave_link", "This day is not covered by a leave request.");
+        }
+
+        TapInUtc = null;
+        TapOutUtc = null;
+        Status = AttendanceDayStatus.OnLeave;
+    }
+
+    /// <summary>
+    /// The covering leave was cancelled. The row itself survives only if punches justify it;
+    /// the caller deletes it otherwise (see the LeaveRequestCancelled handler).
+    /// </summary>
+    public void ClearLeaveLink() => LeaveRequestId = null;
 
     private static void EnsurePunches(IReadOnlyList<AttendanceLog> punchesForDay)
     {

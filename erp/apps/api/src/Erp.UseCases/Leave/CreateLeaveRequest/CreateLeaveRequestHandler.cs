@@ -7,6 +7,7 @@ using Erp.SharedKernel.Identity;
 using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
 using NodaTime;
+using Wolverine;
 
 namespace Erp.UseCases.Leave.CreateLeaveRequest;
 
@@ -17,6 +18,7 @@ public static class CreateLeaveRequestHandler
         IReadRepository<Employee> employees,
         IRepository<LeaveRequest> leaveRequests,
         IClock clock,
+        IMessageBus bus,
         CancellationToken ct)
     {
         if (!Enum.TryParse<LeaveType>(command.Type, ignoreCase: true, out var type)
@@ -88,6 +90,10 @@ public static class CreateLeaveRequestHandler
         }
 
         await leaveRequests.AddAsync(request, ct);
+
+        // An Owner's leave is approved right here rather than by a later decision, so this is
+        // the only place its approval can reach attendance from.
+        await LeaveRequestEventPublisher.PublishAsync(request, bus);
 
         var (canDecide, canCancel) = LeaveRequestResult.PermissionsFor(command.Caller, request, employee);
         return new Result<LeaveRequestResult>.Success(

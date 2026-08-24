@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Leave;
 using Erp.Infrastructure.Persistence.ValueConverters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -55,12 +56,24 @@ public sealed class AttendanceDayConfiguration : IEntityTypeConfiguration<Attend
             .HasMaxLength(32)
             .IsRequired();
 
+        builder.Property(day => day.LeaveRequestId)
+            .HasColumnName("leave_request_id")
+            .HasConversion(new LeaveRequestIdConverter());
+
         // One materialized row per employee per calendar day.
         builder.HasIndex(day => new { day.EmployeeId, day.CalendarDate }).IsUnique();
+
+        // Cancelling a leave looks its days up by this key.
+        builder.HasIndex(day => day.LeaveRequestId);
 
         builder.HasOne(day => day.Employee)
             .WithMany()
             .HasForeignKey(day => day.EmployeeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(day => day.LeaveRequest)
+            .WithMany()
+            .HasForeignKey(day => day.LeaveRequestId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

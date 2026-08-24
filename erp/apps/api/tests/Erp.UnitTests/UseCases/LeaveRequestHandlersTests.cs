@@ -12,6 +12,7 @@ using Erp.UseCases.Leave.DecideLeaveRequest;
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
+using Wolverine;
 
 namespace Erp.UnitTests.UseCases;
 
@@ -22,6 +23,7 @@ public class LeaveRequestHandlersTests
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
     private readonly IRepository<LeaveRequest> _leaveRequests = Substitute.For<IRepository<LeaveRequest>>();
     private readonly IClock _clock = Substitute.For<IClock>();
+    private readonly IMessageBus _bus = Substitute.For<IMessageBus>();
 
     private readonly Employee _owner;
     private readonly Employee _manager;
@@ -71,7 +73,7 @@ public class LeaveRequestHandlersTests
 
     private Task<Result<LeaveRequestResult>> CreateAsync(Employee subject, Caller caller) =>
         CreateLeaveRequestHandler.Handle(
-            CommandFor(subject, caller), _employees, _leaveRequests, _clock, CancellationToken.None);
+            CommandFor(subject, caller), _employees, _leaveRequests, _clock, _bus, CancellationToken.None);
 
     private LeaveRequest PendingFor(Employee subject, Guid requestedByUserId)
     {
@@ -167,7 +169,7 @@ public class LeaveRequestHandlersTests
         var command = CommandFor(_staff, _staffCaller) with { Type = "Vacation" };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, _clock, CancellationToken.None);
+            command, _employees, _leaveRequests, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
             .Which.Code.Should().Be("leave.type");
@@ -179,7 +181,7 @@ public class LeaveRequestHandlersTests
         var command = CommandFor(_staff, _staffCaller) with { EmployeeId = Guid.NewGuid() };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, _clock, CancellationToken.None);
+            command, _employees, _leaveRequests, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.NotFound>();
     }
@@ -228,7 +230,7 @@ public class LeaveRequestHandlersTests
     private Task<Result<LeaveRequestResult>> ApproveAsync(LeaveRequest request, Caller caller) =>
         ApproveLeaveRequestHandler.Handle(
             new ApproveLeaveRequestCommand(request.Id.Value, caller),
-            _leaveRequests, _employees, _clock, CancellationToken.None);
+            _leaveRequests, _employees, _clock, _bus, CancellationToken.None);
 
     [Fact]
     public async Task A_managers_own_staff_leave_is_approvable_by_that_manager()
@@ -310,7 +312,7 @@ public class LeaveRequestHandlersTests
 
         var result = await DenyLeaveRequestHandler.Handle(
             new DenyLeaveRequestCommand(Guid.NewGuid(), _ownerCaller, null),
-            _leaveRequests, _employees, _clock, CancellationToken.None);
+            _leaveRequests, _employees, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.NotFound>();
     }
@@ -320,7 +322,7 @@ public class LeaveRequestHandlersTests
     private Task<Result<LeaveRequestResult>> CancelAsync(LeaveRequest request, Caller caller, string? note) =>
         CancelLeaveRequestHandler.Handle(
             new CancelLeaveRequestCommand(request.Id.Value, caller, note),
-            _leaveRequests, _employees, _clock, CancellationToken.None);
+            _leaveRequests, _employees, _clock, _bus, CancellationToken.None);
 
     [Fact]
     public async Task The_subject_can_cancel_their_own_approved_leave()

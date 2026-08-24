@@ -276,6 +276,10 @@ export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialog
       request.decidedAtUtc ? dateTimeFormatter.format(new Date(request.decidedAtUtc)) : '–',
     ],
     [t('details.decisionNote'), detailsHidden ? withheld : request.decisionNote || '–'],
+    // Not gated behind detailsHidden — no more sensitive than the Cancelled status itself.
+    ...(request.status === 'Cancelled' && request.cancellationReason
+      ? ([[t('details.cancellationReason'), t(`cancellationReason.${request.cancellationReason}`)]] as [string, string][])
+      : []),
   ];
 
   return (

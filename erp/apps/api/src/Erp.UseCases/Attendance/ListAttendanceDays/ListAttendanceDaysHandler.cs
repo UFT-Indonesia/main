@@ -27,7 +27,7 @@ public static class ListAttendanceDaysHandler
             if (!Enum.TryParse<AttendanceDayStatus>(query.Status, ignoreCase: true, out var parsed))
             {
                 return new Result<ListAttendanceDaysResult>.Error(
-                    "attendance.day_status_invalid", "Status must be Complete or Incomplete.");
+                    "attendance.day_status_invalid", "Status must be Complete, Incomplete, or OnLeave.");
             }
 
             statusFilter = parsed;
@@ -56,6 +56,7 @@ public static class ListAttendanceDaysHandler
             TapInUtc = day.TapInUtc?.ToDateTimeOffset(),
             TapOutUtc = day.TapOutUtc?.ToDateTimeOffset(),
             Status = day.Status.ToString(),
+            LeaveType = day.LeaveRequest?.Type.ToString() ?? string.Empty,
             CanWrite = day.Employee is not null
                 && AttendanceRules.CanWriteFor(query.Caller, day.Employee),
         }).ToList();

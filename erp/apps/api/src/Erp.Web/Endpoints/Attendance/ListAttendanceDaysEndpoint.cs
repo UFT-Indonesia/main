@@ -53,6 +53,7 @@ public sealed class ListAttendanceDaysEndpoint : Endpoint<ListAttendanceDaysRequ
                     TapInUtc = i.TapInUtc,
                     TapOutUtc = i.TapOutUtc,
                     Status = i.Status,
+                    LeaveType = i.LeaveType,
                     CanWrite = i.CanWrite,
                 }).ToList(),
                 Page = s.Value.Page,

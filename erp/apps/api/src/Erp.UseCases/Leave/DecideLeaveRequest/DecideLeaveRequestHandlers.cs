@@ -6,6 +6,7 @@ using Erp.SharedKernel.Identity;
 using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
 using NodaTime;
+using Wolverine;
 
 namespace Erp.UseCases.Leave.DecideLeaveRequest;
 
@@ -19,15 +20,17 @@ public static class ApproveLeaveRequestHandler
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
         IClock clock,
+        IMessageBus bus,
         CancellationToken ct) =>
         DecideLeaveRequestService.DecideAsync(
             command.LeaveRequestId,
             command.Caller,
             DecisionKind.Approval,
-            (request, now) => request.Approve(command.Caller.UserId, command.Caller.Name, now),
+            (request, _, now) => request.Approve(command.Caller.UserId, command.Caller.Name, now),
             leaveRequests,
             employees,
             clock,
+            bus,
             ct);
 }
 
@@ -38,15 +41,17 @@ public static class DenyLeaveRequestHandler
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
         IClock clock,
+        IMessageBus bus,
         CancellationToken ct) =>
         DecideLeaveRequestService.DecideAsync(
             command.LeaveRequestId,
             command.Caller,
             DecisionKind.Approval,
-            (request, now) => request.Deny(command.Caller.UserId, command.Caller.Name, now, command.Note),
+            (request, _, now) => request.Deny(command.Caller.UserId, command.Caller.Name, now, command.Note),
             leaveRequests,
             employees,
             clock,
+            bus,
             ct);
 }
 
@@ -57,15 +62,27 @@ public static class CancelLeaveRequestHandler
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
         IClock clock,
+        IMessageBus bus,
         CancellationToken ct) =>
         DecideLeaveRequestService.DecideAsync(
             command.LeaveRequestId,
             command.Caller,
             DecisionKind.Cancellation,
-            (request, now) => request.Cancel(command.Caller.UserId, command.Caller.Name, now, command.Note),
+            // Cancelling your own leave is a withdrawal; anyone else with the standing to
+            // cancel it is pulling the employee back to work. Derived from who is acting
+            // rather than asked for, so it cannot be mislabelled by the caller.
+            (request, subject, now) => request.Cancel(
+                command.Caller.UserId,
+                command.Caller.Name,
+                now,
+                command.Note,
+                OrgScope.IsSelf(command.Caller, subject)
+                    ? LeaveCancellationReason.WithdrawnByEmployee
+                    : LeaveCancellationReason.RecalledForWork),
             leaveRequests,
             employees,
             clock,
+            bus,
             ct);
 }
 
@@ -84,10 +101,11 @@ internal static class DecideLeaveRequestService
         Guid leaveRequestId,
         Caller caller,
         DecisionKind kind,
-        Action<LeaveRequest, Instant> decide,
+        Action<LeaveRequest, Employee, Instant> decide,
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
         IClock clock,
+        IMessageBus bus,
         CancellationToken ct)
     {
         var request = await leaveRequests.FirstOrDefaultAsync(
@@ -116,8 +134,9 @@ internal static class DecideLeaveRequestService
                 ResultErrors.Forbidden, "You cannot decide this leave request.");
         }
 
-        decide(request, clock.GetCurrentInstant());
+        decide(request, subject, clock.GetCurrentInstant());
         await leaveRequests.UpdateAsync(request, ct);
+        await LeaveRequestEventPublisher.PublishAsync(request, bus);
 
         var (canDecide, canCancel) = LeaveRequestResult.PermissionsFor(caller, request, subject);
         return new Result<LeaveRequestResult>.Success(

@@ -167,7 +167,8 @@
     },
     "status": {
       "Complete": "Lengkap",
-      "Incomplete": "Tidak lengkap"
+      "Incomplete": "Tidak lengkap",
+      "OnLeave": "Cuti"
     },
     "actions": {
       "viewLogDetails": "Lihat detail log",
@@ -252,6 +253,10 @@
       "Cancelled": "Dibatalkan",
       "Open": "Menunggu & disetujui"
     },
+    "cancellationReason": {
+      "WithdrawnByEmployee": "Ditarik oleh karyawan",
+      "RecalledForWork": "Dipanggil kembali bekerja"
+    },
     "create": {
       "button": "Ajukan cuti",
       "title": "Ajukan cuti",
@@ -300,6 +305,7 @@
       "decidedBy": "Diputuskan oleh",
       "decidedAt": "Diputuskan pada",
       "decisionNote": "Catatan keputusan",
+      "cancellationReason": "Alasan pembatalan",
       "hidden": "Tidak ditampilkan"
     },
     "pagination": {

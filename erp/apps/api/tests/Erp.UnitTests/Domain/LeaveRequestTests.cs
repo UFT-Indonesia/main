@@ -101,18 +101,19 @@ public class LeaveRequestTests
     public void Cancel_allowed_on_pending_and_approved_but_not_denied()
     {
         var pending = PendingRequest();
-        pending.Cancel(Decider, "Budi", Now, null);
+        pending.Cancel(Decider, "Budi", Now, null, LeaveCancellationReason.WithdrawnByEmployee);
         pending.Status.Should().Be(LeaveRequestStatus.Cancelled);
 
         var approved = PendingRequest();
         approved.Approve(Decider, "Budi", Now);
-        approved.Cancel(Decider, "Budi", Now, "trip cancelled");
+        approved.Cancel(Decider, "Budi", Now, "trip cancelled", LeaveCancellationReason.RecalledForWork);
         approved.Status.Should().Be(LeaveRequestStatus.Cancelled);
         approved.DecisionNote.Should().Be("trip cancelled");
+        approved.CancellationReason.Should().Be(LeaveCancellationReason.RecalledForWork);
 
         var denied = PendingRequest();
         denied.Deny(Decider, "Budi", Now, null);
-        var act = () => denied.Cancel(Decider, "Budi", Now, null);
+        var act = () => denied.Cancel(Decider, "Budi", Now, null, LeaveCancellationReason.WithdrawnByEmployee);
         act.Should().Throw<DomainException>().Where(e => e.Code == "leave.not_cancellable");
     }
 

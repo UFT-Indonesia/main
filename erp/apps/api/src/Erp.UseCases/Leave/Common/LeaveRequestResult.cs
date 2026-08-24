@@ -23,6 +23,13 @@ public sealed class LeaveRequestResult
     public string? DecisionNote { get; init; }
 
     /// <summary>
+    /// Set only once Cancelled. Unlike Reason/DecisionNote, not gated behind canReadDetails —
+    /// it's no more sensitive than the Cancelled status itself, which is already visible to
+    /// everyone the request is visible to.
+    /// </summary>
+    public string? CancellationReason { get; init; }
+
+    /// <summary>
     /// Approved Mon–Fri days for this employee in the current calendar year, or null when the
     /// caller may not read this employee's balance. Null rather than 0 — 0 would read as
     /// "has taken no leave", which is a different claim from "you may not see this".
@@ -59,6 +66,7 @@ public sealed class LeaveRequestResult
         DecidedByName = request.DecidedByName,
         DecidedAtUtc = request.DecidedAtUtc?.ToDateTimeOffset(),
         DecisionNote = canReadDetails ? request.DecisionNote : null,
+        CancellationReason = request.CancellationReason?.ToString(),
         ApprovedWorkdaysThisYear = approvedWorkdaysThisYear,
         CanDecide = canDecide,
         CanCancel = canCancel,

@@ -187,6 +187,11 @@ export default function LeavePage() {
                       <Badge variant={LEAVE_STATUS_VARIANT[item.status]}>
                         {t(`status.${item.status}`)}
                       </Badge>
+                      {item.status === 'Cancelled' && item.cancellationReason && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {t(`cancellationReason.${item.cancellationReason}`)}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">

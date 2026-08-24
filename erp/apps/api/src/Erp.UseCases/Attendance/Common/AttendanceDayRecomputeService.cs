@@ -36,12 +36,21 @@ public static class AttendanceDayRecomputeService
 
         if (punches.Count == 0)
         {
-            // A punch was moved off this day — the derived row no longer applies.
-            if (existing is not null)
+            // A punch was moved off this day — the derived row no longer applies, unless
+            // approved leave still covers the day and holds the row up on its own.
+            if (existing is null)
             {
-                await attendanceDays.DeleteAsync(existing, ct);
+                return;
             }
 
+            if (existing.LeaveRequestId is null)
+            {
+                await attendanceDays.DeleteAsync(existing, ct);
+                return;
+            }
+
+            existing.RevertToLeave();
+            await attendanceDays.UpdateAsync(existing, ct);
             return;
         }
 

@@ -42,6 +42,8 @@ public sealed class LeaveRequestResponse
     public string? DecidedByName { get; init; }
     public DateTimeOffset? DecidedAtUtc { get; init; }
     public string? DecisionNote { get; init; }
+    /// <summary>Set only once Status is Cancelled.</summary>
+    public string? CancellationReason { get; init; }
     /// <summary>Null when the caller may not read this employee's leave balance.</summary>
     public int? ApprovedWorkdaysThisYear { get; init; }
 
@@ -64,6 +66,7 @@ public sealed class LeaveRequestResponse
         DecidedByName = result.DecidedByName,
         DecidedAtUtc = result.DecidedAtUtc,
         DecisionNote = result.DecisionNote,
+        CancellationReason = result.CancellationReason,
         ApprovedWorkdaysThisYear = result.ApprovedWorkdaysThisYear,
         CanDecide = result.CanDecide,
         CanCancel = result.CanCancel,
