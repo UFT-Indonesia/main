@@ -72,6 +72,13 @@ internal sealed record RoleAuditValue(string Role);
 
 internal sealed record TerminatedAuditValue(DateOnly TerminationDate);
 
+internal sealed record HireDateAuditValue(DateOnly? HireDate);
+
+internal sealed record ProbationEndAuditValue(DateOnly? ProbationEndsOn);
+
+/// <summary>Null days means no override — the default entitlement applies.</summary>
+internal sealed record LeaveQuotaAuditValue(string LeaveType, int? EntitledDays);
+
 internal sealed record CreatedAuditValue(
     string FullName,
     string Nik,
@@ -81,4 +88,5 @@ internal sealed record CreatedAuditValue(
     string MonthlyWageCurrency,
     DateOnly EffectiveSalaryFrom,
     Guid? ParentId,
-    string? ParentName);
+    string? ParentName,
+    DateOnly? HireDate);

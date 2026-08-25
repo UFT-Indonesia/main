@@ -52,6 +52,10 @@ public class LeaveRequestHandlersTests
 
         _leaveRequests.AnyAsync(Arg.Any<ISpecification<LeaveRequest>>(), Arg.Any<CancellationToken>())
             .Returns(false);
+
+        // Nothing approved yet, so the quota check has a clean slate for every case here.
+        _leaveRequests.ListAsync(Arg.Any<ISpecification<LeaveRequest>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LeaveRequest>());
     }
 
     private static Employee NewEmployee(string name, EmployeeRole role, EmployeeId? parentId, string nik) =>

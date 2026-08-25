@@ -31,7 +31,11 @@ public static class ApproveLeaveRequestHandler
             employees,
             clock,
             bus,
-            ct);
+            ct,
+            // Authoritative quota check. The same request passed this on the way in, but an
+            // override lowered or a probation extended since then must still stop it here.
+            guard: (request, subject, today) => LeaveQuotaGuard.CheckAsync(
+                subject, request.Type, request.StartDate, request.EndDate, leaveRequests, today, ct));
 }
 
 public static class DenyLeaveRequestHandler
@@ -106,7 +110,8 @@ internal static class DecideLeaveRequestService
         IReadRepository<Employee> employees,
         IClock clock,
         IMessageBus bus,
-        CancellationToken ct)
+        CancellationToken ct,
+        Func<LeaveRequest, Employee, LocalDate, Task<(string Code, string Message)?>>? guard = null)
     {
         var request = await leaveRequests.FirstOrDefaultAsync(
             new LeaveRequestByIdSpec(new LeaveRequestId(leaveRequestId)), ct);
@@ -132,6 +137,15 @@ internal static class DecideLeaveRequestService
         {
             return new Result<LeaveRequestResult>.Error(
                 ResultErrors.Forbidden, "You cannot decide this leave request.");
+        }
+
+        if (guard is not null)
+        {
+            var blocked = await guard(request, subject, DisplayZone.Today(clock));
+            if (blocked is { } violation)
+            {
+                return new Result<LeaveRequestResult>.Error(violation.Code, violation.Message);
+            }
         }
 
         decide(request, subject, clock.GetCurrentInstant());

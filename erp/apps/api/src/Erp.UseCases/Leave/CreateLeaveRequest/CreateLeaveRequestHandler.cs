@@ -64,6 +64,16 @@ public static class CreateLeaveRequestHandler
                 "leave.overlaps_approved", "The requested dates overlap an already approved leave.");
         }
 
+        // Fast feedback on the way in. The authoritative check is on approval — a quota lowered
+        // while this request sits pending must not be approvable past.
+        var today = DisplayZone.Today(clock);
+        var overQuota = await LeaveQuotaGuard.CheckAsync(
+            employee, type, startDate, endDate, leaveRequests, today, ct);
+        if (overQuota is { } violation)
+        {
+            return new Result<LeaveRequestResult>.Error(violation.Code, violation.Message);
+        }
+
         LeaveRequest request;
         try
         {

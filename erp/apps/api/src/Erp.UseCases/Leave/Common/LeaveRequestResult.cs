@@ -37,6 +37,13 @@ public sealed class LeaveRequestResult
     public int? ApprovedWorkdaysThisYear { get; init; }
 
     /// <summary>
+    /// What is actually enforced for *this request's own type*, in the year it falls in. Null
+    /// when the caller may not read the balance, or may not read the type — the block names the
+    /// type, so it cannot be shown to someone the type itself is redacted from.
+    /// </summary>
+    public LeaveQuotaResult? Quota { get; init; }
+
+    /// <summary>
     /// What the calling user may do with this request. Computed server-side because the
     /// rules depend on the subject's role and reporting line, which the client never sees.
     /// </summary>
@@ -50,7 +57,8 @@ public sealed class LeaveRequestResult
         string? employeeFullName = null,
         bool canDecide = false,
         bool canCancel = false,
-        bool canReadDetails = false) => new()
+        bool canReadDetails = false,
+        LeaveQuotaResult? quota = null) => new()
     {
         Id = request.Id.Value,
         EmployeeId = request.EmployeeId.Value,
@@ -68,6 +76,7 @@ public sealed class LeaveRequestResult
         DecisionNote = canReadDetails ? request.DecisionNote : null,
         CancellationReason = request.CancellationReason?.ToString(),
         ApprovedWorkdaysThisYear = approvedWorkdaysThisYear,
+        Quota = quota,
         CanDecide = canDecide,
         CanCancel = canCancel,
     };

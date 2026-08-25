@@ -17,5 +17,6 @@ public sealed record EmployeeCreated(
     EmployeeRole Role,
     Guid? ParentId,
     Money MonthlyWage,
-    LocalDate EffectiveSalaryFrom)
+    LocalDate EffectiveSalaryFrom,
+    LocalDate? HireDate)
     : DomainEvent(EmployeeId, nameof(Employee), "employee.created");

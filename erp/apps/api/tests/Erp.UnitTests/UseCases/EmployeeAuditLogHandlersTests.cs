@@ -58,7 +58,8 @@ public class EmployeeAuditLogHandlersTests
 
         var message = new EmployeeCreated(
             employeeId, "Staff Satu", "3201234567890123", null,
-            EmployeeRole.Staff, parentId, Money.Idr(5_000_000m), new LocalDate(2026, 1, 1));
+            EmployeeRole.Staff, parentId, Money.Idr(5_000_000m), new LocalDate(2026, 1, 1),
+            new LocalDate(2026, 1, 1));
 
         await EmployeeCreatedHandler.Handle(message, _auditLogs, _employees, _envelope, CancellationToken.None);
 

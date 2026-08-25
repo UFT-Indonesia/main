@@ -53,15 +53,18 @@ public static class ListLeaveRequestsHandler
         var items = await leaveRequests.ListAsync(
             new LeaveRequestListSpec(page, pageSize, statusFilter, openOnly, employeeFilter, query.Caller), ct);
 
-        // "Approved workdays this year" counter per employee on the page, one query.
-        var year = clock.GetCurrentInstant().InUtc().Year;
+        // Balances for every employee on the page, one query. Days are attributed to the year
+        // they fall in rather than to the year the request started in, so a request over New Year
+        // counts against both — which is what the quota check enforces.
+        var today = DisplayZone.Today(clock);
+        var year = today.Year;
         var employeeIds = items.Select(request => request.EmployeeId).Distinct().ToList();
         var approvedThisYear = employeeIds.Count == 0
             ? []
             : await leaveRequests.ListAsync(new ApprovedLeaveForYearSpec(employeeIds, year), ct);
-        var approvedDaysByEmployee = approvedThisYear
+        var approvedByEmployee = approvedThisYear
             .GroupBy(request => request.EmployeeId)
-            .ToDictionary(group => group.Key, group => group.Sum(request => request.WorkdayCount));
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<LeaveRequest>)[.. group]);
 
         return new Result<ListLeaveRequestsResult>.Success(new ListLeaveRequestsResult
         {
@@ -78,14 +81,19 @@ public static class ListLeaveRequestsHandler
                     var canReadBalance = subject is not null
                         && LeaveRules.CanReadBalance(query.Caller, subject);
 
+                    var approved = approvedByEmployee.GetValueOrDefault(request.EmployeeId, []);
+
                     return LeaveRequestResult.From(
                         request,
-                        canReadBalance
-                            ? approvedDaysByEmployee.GetValueOrDefault(request.EmployeeId)
-                            : null,
+                        canReadBalance ? LeaveQuota.UsedDaysAllTypes(approved, year) : null,
                         canDecide: canDecide,
                         canCancel: canCancel,
-                        canReadDetails: canReadDetails);
+                        canReadDetails: canReadDetails,
+                        // Gated on details too, not just the balance: the block names the leave
+                        // type, which is redacted from anyone without standing to read it.
+                        quota: canReadBalance && canReadDetails && subject is not null
+                            ? LeaveQuotaResult.For(subject, request.Type, year, today, approved)
+                            : null);
                 })
                 .ToList(),
             Page = page,

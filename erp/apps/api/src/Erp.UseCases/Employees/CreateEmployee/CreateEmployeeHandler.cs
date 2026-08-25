@@ -26,6 +26,14 @@ public static class CreateEmployeeHandler
                 "Role must be Owner, Manager, or Staff.");
         }
 
+        // Required for everyone hired from here on — it anchors probation, and therefore the
+        // annual entitlement. Only rows that predate this feature are allowed a null.
+        if (!command.HireDate.HasValue)
+        {
+            return new Result<EmployeeResult>.Error(
+                "employee.hire_date_required", "Hire date is required.");
+        }
+
         Employee employee;
         try
         {
@@ -49,7 +57,8 @@ public static class CreateEmployeeHandler
                 role,
                 parentId,
                 npwp,
-                parentAncestors: parentAncestors);
+                parentAncestors: parentAncestors,
+                hireDate: LocalDate.FromDateOnly(command.HireDate.Value));
         }
         catch (DomainException ex)
         {

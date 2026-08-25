@@ -27,6 +27,10 @@ internal static class EmployeeResponseMapper
             EffectiveSalaryFrom = showWage ? result.EffectiveSalaryFrom : null,
             ParentId = showDetails ? result.ParentId : null,
             TerminationDate = showDetails ? result.TerminationDate : null,
+            HireDate = showDetails ? result.HireDate : null,
+            ProbationEndsOn = showDetails ? result.ProbationEndsOn : null,
+            ProbationEndsOnOverride = showDetails ? result.ProbationEndsOnOverride : null,
+            LeaveQuotaOverrides = showDetails ? result.LeaveQuotaOverrides : null,
         };
     }
 }

@@ -37,6 +37,15 @@ internal static class EmployeeDomainEventPublisher
                 case EmployeeTerminated employeeTerminated:
                     await bus.PublishAsync(employeeTerminated, options);
                     break;
+                case EmployeeHireDateChanged employeeHireDateChanged:
+                    await bus.PublishAsync(employeeHireDateChanged, options);
+                    break;
+                case EmployeeProbationEndChanged employeeProbationEndChanged:
+                    await bus.PublishAsync(employeeProbationEndChanged, options);
+                    break;
+                case EmployeeLeaveQuotaChanged employeeLeaveQuotaChanged:
+                    await bus.PublishAsync(employeeLeaveQuotaChanged, options);
+                    break;
             }
         }
     }

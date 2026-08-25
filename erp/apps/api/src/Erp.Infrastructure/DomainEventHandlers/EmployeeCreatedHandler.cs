@@ -34,7 +34,8 @@ public static class EmployeeCreatedHandler
                 message.MonthlyWage.Currency,
                 message.EffectiveSalaryFrom.ToDateOnly(),
                 message.ParentId,
-                parentName),
+                parentName,
+                message.HireDate?.ToDateOnly()),
             ct);
     }
 }
