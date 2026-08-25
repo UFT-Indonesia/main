@@ -29,7 +29,7 @@ import { useLeaveRequests, useCreateLeaveRequest, useDecideLeaveRequest } from '
 import { useEmployees } from '@/hooks/use-employees';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
-import { useHasRole } from '@/lib/auth/store';
+import { useAuthStore, useHasRole } from '@/lib/auth/store';
 import type { LeaveRequest, LeaveStatusFilter, LeaveType } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
@@ -41,13 +41,14 @@ export default function LeavePage() {
   const toast = useToast();
 
   // Owners and managers land on everything still standing, so they can spot the day where
-  // half the team booked leave before granting one more. Staff only need to know who is out,
-  // and a pending request is not yet an absence.
+  // half the team booked leave before granting one more. Staff land on their own full history
+  // instead — every status, not just Approved — so a request they filed and forgot about (still
+  // Pending, or quietly Denied) is visible without hunting through filters. Either view can
+  // still be widened or narrowed with the filters below; this only sets where each role starts.
   const canDecideSomething = useHasRole('Owner', 'Manager');
-  const [status, setStatus] = useState<LeaveStatusFilter | ''>(
-    canDecideSomething ? 'Open' : 'Approved',
-  );
-  const [employeeId, setEmployeeId] = useState('');
+  const self = useAuthStore((s) => s.user);
+  const [status, setStatus] = useState<LeaveStatusFilter | ''>(canDecideSomething ? 'Open' : '');
+  const [employeeId, setEmployeeId] = useState(canDecideSomething ? '' : (self?.employeeId ?? ''));
   const [empSearch, setEmpSearch] = useState('');
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);

@@ -340,7 +340,7 @@
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
     },
-    "subtitleStaff": "Ajukan cuti Anda dan lihat siapa saja yang sedang tidak masuk.",
+    "subtitleStaff": "Ajukan cuti dan lihat riwayat pengajuan Anda, termasuk yang sudah lewat atau ditolak.",
     "quota": {
       "uncapped": "Jenis ini tidak dibatasi.",
       "onProbation": "Belum ada cuti tahunan sampai masa percobaan selesai.",
