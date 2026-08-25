@@ -42,6 +42,7 @@ export default function ChangePasswordPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<ChangePasswordValues>({
     resolver: zodResolver(schema),
@@ -56,7 +57,24 @@ export default function ChangePasswordPage() {
       toast.success(t('successTitle'), t('successDescription'));
       router.replace('/');
     } catch (error) {
-      toast.error(t('errorTitle'), extractApiError(error).message);
+      const apiError = extractApiError(error);
+
+      // The server tags a wrong current password vs. a new password that fails the policy
+      // (length, casing, digits) as errors on the matching field, so route each back to the
+      // field it's actually about instead of leaving the user to guess from one toast.
+      const currentPasswordErrors = apiError.fieldErrors?.currentPassword;
+      const newPasswordErrors = apiError.fieldErrors?.newPassword;
+
+      if (currentPasswordErrors?.length) {
+        setError('currentPassword', { message: currentPasswordErrors.join(' ') });
+      }
+      if (newPasswordErrors?.length) {
+        setError('newPassword', { message: newPasswordErrors.join(' ') });
+      }
+
+      if (!currentPasswordErrors?.length && !newPasswordErrors?.length) {
+        toast.error(t('errorTitle'), apiError.message);
+      }
     } finally {
       setSubmitting(false);
     }

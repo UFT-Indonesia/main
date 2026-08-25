@@ -18,6 +18,12 @@ export interface AuthResponse {
 export interface ApiError {
   code?: string;
   message: string;
+  /**
+   * Field-level validation errors from FastEndpoints, keyed by camelCase request property name
+   * ("newPassword") plus "generalErrors" for errors not tied to one field. Absent on every other
+   * error shape (DomainException's {code, message}, network failures).
+   */
+  fieldErrors?: Record<string, string[]>;
 }
 
 export type EmployeeRole = 'Owner' | 'Manager' | 'Staff';

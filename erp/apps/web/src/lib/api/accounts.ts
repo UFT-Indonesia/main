@@ -29,8 +29,11 @@ export async function setAccountEnabled(id: string, enabled: boolean): Promise<v
 }
 
 export async function resetAccountPassword(id: string): Promise<ResetAccountPasswordResponse> {
+  // Explicit {} body: an empty POST left axios sending Content-Type: application/json with no
+  // body, which ASP.NET Core rejects outright with 415 rather than binding an empty request DTO.
   const { data } = await apiClient.post<ResetAccountPasswordResponse>(
     `/api/accounts/${id}/reset-password`,
+    {},
   );
   return data;
 }

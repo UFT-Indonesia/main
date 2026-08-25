@@ -22,7 +22,7 @@
     "accounts": "Akun",
     "attendanceDevices": "Perangkat presensi",
     "employeeAuditLog": "Log audit karyawan",
-    "probation": "Masa percobaan"
+    "probation": "Probation"
   },
   "home": {
     "title": "Selamat datang",
@@ -401,7 +401,9 @@
       "email": "Email",
       "emailOptional": "Opsional",
       "submit": "Buat",
-      "errorTitle": "Gagal membuat akun"
+      "errorTitle": "Gagal membuat akun",
+      "roleHint": "Peran akun mengikuti karyawan yang dipilih.",
+      "roleFromEmployee": "Akun ini akan berperan {role}, mengikuti data karyawan."
     },
     "tempPassword": {
       "title": "Password sementara",
@@ -507,7 +509,7 @@
     }
   },
   "probation": {
-    "title": "Perpanjangan masa percobaan",
+    "title": "Probation",
     "subtitle": "Putuskan pengajuan perpanjangan masa percobaan karyawan.",
     "subtitleManager": "Ajukan tambahan waktu masa percobaan staf Anda kepada pemilik.",
     "empty": "Tidak ada pengajuan perpanjangan.",

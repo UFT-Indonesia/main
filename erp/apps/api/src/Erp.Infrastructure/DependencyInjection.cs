@@ -110,7 +110,11 @@ public static class DependencyInjection
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddSignInManager()
-            .AddEntityFrameworkStores<AppDbContext>();
+            .AddEntityFrameworkStores<AppDbContext>()
+            // Registers the "Default" token provider GeneratePasswordResetTokenAsync (and any
+            // future email-confirmation flow) look up by name — without it UserManager throws
+            // NotSupportedException the first time a token is actually generated.
+            .AddDefaultTokenProviders();
 
         services.AddScoped<IAccountIdentityResolver, AccountIdentityResolver>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
