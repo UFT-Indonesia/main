@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import type {
   CreateLeaveRequestBody,
+  LeaveBalance,
   LeaveRequest,
   ListLeaveRequestsParams,
   ListLeaveRequestsResponse,
@@ -32,6 +33,14 @@ export async function decideLeaveRequest(
 ): Promise<LeaveRequest> {
   const { data } = await apiClient.post<LeaveRequest>(`/api/leave/${id}/${action}`, {
     note: note || null,
+  });
+  return data;
+}
+
+/** Entitlement, usage and remaining days across all four types. Year omitted means the current one. */
+export async function getLeaveBalance(employeeId: string, year?: number): Promise<LeaveBalance> {
+  const { data } = await apiClient.get<LeaveBalance>('/api/leave/balance', {
+    params: { employeeId, year },
   });
   return data;
 }

@@ -37,6 +37,14 @@ export interface Employee {
   status: EmployeeStatus;
   parentId: string | null;
   terminationDate: string | null;
+  /** "YYYY-MM-DD". Null for employees hired before the field existed, or a caller without standing. */
+  hireDate: string | null;
+  /** Effective probation end — the override if set, otherwise three months from the hire date. */
+  probationEndsOn: string | null;
+  /** Set only when an owner pinned the date by hand rather than taking the default. */
+  probationEndsOnOverride: string | null;
+  /** Leave type to overridden entitlement; types left on the default are absent. */
+  leaveQuotaOverrides: Partial<Record<LeaveType, number>> | null;
 }
 
 export interface ListEmployeesResponse {
@@ -62,12 +70,28 @@ export interface CreateEmployeeBody {
   effectiveSalaryFrom: string;
   role: EmployeeRole;
   parentId?: string | null;
+  /** Required. Anchors probation, and through it the annual leave entitlement. */
+  hireDate: string;
 }
 
-export interface UpdateEmployeeBody extends Omit<CreateEmployeeBody, 'monthlyWageAmount' | 'effectiveSalaryFrom'> {
+export interface UpdateEmployeeBody
+  extends Omit<CreateEmployeeBody, 'monthlyWageAmount' | 'effectiveSalaryFrom' | 'hireDate'> {
   /** Omit or null to leave pay unchanged. Managers must omit it — only Owner may set pay. */
   monthlyWageAmount?: number | null;
   effectiveSalaryFrom?: string | null;
+  /** Omit or null to leave the hire date unchanged. Owner-only, like pay; it cannot be cleared. */
+  hireDate?: string | null;
+}
+
+export interface SetProbationEndBody {
+  /** Null clears the owner's override, restoring the three-month default. */
+  endsOn: string | null;
+}
+
+export interface SetLeaveQuotaBody {
+  type: LeaveType;
+  /** Null clears the override. Zero is a real setting and means "none of this type". */
+  days: number | null;
 }
 
 export interface DeleteEmployeeBody {
@@ -309,8 +333,13 @@ export interface LeaveRequest {
   decisionNote: string | null;
   /** Set only once status is Cancelled. */
   cancellationReason: LeaveCancellationReason | null;
-  /** Null when the caller may not read this employee's balance. */
+  /** Total approved workdays away this year, all types. Null when the caller may not read the balance. */
   approvedWorkdaysThisYear: number | null;
+  /**
+   * What is actually enforced for this request's own type. Null when the caller may not read
+   * the balance, or may not read the type the block would name.
+   */
+  quota: LeaveQuota | null;
   /** Server-computed: the rules depend on the subject's role and reporting line, which the client cannot see. */
   canDecide: boolean;
   canCancel: boolean;
@@ -328,6 +357,68 @@ export interface ListLeaveRequestsParams {
   pageSize?: number;
   status?: LeaveStatusFilter | '';
   employeeId?: string;
+}
+
+/**
+ * One leave type's standing for one employee in one year. Null entitled/remaining means
+ * uncapped — an owner, or a type with no override. Remaining may be negative when a cap was
+ * set after the days were already taken; the server reports it raw rather than clamping.
+ */
+export interface LeaveQuota {
+  type: LeaveType;
+  entitledDays: number | null;
+  usedDays: number;
+  remainingDays: number | null;
+}
+
+export interface LeaveBalance {
+  employeeId: string;
+  employeeFullName: string;
+  year: number;
+  onProbation: boolean;
+  probationEndsOn: string | null;
+  quotas: LeaveQuota[];
+}
+
+export type ProbationExtensionStatus = 'Pending' | 'Approved' | 'Denied' | 'Cancelled';
+
+export interface ProbationExtension {
+  id: string;
+  employeeId: string;
+  employeeFullName: string;
+  /** The probation end at the time the request was filed. */
+  currentEndsOn: string;
+  /** The date approval will write. */
+  proposedEndsOn: string;
+  reason: string;
+  status: ProbationExtensionStatus;
+  requestedAtUtc: string;
+  decidedByName: string | null;
+  decidedAtUtc: string | null;
+  decisionNote: string | null;
+  /** Server-computed: approve/deny take an owner, cancel takes the manager who filed it. */
+  canDecide: boolean;
+  canCancel: boolean;
+}
+
+export interface ListProbationExtensionsResponse {
+  items: ProbationExtension[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface ListProbationExtensionsParams {
+  page?: number;
+  pageSize?: number;
+  status?: ProbationExtensionStatus | '';
+  employeeId?: string;
+}
+
+export interface CreateProbationExtensionBody {
+  employeeId: string;
+  proposedEndsOn: string;
+  reason: string;
 }
 
 export interface CreateLeaveRequestBody {
