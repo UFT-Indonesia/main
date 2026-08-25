@@ -11,6 +11,10 @@ export async function changePassword(currentPassword: string, newPassword: strin
   return data;
 }
 
+export async function logout(): Promise<void> {
+  await apiClient.post('/api/auth/logout', {});
+}
+
 export async function refreshSession(): Promise<AuthResponse> {
   const { data } = await apiClient.post<AuthResponse>('/api/auth/refresh', {});
   return data;

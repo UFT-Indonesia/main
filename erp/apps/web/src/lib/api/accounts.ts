@@ -31,6 +31,7 @@ export async function setAccountEnabled(id: string, enabled: boolean): Promise<v
 export async function resetAccountPassword(id: string): Promise<ResetAccountPasswordResponse> {
   const { data } = await apiClient.post<ResetAccountPasswordResponse>(
     `/api/accounts/${id}/reset-password`,
+    {},
   );
   return data;
 }

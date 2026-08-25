@@ -54,7 +54,22 @@ public sealed class ChangePasswordEndpoint : Endpoint<ChangePasswordRequest, Aut
         var result = await _userManager.ChangePasswordAsync(user, req.CurrentPassword, req.NewPassword);
         if (!result.Succeeded)
         {
-            ThrowError(string.Join(" ", result.Errors.Select(e => e.Description)), 400);
+            // Identity tags a wrong current password with its own code; everything else here is
+            // the new password failing the policy (length, casing, digits). Routed to the field
+            // that is actually wrong, rather than one lump message the user has to puzzle out.
+            foreach (var error in result.Errors)
+            {
+                if (error.Code == nameof(IdentityErrorDescriber.PasswordMismatch))
+                {
+                    AddError(r => r.CurrentPassword, error.Description);
+                }
+                else
+                {
+                    AddError(r => r.NewPassword, error.Description);
+                }
+            }
+
+            ThrowIfAnyErrors(400);
         }
 
         if (user.MustChangePassword)

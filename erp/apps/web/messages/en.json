@@ -401,7 +401,9 @@
       "email": "Email",
       "emailOptional": "Optional",
       "submit": "Create",
-      "errorTitle": "Account creation failed"
+      "errorTitle": "Account creation failed",
+      "roleHint": "The account’s role comes from the employee you pick.",
+      "roleFromEmployee": "This account will have the {role} role, from the employee record."
     },
     "tempPassword": {
       "title": "Temporary password",

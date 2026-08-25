@@ -110,7 +110,8 @@ public static class DependencyInjection
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddSignInManager()
-            .AddEntityFrameworkStores<AppDbContext>();
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddDefaultTokenProviders();
 
         services.AddScoped<IAccountIdentityResolver, AccountIdentityResolver>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();

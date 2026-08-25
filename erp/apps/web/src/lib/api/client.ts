@@ -18,6 +18,12 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
+const NO_REFRESH_PATHS = ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'];
+
+function isRefreshable(url: string | undefined): boolean {
+  return !NO_REFRESH_PATHS.some((path) => url?.includes(path));
+}
+
 let refreshPromise: Promise<string | null> | null = null;
 
 async function tryRefresh(): Promise<string | null> {
@@ -47,7 +53,7 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<ApiError>) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    if (error.response?.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && !original._retry && isRefreshable(original?.url)) {
       original._retry = true;
       const newToken = await tryRefresh();
 
@@ -80,10 +86,32 @@ apiClient.interceptors.response.use(
   },
 );
 
+/**
+ * FastEndpoints' validation-failure shape: {statusCode, message: "One or more errors
+ * occurred!", errors: {fieldName: [...], generalErrors: [...]}}. The top-level message is
+ * always that same generic line — the actual reason lives in `errors`, so it has to be
+ * flattened out for anything that only reads `message` (toasts, non-form callers).
+ */
+interface FastEndpointsErrorBody {
+  message?: string;
+  errors?: Record<string, string[]>;
+}
+
+function isFastEndpointsErrorBody(data: unknown): data is FastEndpointsErrorBody {
+  return typeof data === 'object' && data !== null && 'errors' in data;
+}
+
 export function extractApiError(error: unknown): ApiError {
   if (axios.isAxiosError(error)) {
-    const data = error.response?.data as ApiError | undefined;
-    if (data?.message) return { code: data.code, message: data.message };
+    const data = error.response?.data as unknown;
+
+    if (isFastEndpointsErrorBody(data) && data.errors) {
+      const message = Object.values(data.errors).flat().join(' ') || data.message || error.message;
+      return { message, fieldErrors: data.errors };
+    }
+
+    const domainError = data as ApiError | undefined;
+    if (domainError?.message) return { code: domainError.code, message: domainError.message };
     return { message: error.message };
   }
   if (error instanceof Error) return { message: error.message };

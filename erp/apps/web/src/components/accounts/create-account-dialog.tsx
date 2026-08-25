@@ -40,6 +40,7 @@ export function CreateAccountDialog({
 }: CreateAccountDialogProps) {
   const t = useTranslations('accounts.create');
   const tCommon = useTranslations('common');
+  const tRoles = useTranslations('employees.form.roleOptions');
   const toast = useToast();
 
   const { data: candidatesData, isLoading } = useProvisionCandidates(open);
@@ -51,6 +52,7 @@ export function CreateAccountDialog({
   const [usernameTouched, setUsernameTouched] = useState(false);
 
   const candidates = useMemo(() => candidatesData?.items ?? [], [candidatesData]);
+  const selected = candidates.find((c) => c.employeeId === employeeId);
 
   useEffect(() => {
     if (open) {
@@ -100,10 +102,15 @@ export function CreateAccountDialog({
             <option value="">{isLoading ? tCommon('loading') : t('selectEmployee')}</option>
             {candidates.map((candidate) => (
               <option key={candidate.employeeId} value={candidate.employeeId}>
-                {candidate.fullName}
+                {candidate.fullName} — {tRoles(candidate.role)}
               </option>
             ))}
           </Select>
+          {/* There is no role picker on purpose: an account's authority is read from the employee
+              it links to, so the role is shown here rather than chosen again and left to drift. */}
+          <p className="text-xs text-muted-foreground">
+            {selected ? t('roleFromEmployee', { role: tRoles(selected.role) }) : t('roleHint')}
+          </p>
         </div>
 
         <div className="space-y-1.5">
