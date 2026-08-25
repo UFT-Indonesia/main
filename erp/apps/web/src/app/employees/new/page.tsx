@@ -25,6 +25,7 @@ export default function NewEmployeePage() {
         // Creating employees is Owner-only, so the form always validated these as present.
         monthlyWageAmount: values.monthlyWageAmount!,
         effectiveSalaryFrom: values.effectiveSalaryFrom!,
+        hireDate: values.hireDate!,
         role: values.role,
         parentId: values.parentId ? values.parentId : null,
       });
