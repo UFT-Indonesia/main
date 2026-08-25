@@ -340,7 +340,7 @@
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
     },
-    "subtitleStaff": "Submit your own leave and see who else is away.",
+    "subtitleStaff": "Submit leave and track your own requests, including past and rejected ones.",
     "quota": {
       "uncapped": "No limit on this type.",
       "onProbation": "No annual leave until probation ends.",
