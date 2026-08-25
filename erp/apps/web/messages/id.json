@@ -21,7 +21,8 @@
     "leave": "Cuti",
     "accounts": "Akun",
     "attendanceDevices": "Perangkat presensi",
-    "employeeAuditLog": "Log audit karyawan"
+    "employeeAuditLog": "Log audit karyawan",
+    "probation": "Masa percobaan"
   },
   "home": {
     "title": "Selamat datang",
@@ -76,7 +77,10 @@
         "Active": "Aktif",
         "OnLeave": "Cuti",
         "Terminated": "Berhenti"
-      }
+      },
+      "hireDate": "Tanggal masuk",
+      "hireDateHint": "Masa percobaan berakhir tiga bulan kemudian kecuali diubah pemilik.",
+      "hireDateLegacyHint": "Belum tercatat — karyawan lama, tidak pernah dalam masa percobaan."
     },
     "create": {
       "title": "Tambah karyawan",
@@ -115,6 +119,30 @@
       "none": "Tanpa atasan",
       "unknown": "Tidak diketahui",
       "confirm": "Ubah garis pelaporan"
+    },
+    "probation": {
+      "title": "Masa percobaan & kuota cuti",
+      "hint": "Masa percobaan berakhir tiga bulan setelah tanggal masuk kecuali pemilik menetapkan tanggal lain.",
+      "hireDate": "Tanggal masuk",
+      "probationEndsOn": "Masa percobaan berakhir",
+      "status": "Status",
+      "onProbation": "Masa percobaan",
+      "confirmed": "Tetap",
+      "default": "Bawaan",
+      "setByOwner": "Diatur pemilik",
+      "none": "Tidak berlaku",
+      "overrideLabel": "Ubah tanggal berakhir masa percobaan",
+      "overrideHint": "Mengosongkan ini mengembalikan bawaan tiga bulan dari tanggal masuk.",
+      "clearOverride": "Kosongkan",
+      "quotaLabel": "Penyesuaian kuota cuti",
+      "quotaHint": "Hari per tahun. Kosongkan untuk bawaan; 0 berarti tidak ada.",
+      "quotaDefault": "Bawaan",
+      "requestExtension": "Ajukan perpanjangan",
+      "saveSuccessTitle": "Perubahan tersimpan",
+      "saveErrorTitle": "Gagal menyimpan",
+      "requestSuccessTitle": "Pengajuan terkirim",
+      "requestSuccessDescription": "Pemilik akan memutuskan perpanjangan ini.",
+      "requestErrorTitle": "Gagal mengirim pengajuan"
     }
   },
   "attendance": {
@@ -306,12 +334,18 @@
       "decidedAt": "Diputuskan pada",
       "decisionNote": "Catatan keputusan",
       "cancellationReason": "Alasan pembatalan",
-      "hidden": "Tidak ditampilkan"
+      "hidden": "Tidak ditampilkan",
+      "quota": "Kuota jenis ini"
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
     },
-    "subtitleStaff": "Ajukan cuti Anda dan lihat siapa saja yang sedang tidak masuk."
+    "subtitleStaff": "Ajukan cuti Anda dan lihat siapa saja yang sedang tidak masuk.",
+    "quota": {
+      "uncapped": "Jenis ini tidak dibatasi.",
+      "onProbation": "Belum ada cuti tahunan sampai masa percobaan selesai.",
+      "remaining": "Sisa {remaining} dari {entitled} hari ({used} terpakai)."
+    }
   },
   "changePassword": {
     "subtitle": "Buat password baru untuk melanjutkan",
@@ -450,7 +484,10 @@
         "salary_changed": "Gaji diubah",
         "parent_changed": "Garis pelaporan diubah",
         "role_changed": "Peran diubah",
-        "terminated": "Diberhentikan"
+        "terminated": "Diberhentikan",
+        "hire_date_changed": "Tanggal masuk diubah",
+        "probation_end_changed": "Akhir masa percobaan diubah",
+        "leave_quota_changed": "Kuota cuti diubah"
       }
     },
     "summary": {
@@ -462,7 +499,84 @@
       "wage": "Gaji: {from} → {to}",
       "parent": "Atasan: {from} → {to}",
       "role": "Peran: {from} → {to}",
-      "terminated": "Diberhentikan berlaku {date}"
+      "terminated": "Diberhentikan berlaku {date}",
+      "hireDate": "Tanggal masuk: {from} → {to}",
+      "probationEnd": "Akhir masa percobaan: {from} → {to}",
+      "leaveQuota": "Kuota {type}: {from} → {to}",
+      "quotaDefault": "bawaan"
+    }
+  },
+  "probation": {
+    "title": "Perpanjangan masa percobaan",
+    "subtitle": "Putuskan pengajuan perpanjangan masa percobaan karyawan.",
+    "subtitleManager": "Ajukan tambahan waktu masa percobaan staf Anda kepada pemilik.",
+    "empty": "Tidak ada pengajuan perpanjangan.",
+    "filters": {
+      "allStatuses": "Semua status",
+      "allEmployees": "Semua karyawan"
+    },
+    "columns": {
+      "employee": "Karyawan",
+      "currentEndsOn": "Berakhir saat ini",
+      "proposedEndsOn": "Diusulkan",
+      "reason": "Alasan",
+      "status": "Status"
+    },
+    "status": {
+      "Pending": "Menunggu",
+      "Approved": "Disetujui",
+      "Denied": "Ditolak",
+      "Cancelled": "Dibatalkan"
+    },
+    "create": {
+      "button": "Ajukan perpanjangan",
+      "title": "Ajukan perpanjangan masa percobaan",
+      "description": "Minta pemilik menambah waktu masa percobaan staf Anda.",
+      "employeePlaceholder": "Pilih karyawan...",
+      "proposedEndsOn": "Tanggal berakhir baru",
+      "proposedHint": "Harus lebih lambat dari tanggal berakhir saat ini.",
+      "reason": "Alasan",
+      "reasonPlaceholder": "Alasan perlu tambahan waktu",
+      "confirm": "Kirim pengajuan",
+      "successTitle": "Pengajuan terkirim",
+      "successDescription": "Pemilik akan memutuskan perpanjangan ini.",
+      "errorTitle": "Gagal mengirim pengajuan"
+    },
+    "decide": {
+      "note": "Catatan",
+      "notePlaceholder": "Catatan opsional",
+      "approve": {
+        "title": "Setujui perpanjangan",
+        "description": "Pindahkan akhir masa percobaan {employee} dari {from} ke {to}?",
+        "confirm": "Setujui",
+        "successTitle": "Perpanjangan disetujui",
+        "errorTitle": "Gagal menyetujui"
+      },
+      "deny": {
+        "title": "Tolak perpanjangan",
+        "description": "Tolak pemindahan akhir masa percobaan {employee} dari {from} ke {to}?",
+        "confirm": "Tolak",
+        "successTitle": "Perpanjangan ditolak",
+        "errorTitle": "Gagal menolak"
+      },
+      "cancel": {
+        "title": "Tarik pengajuan",
+        "description": "Tarik pengajuan pemindahan akhir masa percobaan {employee} dari {from} ke {to}?",
+        "confirm": "Tarik",
+        "successTitle": "Pengajuan ditarik",
+        "errorTitle": "Gagal menarik"
+      }
+    },
+    "details": {
+      "title": "Detail pengajuan perpanjangan",
+      "reason": "Alasan",
+      "requestedAt": "Diajukan pada",
+      "decidedBy": "Diputuskan oleh",
+      "decidedAt": "Diputuskan pada",
+      "decisionNote": "Catatan keputusan"
+    },
+    "pagination": {
+      "summary": "Menampilkan {from}-{to} dari {total}"
     }
   }
 }

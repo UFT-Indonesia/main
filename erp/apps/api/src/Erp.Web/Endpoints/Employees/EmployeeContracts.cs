@@ -9,6 +9,8 @@ public sealed class CreateEmployeeRequest
     public DateOnly EffectiveSalaryFrom { get; init; }
     public string Role { get; init; } = default!;
     public Guid? ParentId { get; init; }
+    /// <summary>Required. Anchors probation, and through it the annual leave entitlement.</summary>
+    public DateOnly? HireDate { get; init; }
 }
 
 public sealed class GetEmployeeByIdRequest
@@ -27,6 +29,23 @@ public sealed class UpdateEmployeeRouteRequest
     public DateOnly? EffectiveSalaryFrom { get; init; }
     public string Role { get; init; } = default!;
     public Guid? ParentId { get; init; }
+    /// <summary>Null leaves the hire date unchanged. Managers must leave it null — Owner-only, like pay.</summary>
+    public DateOnly? HireDate { get; init; }
+}
+
+public sealed class SetProbationEndRouteRequest
+{
+    public Guid Id { get; init; }
+    /// <summary>Null clears the owner's override, restoring the three-month default.</summary>
+    public DateOnly? EndsOn { get; init; }
+}
+
+public sealed class SetLeaveQuotaRouteRequest
+{
+    public Guid Id { get; init; }
+    public string Type { get; init; } = default!;
+    /// <summary>Null clears the override. Zero is a real setting and means "none of this type".</summary>
+    public int? Days { get; init; }
 }
 
 public sealed class DeleteEmployeeRouteRequest
@@ -65,6 +84,14 @@ public sealed class EmployeeResponse
     public DateOnly? EffectiveSalaryFrom { get; init; }
     public Guid? ParentId { get; init; }
     public DateOnly? TerminationDate { get; init; }
+
+    /// <summary>Null unless the caller may read this employee's details.</summary>
+    public DateOnly? HireDate { get; init; }
+    public DateOnly? ProbationEndsOn { get; init; }
+    /// <summary>Set only when an owner pinned the date by hand, rather than it being the default.</summary>
+    public DateOnly? ProbationEndsOnOverride { get; init; }
+    /// <summary>Leave type to overridden entitlement; types on the default are absent.</summary>
+    public IReadOnlyDictionary<string, int>? LeaveQuotaOverrides { get; init; }
 }
 
 public sealed class ListEmployeesResponse

@@ -48,6 +48,11 @@ public static class UpdateEmployeeHandler
 
             employee.UpdateBasicInfo(command.FullName, npwp);
 
+            if (command.HireDate.HasValue)
+            {
+                employee.SetHireDate(LocalDate.FromDateOnly(command.HireDate.Value));
+            }
+
             if (command.MonthlyWageAmount.HasValue || command.EffectiveSalaryFrom.HasValue)
             {
                 var newWage = command.MonthlyWageAmount.HasValue

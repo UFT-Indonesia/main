@@ -58,6 +58,7 @@ public sealed class UpdateEmployeeEndpoint : Endpoint<UpdateEmployeeRouteRequest
             req.EffectiveSalaryFrom,
             req.Role,
             req.ParentId,
+            req.HireDate,
             caller), ct);
 
         if (result is Result<EmployeeResult>.Success s)
@@ -83,9 +84,11 @@ public sealed class UpdateEmployeeEndpoint : Endpoint<UpdateEmployeeRouteRequest
     /// <summary>Sends the failing response itself; returns false when the caller is not allowed through.</summary>
     private async Task<bool> IsAllowedAsync(UpdateEmployeeRouteRequest req, CancellationToken ct)
     {
-        // Only Owner may set pay. Managers never receive it on read, so they never send it back.
+        // Only Owner may set pay or the hire date. Managers never receive either on read, so
+        // they never send them back. The hire date moves the probation end, and with it the
+        // annual entitlement — that is not a Manager's call to make silently through an edit.
         if (!User.IsInRole(nameof(EmployeeRole.Owner))
-            && (req.MonthlyWageAmount.HasValue || req.EffectiveSalaryFrom.HasValue))
+            && (req.MonthlyWageAmount.HasValue || req.EffectiveSalaryFrom.HasValue || req.HireDate.HasValue))
         {
             await SendForbiddenAsync(ct);
             return false;

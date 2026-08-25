@@ -40,6 +40,7 @@ public sealed class CreateEmployeeEndpoint : Endpoint<CreateEmployeeRequest, Emp
             req.EffectiveSalaryFrom,
             req.Role,
             req.ParentId,
+            req.HireDate,
             caller), ct);
 
         if (result is Result<EmployeeResult>.Success s)

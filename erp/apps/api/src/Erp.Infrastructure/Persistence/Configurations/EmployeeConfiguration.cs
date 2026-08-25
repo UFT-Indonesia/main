@@ -86,6 +86,43 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
             .HasConversion(LocalDateConverter)
             .HasColumnType("date");
 
+        builder.Property(employee => employee.HireDate)
+            .HasColumnName("hire_date")
+            .HasConversion(LocalDateConverter)
+            .HasColumnType("date");
+
+        builder.Property(employee => employee.ProbationEndsOnOverride)
+            .HasColumnName("probation_ends_on_override")
+            .HasConversion(LocalDateConverter)
+            .HasColumnType("date");
+
+        // Derived from the two columns above; there is nothing to store.
+        builder.Ignore(employee => employee.ProbationEndsOn);
+
+        // Owned collection rather than its own aggregate: a quota override has no life apart
+        // from the employee, and loading it with them keeps the entitlement calculation a pure
+        // function of one already-loaded object.
+        builder.OwnsMany(employee => employee.LeaveQuotas, quota =>
+        {
+            quota.ToTable("EmployeeLeaveQuotas");
+            quota.WithOwner().HasForeignKey("employee_id");
+            quota.HasKey("employee_id", nameof(EmployeeLeaveQuota.Type));
+
+            quota.Property(value => value.Type)
+                .HasColumnName("leave_type")
+                .HasConversion<string>()
+                .HasMaxLength(32)
+                .IsRequired();
+
+            quota.Property(value => value.EntitledDays)
+                .HasColumnName("entitled_days")
+                .IsRequired();
+        });
+
+        builder.Navigation(employee => employee.LeaveQuotas)
+            .HasField("_leaveQuotas")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         builder.Navigation(employee => employee.MonthlyWage).IsRequired();
         builder.HasIndex(employee => employee.Nik).IsUnique();
         builder.HasIndex(employee => employee.ParentId);

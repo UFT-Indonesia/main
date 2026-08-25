@@ -6,12 +6,16 @@ import {
   deleteEmployee,
   getEmployee,
   listEmployees,
+  setLeaveQuota,
+  setProbationEnd,
   updateEmployee,
 } from '@/lib/api/employees';
 import type {
   CreateEmployeeBody,
   DeleteEmployeeBody,
   ListEmployeesParams,
+  SetLeaveQuotaBody,
+  SetProbationEndBody,
   UpdateEmployeeBody,
 } from '@/lib/api/types';
 
@@ -58,6 +62,30 @@ export function useUpdateEmployee(id: string) {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: employeeKeys.lists() });
       qc.setQueryData(employeeKeys.detail(id), data);
+    },
+  });
+}
+
+/** Owner-only. Both of these change what leave the employee is entitled to, so leave is refreshed too. */
+export function useSetProbationEnd(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SetProbationEndBody) => setProbationEnd(id, body),
+    onSuccess: (data) => {
+      qc.setQueryData(employeeKeys.detail(id), data);
+      qc.invalidateQueries({ queryKey: employeeKeys.lists() });
+      qc.invalidateQueries({ queryKey: ['leave'] });
+    },
+  });
+}
+
+export function useSetLeaveQuota(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SetLeaveQuotaBody) => setLeaveQuota(id, body),
+    onSuccess: (data) => {
+      qc.setQueryData(employeeKeys.detail(id), data);
+      qc.invalidateQueries({ queryKey: ['leave'] });
     },
   });
 }

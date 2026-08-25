@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { EmployeeForm, type EmployeeFormValues } from '@/components/employees/employee-form';
 import { DeleteEmployeeDialog } from '@/components/employees/delete-employee-dialog';
+import { ProbationQuotaCard } from '@/components/employees/probation-quota-card';
 import {
   useDeleteEmployee,
   useEmployee,
@@ -58,6 +59,9 @@ export default function EmployeeDetailPage({ params }: PageProps) {
         // Undefined for a Manager — the API leaves the stored pay untouched.
         monthlyWageAmount: values.monthlyWageAmount ?? null,
         effectiveSalaryFrom: values.effectiveSalaryFrom ?? null,
+        // Empty for a Manager, and for an Owner who left a legacy record's blank date alone —
+        // either way null means "leave it as it is", since a hire date is never cleared.
+        hireDate: values.hireDate || null,
         role: values.role,
         parentId: values.parentId ? values.parentId : null,
       });
@@ -154,6 +158,8 @@ export default function EmployeeDetailPage({ params }: PageProps) {
             </CardContent>
           </Card>
         )}
+
+        {data && <ProbationQuotaCard employee={data} />}
       </div>
 
       <DeleteEmployeeDialog

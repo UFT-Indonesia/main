@@ -10,4 +10,5 @@ public sealed record CreateEmployeeCommand(
     DateOnly EffectiveSalaryFrom,
     string Role,
     Guid? ParentId,
+    DateOnly? HireDate,
     Caller Caller);

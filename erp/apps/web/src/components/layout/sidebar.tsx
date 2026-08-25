@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound, Cpu, History } from 'lucide-react';
+import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound, Cpu, History, UserCheck } from 'lucide-react';
 import type { Route } from 'next';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/lib/constants';
@@ -18,6 +18,7 @@ interface NavItem {
     | 'attendanceSettings'
     | 'attendanceDevices'
     | 'leave'
+    | 'probation'
     | 'accounts'
     | 'employeeAuditLog';
   icon: typeof Users;
@@ -39,6 +40,14 @@ const NAV: NavItem[] = [
   { href: '/attendance' as Route, labelKey: 'attendance', icon: Clock },
   // Everyone can reach leave now — Staff file their own; the list is scoped server-side.
   { href: '/leave' as Route, labelKey: 'leave', icon: CalendarDays },
+  // A manager files extension requests, an owner decides them. Staff are not shown the file
+  // on themselves being discussed, so they get no entry.
+  {
+    href: '/probation' as Route,
+    labelKey: 'probation',
+    icon: UserCheck,
+    roles: ['Owner', 'Manager'],
+  },
   { href: '/accounts' as Route, labelKey: 'accounts', icon: KeyRound, roles: ['Owner', 'Manager'] },
   {
     href: '/attendance/settings' as Route,

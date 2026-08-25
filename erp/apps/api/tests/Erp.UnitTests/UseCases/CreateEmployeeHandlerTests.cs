@@ -41,6 +41,7 @@ public class CreateEmployeeHandlerTests
             EffectiveSalaryFrom: new DateOnly(2025, 1, 1),
             Role: "Owner",
             ParentId: null,
+            HireDate: new DateOnly(2025, 1, 1),
             Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
@@ -69,6 +70,7 @@ public class CreateEmployeeHandlerTests
             new DateOnly(2025, 1, 1),
             "Boss",
             null,
+            new DateOnly(2025, 1, 1),
             Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
@@ -89,6 +91,7 @@ public class CreateEmployeeHandlerTests
             new DateOnly(2025, 1, 1),
             "Owner",
             null,
+            new DateOnly(2025, 1, 1),
             Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
@@ -108,6 +111,7 @@ public class CreateEmployeeHandlerTests
             new DateOnly(2025, 1, 1),
             "Owner",
             Guid.NewGuid(),
+            new DateOnly(2025, 1, 1),
             Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
@@ -127,6 +131,7 @@ public class CreateEmployeeHandlerTests
             new DateOnly(2025, 1, 1),
             "Manager",
             null,
+            new DateOnly(2025, 1, 1),
             Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
@@ -146,6 +151,7 @@ public class CreateEmployeeHandlerTests
             new DateOnly(2025, 1, 1),
             "owner",
             null,
+            new DateOnly(2025, 1, 1),
             Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);
@@ -169,6 +175,7 @@ public class CreateEmployeeHandlerTests
             new DateOnly(2025, 1, 1),
             "Staff",
             parentId.Value,
+            new DateOnly(2025, 1, 1),
             Actor);
 
         var result = await CreateEmployeeHandler.Handle(command, _employees, _hierarchy, _bus, CancellationToken.None);

@@ -40,21 +40,26 @@ internal sealed class LeaveRequestByIdSpec : SingleResultSpecification<LeaveRequ
 }
 
 /// <summary>
-/// Approved requests STARTING in the given calendar year for a set of employees — used to
-/// compute the "approved workdays this year" counter shown to approvers.
-/// ponytail: a request spanning New Year is attributed entirely to its start year; split
-/// per-year attribution if that ever misleads.
+/// Approved requests for a set of employees that OVERLAP the given calendar year span. Overlap
+/// rather than "starts in the year", because a request spanning New Year is charged to both
+/// years — the days are attributed per year by <see cref="LeaveQuota.WorkdaysInYear"/>, so the
+/// year it happened to start in must not decide which quota it eats.
 /// </summary>
 internal sealed class ApprovedLeaveForYearSpec : Specification<LeaveRequest>
 {
     public ApprovedLeaveForYearSpec(IReadOnlyCollection<EmployeeId> employeeIds, int year)
+        : this(employeeIds, year, year)
     {
-        var yearStart = new LocalDate(year, 1, 1);
-        var yearEnd = new LocalDate(year, 12, 31);
+    }
+
+    public ApprovedLeaveForYearSpec(IReadOnlyCollection<EmployeeId> employeeIds, int fromYear, int toYear)
+    {
+        var spanStart = new LocalDate(fromYear, 1, 1);
+        var spanEnd = new LocalDate(toYear, 12, 31);
         Query.Where(request => employeeIds.Contains(request.EmployeeId)
                                && request.Status == LeaveRequestStatus.Approved
-                               && request.StartDate >= yearStart
-                               && request.StartDate <= yearEnd);
+                               && request.StartDate <= spanEnd
+                               && spanStart <= request.EndDate);
         Query.AsNoTracking();
     }
 }

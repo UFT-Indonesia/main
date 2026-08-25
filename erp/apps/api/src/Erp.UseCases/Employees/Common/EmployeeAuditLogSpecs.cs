@@ -1,19 +1,13 @@
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Employees;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Employees.Common;
 
 internal static class EmployeeAuditLogFilters
 {
-    /// <summary>
-    /// The UI renders timestamps in Jakarta time, so a day filter has to mean a Jakarta day —
-    /// filtering on UTC midnight would misfile everything between 00:00 and 07:00 local into
-    /// the previous day. Single-timezone org, so this is a constant rather than a lookup.
-    /// </summary>
-    private static readonly DateTimeZone DisplayZone = DateTimeZoneProviders.Tzdb["Asia/Jakarta"];
-
     internal static void Apply(
         ISpecificationBuilder<EmployeeAuditLog> query,
         Guid? employeeId,
@@ -46,7 +40,7 @@ internal static class EmployeeAuditLogFilters
     }
 
     private static Instant StartOfDay(DateOnly date) =>
-        LocalDate.FromDateOnly(date).AtStartOfDayInZone(DisplayZone).ToInstant();
+        LocalDate.FromDateOnly(date).AtStartOfDayInZone(DisplayZone.Jakarta).ToInstant();
 }
 
 internal sealed class EmployeeAuditLogListSpec : Specification<EmployeeAuditLog>

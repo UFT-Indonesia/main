@@ -353,6 +353,10 @@ namespace Erp.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("full_name");
 
+                    b.Property<DateOnly?>("HireDate")
+                        .HasColumnType("date")
+                        .HasColumnName("hire_date");
+
                     b.Property<string>("Nik")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -367,6 +371,10 @@ namespace Erp.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid")
                         .HasColumnName("parent_id");
+
+                    b.Property<DateOnly?>("ProbationEndsOnOverride")
+                        .HasColumnType("date")
+                        .HasColumnName("probation_ends_on_override");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -517,6 +525,68 @@ namespace Erp.Infrastructure.Persistence.Migrations
                     b.HasIndex("EmployeeId", "Status");
 
                     b.ToTable("LeaveRequests", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Probation.ProbationExtensionRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("CurrentEndsOn")
+                        .HasColumnType("date")
+                        .HasColumnName("current_ends_on");
+
+                    b.Property<DateTimeOffset?>("DecidedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at_utc");
+
+                    b.Property<string>("DecidedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("decided_by_name");
+
+                    b.Property<Guid?>("DecidedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_user_id");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_note");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<DateOnly>("ProposedEndsOn")
+                        .HasColumnType("date")
+                        .HasColumnName("proposed_ends_on");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("RequestedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at_utc");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId", "Status");
+
+                    b.ToTable("ProbationExtensionRequests", (string)null);
                 });
 
             modelBuilder.Entity("Erp.Infrastructure.Identity.ApplicationUser", b =>
@@ -810,6 +880,30 @@ namespace Erp.Infrastructure.Persistence.Migrations
                                 .HasForeignKey("EmployeeId");
                         });
 
+                    b.OwnsMany("Erp.Core.Aggregates.Employees.EmployeeLeaveQuota", "LeaveQuotas", b1 =>
+                        {
+                            b1.Property<Guid>("employee_id")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Type")
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("leave_type");
+
+                            b1.Property<int>("EntitledDays")
+                                .HasColumnType("integer")
+                                .HasColumnName("entitled_days");
+
+                            b1.HasKey("employee_id", "Type");
+
+                            b1.ToTable("EmployeeLeaveQuotas", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("employee_id");
+                        });
+
+                    b.Navigation("LeaveQuotas");
+
                     b.Navigation("MonthlyWage")
                         .IsRequired();
                 });
@@ -824,6 +918,17 @@ namespace Erp.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Erp.Core.Aggregates.Leave.LeaveRequest", b =>
+                {
+                    b.HasOne("Erp.Core.Aggregates.Employees.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Probation.ProbationExtensionRequest", b =>
                 {
                     b.HasOne("Erp.Core.Aggregates.Employees.Employee", "Employee")
                         .WithMany()

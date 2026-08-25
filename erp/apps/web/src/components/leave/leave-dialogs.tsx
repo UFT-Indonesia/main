@@ -15,8 +15,9 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { EmployeePicker } from '@/components/employees/employee-picker';
+import { useLeaveBalance } from '@/hooks/use-leave';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
-import type { LeaveRequest, LeaveType } from '@/lib/api/types';
+import type { LeaveQuota, LeaveRequest, LeaveType } from '@/lib/api/types';
 
 export const LEAVE_TYPES: LeaveType[] = ['Annual', 'Sick', 'Permission', 'Unpaid'];
 
@@ -81,6 +82,11 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
   const workdays = countWorkdays(form.startDate, form.endDate);
   const canSubmit = !!form.employeeId && workdays > 0;
 
+  // Disabled until an employee is picked. The server enforces the quota either way — this is
+  // only so the request is not filed blind and rejected a second later.
+  const balance = useLeaveBalance(form.employeeId || null);
+  const quota = balance.data?.quotas.find((q) => q.type === form.type);
+
   // Reset on every open and close, regardless of whether it closed via the dialog's own
   // affordances or a parent driving `open` to false after a successful submit.
   useEffect(() => {
@@ -121,6 +127,7 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
               <option key={type} value={type}>{t(`type.${type}`)}</option>
             ))}
           </Select>
+          {quota && <QuotaHint quota={quota} onProbation={balance.data?.onProbation ?? false} />}
         </div>
 
         <div className="flex gap-3">
@@ -169,6 +176,29 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
         </Button>
       </DialogFooter>
     </Dialog>
+  );
+}
+
+/** Remaining days for the selected type, or why there are none. */
+function QuotaHint({ quota, onProbation }: { quota: LeaveQuota; onProbation: boolean }) {
+  const t = useTranslations('leave');
+
+  if (quota.remainingDays === null) {
+    return <p className="text-xs text-muted-foreground">{t('quota.uncapped')}</p>;
+  }
+
+  if (onProbation && quota.type === 'Annual') {
+    return <p className="text-xs text-warning">{t('quota.onProbation')}</p>;
+  }
+
+  return (
+    <p className={quota.remainingDays > 0 ? 'text-xs text-muted-foreground' : 'text-xs text-destructive'}>
+      {t('quota.remaining', {
+        remaining: quota.remainingDays,
+        used: quota.usedDays,
+        entitled: quota.entitledDays ?? 0,
+      })}
+    </p>
   );
 }
 
@@ -268,6 +298,19 @@ export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialog
     [t('columns.dates'), `${formatLeaveDate(request.startDate)} – ${formatLeaveDate(request.endDate)}`],
     [t('columns.workdays'), String(request.workdayCount)],
     [t('columns.approvedThisYear'), request.approvedWorkdaysThisYear?.toString() ?? withheld],
+    // The quota block is for this row's own type, unlike the all-types tally above it.
+    ...(request.quota
+      ? ([[
+          t('details.quota'),
+          request.quota.remainingDays === null
+            ? t('quota.uncapped')
+            : t('quota.remaining', {
+                remaining: request.quota.remainingDays,
+                used: request.quota.usedDays,
+                entitled: request.quota.entitledDays ?? 0,
+              }),
+        ]] as [string, string][])
+      : []),
     [t('details.reason'), detailsHidden ? withheld : request.reason || '–'],
     [t('details.requestedAt'), dateTimeFormatter.format(new Date(request.requestedAtUtc))],
     [t('details.decidedBy'), request.decidedByName || '–'],

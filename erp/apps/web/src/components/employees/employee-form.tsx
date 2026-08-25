@@ -29,10 +29,20 @@ const baseSchema = z.object({
   effectiveSalaryFrom: z.string().optional(),
   role: z.enum(['Owner', 'Manager', 'Staff'] as const),
   parentId: z.string().optional().or(z.literal('')),
+  // Required on create, Owner-only on edit — see the superRefine below. It anchors probation,
+  // and through it the annual leave entitlement.
+  hireDate: z.string().optional().or(z.literal('')),
 });
 
-function buildSchema(canEditWage: boolean) {
+function buildSchema(canEditWage: boolean, requireHireDate: boolean) {
   return baseSchema.superRefine((value, ctx) => {
+    if (requireHireDate && !value.hireDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Hire date is required.',
+        path: ['hireDate'],
+      });
+    }
     if (value.role === 'Owner' && value.parentId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -75,7 +85,11 @@ interface EmployeeFormProps {
   mode: 'create' | 'edit';
 }
 
-function toFormDefaults(initial: Employee | undefined, canEditWage: boolean): EmployeeFormValues {
+function toFormDefaults(
+  initial: Employee | undefined,
+  canEditWage: boolean,
+  mode: 'create' | 'edit',
+): EmployeeFormValues {
   return {
     fullName: initial?.fullName ?? '',
     nik: initial?.nik ?? '',
@@ -87,6 +101,10 @@ function toFormDefaults(initial: Employee | undefined, canEditWage: boolean): Em
       : undefined,
     role: canEditWage ? ((initial?.role ?? 'Staff') as EmployeeRole) : 'Staff',
     parentId: initial?.parentId ?? '',
+    // Only Owners may write it, so a Manager's form leaves it empty and never sends it back.
+    hireDate: canEditWage
+      ? (initial?.hireDate ?? (mode === 'create' ? new Date().toISOString().slice(0, 10) : ''))
+      : '',
   };
 }
 
@@ -104,8 +122,8 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
     handleSubmit,
     formState: { errors },
   } = useForm<EmployeeFormValues>({
-    resolver: zodResolver(buildSchema(isOwner)),
-    defaultValues: toFormDefaults(initial, isOwner),
+    resolver: zodResolver(buildSchema(isOwner, isOwner && mode === 'create')),
+    defaultValues: toFormDefaults(initial, isOwner, mode),
   });
 
   const role = useWatch({ control, name: 'role' });
@@ -163,6 +181,14 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
 
               <Field label={t('effectiveSalaryFrom')} error={errors.effectiveSalaryFrom?.message}>
                 <Input type="date" {...register('effectiveSalaryFrom')} />
+              </Field>
+
+              <Field
+                label={t('hireDate')}
+                error={errors.hireDate?.message}
+                hint={initial && !initial.hireDate ? t('hireDateLegacyHint') : t('hireDateHint')}
+              >
+                <Input type="date" {...register('hireDate')} />
               </Field>
             </>
           )}
@@ -233,17 +259,23 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
 function Field({
   label,
   error,
+  hint,
   children,
 }: {
   label: string;
   error?: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
       {children}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error ? (
+        <p className="text-xs text-destructive">{error}</p>
+      ) : hint ? (
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      ) : null}
     </div>
   );
 }

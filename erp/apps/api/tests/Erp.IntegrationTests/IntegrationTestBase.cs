@@ -32,10 +32,15 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         .ToString()
         .PadLeft(Nik.Length, '0')[..Nik.Length];
 
+    /// <summary>
+    /// A null <paramref name="hireDate"/> leaves the employee permanently off probation, which is
+    /// what every fixture that does not care about probation wants.
+    /// </summary>
     protected async Task<Employee> CreateEmployeeAsync(
         EmployeeRole role,
         string fullName,
-        EmployeeId? parentId = null)
+        EmployeeId? parentId = null,
+        LocalDate? hireDate = null)
     {
         await using var db = Factory.CreateDbContext();
         var employee = Employee.Create(
@@ -44,7 +49,8 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             Money.Idr(5_000_000m),
             new LocalDate(2026, 1, 1),
             role,
-            role == EmployeeRole.Owner ? null : parentId ?? (await EnsureOwnerAsync(db)).Id);
+            role == EmployeeRole.Owner ? null : parentId ?? (await EnsureOwnerAsync(db)).Id,
+            hireDate: hireDate);
 
         db.Employees.Add(employee);
         await db.SaveChangesAsync();

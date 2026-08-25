@@ -21,7 +21,8 @@
     "leave": "Leave",
     "accounts": "Accounts",
     "attendanceDevices": "Attendance devices",
-    "employeeAuditLog": "Employee audit log"
+    "employeeAuditLog": "Employee audit log",
+    "probation": "Probation"
   },
   "home": {
     "title": "Welcome",
@@ -76,7 +77,10 @@
         "Active": "Active",
         "OnLeave": "On leave",
         "Terminated": "Terminated"
-      }
+      },
+      "hireDate": "Hire date",
+      "hireDateHint": "Probation ends three months later unless an owner changes it.",
+      "hireDateLegacyHint": "Not recorded — this employee predates the field and is never on probation."
     },
     "create": {
       "title": "Add employee",
@@ -115,6 +119,30 @@
       "none": "No manager",
       "unknown": "Unknown",
       "confirm": "Change reporting line"
+    },
+    "probation": {
+      "title": "Probation & leave quota",
+      "hint": "Probation ends three months after the hire date unless an owner sets another date.",
+      "hireDate": "Hire date",
+      "probationEndsOn": "Probation ends",
+      "status": "Status",
+      "onProbation": "On probation",
+      "confirmed": "Confirmed",
+      "default": "Default",
+      "setByOwner": "Set by owner",
+      "none": "Not applicable",
+      "overrideLabel": "Change probation end date",
+      "overrideHint": "Clearing this restores the three-month default from the hire date.",
+      "clearOverride": "Clear",
+      "quotaLabel": "Leave quota overrides",
+      "quotaHint": "Days per year. Leave blank for the default; 0 means none of that type.",
+      "quotaDefault": "Default",
+      "requestExtension": "Request extension",
+      "saveSuccessTitle": "Changes saved",
+      "saveErrorTitle": "Failed to save",
+      "requestSuccessTitle": "Request submitted",
+      "requestSuccessDescription": "An owner will decide on the extension.",
+      "requestErrorTitle": "Failed to submit request"
     }
   },
   "attendance": {
@@ -306,12 +334,18 @@
       "decidedAt": "Decided at",
       "decisionNote": "Decision note",
       "cancellationReason": "Cancellation reason",
-      "hidden": "Not shown"
+      "hidden": "Not shown",
+      "quota": "Quota for this type"
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
     },
-    "subtitleStaff": "Submit your own leave and see who else is away."
+    "subtitleStaff": "Submit your own leave and see who else is away.",
+    "quota": {
+      "uncapped": "No limit on this type.",
+      "onProbation": "No annual leave until probation ends.",
+      "remaining": "{remaining} of {entitled} days left ({used} used)."
+    }
   },
   "changePassword": {
     "subtitle": "Set a new password to continue",
@@ -450,7 +484,10 @@
         "salary_changed": "Salary changed",
         "parent_changed": "Reporting line changed",
         "role_changed": "Role changed",
-        "terminated": "Terminated"
+        "terminated": "Terminated",
+        "hire_date_changed": "Hire date changed",
+        "probation_end_changed": "Probation end changed",
+        "leave_quota_changed": "Leave quota changed"
       }
     },
     "summary": {
@@ -462,7 +499,84 @@
       "wage": "Wage: {from} → {to}",
       "parent": "Parent: {from} → {to}",
       "role": "Role: {from} → {to}",
-      "terminated": "Terminated effective {date}"
+      "terminated": "Terminated effective {date}",
+      "hireDate": "Hire date: {from} → {to}",
+      "probationEnd": "Probation ends: {from} → {to}",
+      "leaveQuota": "{type} quota: {from} → {to}",
+      "quotaDefault": "default"
+    }
+  },
+  "probation": {
+    "title": "Probation extensions",
+    "subtitle": "Decide on requests to extend an employee’s probation.",
+    "subtitleManager": "Ask an owner for more probation time for your staff.",
+    "empty": "No extension requests found.",
+    "filters": {
+      "allStatuses": "All statuses",
+      "allEmployees": "All employees"
+    },
+    "columns": {
+      "employee": "Employee",
+      "currentEndsOn": "Ends now",
+      "proposedEndsOn": "Proposed",
+      "reason": "Reason",
+      "status": "Status"
+    },
+    "status": {
+      "Pending": "Pending",
+      "Approved": "Approved",
+      "Denied": "Denied",
+      "Cancelled": "Cancelled"
+    },
+    "create": {
+      "button": "Request extension",
+      "title": "Request probation extension",
+      "description": "Ask an owner to give one of your staff more probation time.",
+      "employeePlaceholder": "Select employee...",
+      "proposedEndsOn": "New end date",
+      "proposedHint": "Must be later than the current probation end date.",
+      "reason": "Reason",
+      "reasonPlaceholder": "Why more time is needed",
+      "confirm": "Submit request",
+      "successTitle": "Request submitted",
+      "successDescription": "An owner will decide on the extension.",
+      "errorTitle": "Failed to submit request"
+    },
+    "decide": {
+      "note": "Note",
+      "notePlaceholder": "Optional note",
+      "approve": {
+        "title": "Approve extension",
+        "description": "Move {employee}’s probation end from {from} to {to}?",
+        "confirm": "Approve",
+        "successTitle": "Extension approved",
+        "errorTitle": "Failed to approve"
+      },
+      "deny": {
+        "title": "Deny extension",
+        "description": "Deny moving {employee}’s probation end from {from} to {to}?",
+        "confirm": "Deny",
+        "successTitle": "Extension denied",
+        "errorTitle": "Failed to deny"
+      },
+      "cancel": {
+        "title": "Withdraw request",
+        "description": "Withdraw the request to move {employee}’s probation end from {from} to {to}?",
+        "confirm": "Withdraw",
+        "successTitle": "Request withdrawn",
+        "errorTitle": "Failed to withdraw"
+      }
+    },
+    "details": {
+      "title": "Extension request details",
+      "reason": "Reason",
+      "requestedAt": "Requested at",
+      "decidedBy": "Decided by",
+      "decidedAt": "Decided at",
+      "decisionNote": "Decision note"
+    },
+    "pagination": {
+      "summary": "Showing {from}-{to} of {total}"
     }
   }
 }

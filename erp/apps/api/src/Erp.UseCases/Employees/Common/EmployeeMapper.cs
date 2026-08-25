@@ -17,8 +17,11 @@ internal static class EmployeeMapper
         Role = employee.Role.ToString(),
         Status = employee.Status.ToString(),
         ParentId = employee.ParentId?.Value,
-        TerminationDate = employee.TerminationDate.HasValue
-            ? DateOnly.FromDateTime(employee.TerminationDate.Value.ToDateTimeUnspecified())
-            : null,
+        TerminationDate = employee.TerminationDate?.ToDateOnly(),
+        HireDate = employee.HireDate?.ToDateOnly(),
+        ProbationEndsOn = employee.ProbationEndsOn?.ToDateOnly(),
+        ProbationEndsOnOverride = employee.ProbationEndsOnOverride?.ToDateOnly(),
+        LeaveQuotaOverrides = employee.LeaveQuotas.ToDictionary(
+            quota => quota.Type.ToString(), quota => quota.EntitledDays),
     };
 }

@@ -1,5 +1,6 @@
 using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees.Events;
+using Erp.Core.Aggregates.Leave;
 using Erp.SharedKernel.Domain;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Identity;
@@ -9,6 +10,11 @@ namespace Erp.Core.Aggregates.Employees;
 
 public sealed class Employee : AggregateRoot<EmployeeId>
 {
+    /// <summary>Default probation length, counted from the hire date. UU 13/2003 art. 60's cap.</summary>
+    public const int ProbationMonths = 3;
+
+    private readonly List<EmployeeLeaveQuota> _leaveQuotas = new();
+
     // EF Core constructor.
     private Employee() { }
 
@@ -20,10 +26,12 @@ public sealed class Employee : AggregateRoot<EmployeeId>
         Money monthlyWage,
         LocalDate effectiveSalaryFrom,
         EmployeeRole role,
-        EmployeeId? parentId)
+        EmployeeId? parentId,
+        LocalDate? hireDate)
         : base(id)
     {
         FullName = fullName;
+        HireDate = hireDate;
         Nik = nik;
         Npwp = npwp;
         MonthlyWage = monthlyWage;
@@ -51,6 +59,35 @@ public sealed class Employee : AggregateRoot<EmployeeId>
 
     public LocalDate? TerminationDate { get; private set; }
 
+    /// <summary>
+    /// First day of employment, and the anchor probation is counted from. Null means "hired
+    /// before this field existed": such an employee is never on probation and gets a full
+    /// entitlement, rather than being handed a sentinel date nobody chose.
+    /// </summary>
+    public LocalDate? HireDate { get; private set; }
+
+    /// <summary>
+    /// An Owner's deliberate probation end date, overriding the 3-month default. Kept separate
+    /// from <see cref="HireDate"/> so a later correction to the hire date never silently moves
+    /// a date someone set on purpose.
+    /// </summary>
+    public LocalDate? ProbationEndsOnOverride { get; private set; }
+
+    /// <summary>
+    /// Effective probation end: the Owner's override if there is one, otherwise three months
+    /// from the hire date. Null means no probation at all.
+    /// </summary>
+    public LocalDate? ProbationEndsOn => ProbationEndsOnOverride ?? HireDate?.PlusMonths(ProbationMonths);
+
+    /// <summary>Exclusive of the end date itself — probation is over on the day it ends.</summary>
+    public bool IsOnProbation(LocalDate today) => ProbationEndsOn is { } endsOn && today < endsOn;
+
+    public IReadOnlyCollection<EmployeeLeaveQuota> LeaveQuotas => _leaveQuotas.AsReadOnly();
+
+    /// <summary>The override for one leave type, or null when there is no row for it.</summary>
+    public int? QuotaOverride(LeaveType type) =>
+        _leaveQuotas.FirstOrDefault(quota => quota.Type == type)?.EntitledDays;
+
     public static Employee Create(
         string fullName,
         Nik nik,
@@ -60,7 +97,8 @@ public sealed class Employee : AggregateRoot<EmployeeId>
         EmployeeId? parentId = null,
         Npwp? npwp = null,
         EmployeeId? id = null,
-        IReadOnlyCollection<EmployeeId>? parentAncestors = null)
+        IReadOnlyCollection<EmployeeId>? parentAncestors = null,
+        LocalDate? hireDate = null)
     {
         if (string.IsNullOrWhiteSpace(fullName))
         {
@@ -107,7 +145,8 @@ public sealed class Employee : AggregateRoot<EmployeeId>
             monthlyWage,
             effectiveSalaryFrom,
             role,
-            parentId);
+            parentId,
+            hireDate);
 
         employee.RaiseDomainEvent(new EmployeeCreated(
             employee.Id.Value,
@@ -117,7 +156,8 @@ public sealed class Employee : AggregateRoot<EmployeeId>
             role,
             parentId?.Value,
             monthlyWage,
-            effectiveSalaryFrom));
+            effectiveSalaryFrom,
+            hireDate));
         return employee;
     }
 
@@ -309,6 +349,77 @@ public sealed class Employee : AggregateRoot<EmployeeId>
         }
 
         Status = onLeave ? EmployeeStatus.OnLeave : EmployeeStatus.Active;
+    }
+
+    /// <summary>
+    /// Owner-only. Moving the hire date moves the *default* probation end with it, but never an
+    /// override an Owner set deliberately — that is what <see cref="OverrideProbationEnd"/> is for.
+    /// </summary>
+    public void SetHireDate(LocalDate? hireDate)
+    {
+        EnsureActive();
+        if (HireDate == hireDate)
+        {
+            return;
+        }
+
+        var old = HireDate;
+        HireDate = hireDate;
+        RaiseDomainEvent(new EmployeeHireDateChanged(Id.Value, old, hireDate));
+    }
+
+    /// <summary>
+    /// Owner-only. Null clears the override and falls back to the three-month default.
+    /// Accepts any date, including one in the past — an Owner confirming someone early is a
+    /// legitimate correction, and the request workflow is what enforces "later than now".
+    /// </summary>
+    public void OverrideProbationEnd(LocalDate? endsOn)
+    {
+        EnsureActive();
+        if (ProbationEndsOnOverride == endsOn)
+        {
+            return;
+        }
+
+        var oldEffective = ProbationEndsOn;
+        ProbationEndsOnOverride = endsOn;
+        RaiseDomainEvent(new EmployeeProbationEndChanged(Id.Value, oldEffective, ProbationEndsOn));
+    }
+
+    /// <summary>
+    /// Owner-only. Null <paramref name="entitledDays"/> clears the override, returning the type
+    /// to the default (the computed formula for Annual, uncapped for everything else).
+    /// Zero is a real value and means "none of this type".
+    /// </summary>
+    public void SetLeaveQuota(LeaveType type, int? entitledDays)
+    {
+        EnsureActive();
+        if (entitledDays is < 0)
+        {
+            throw new DomainException("employee.quota_negative", "Entitled days cannot be negative.");
+        }
+
+        var existing = _leaveQuotas.FirstOrDefault(quota => quota.Type == type);
+        var old = existing?.EntitledDays;
+        if (old == entitledDays)
+        {
+            return;
+        }
+
+        if (entitledDays is not { } days)
+        {
+            _leaveQuotas.Remove(existing!);
+        }
+        else if (existing is null)
+        {
+            _leaveQuotas.Add(new EmployeeLeaveQuota(type, days));
+        }
+        else
+        {
+            existing.SetEntitledDays(days);
+        }
+
+        RaiseDomainEvent(new EmployeeLeaveQuotaChanged(Id.Value, type, old, entitledDays));
     }
 
     private void EnsureActive()
