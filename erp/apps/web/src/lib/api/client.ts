@@ -18,12 +18,6 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-/**
- * Endpoints where a 401 is the answer itself, not a symptom of an expired access token.
- * Retrying these through /api/auth/refresh would hand back whatever session the browser's
- * refresh cookie still holds — so a failed sign-in would silently restore the previous user,
- * with their menus and their authority.
- */
 const NO_REFRESH_PATHS = ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'];
 
 function isRefreshable(url: string | undefined): boolean {

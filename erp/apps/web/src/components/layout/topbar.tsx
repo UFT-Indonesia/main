@@ -13,8 +13,6 @@ export function Topbar() {
   const t = useTranslations('common');
 
   const handleLogout = async () => {
-    // Server first, so the refresh cookie is revoked rather than left live. The local session is
-    // cleared either way — a network failure must not leave someone still signed in on screen.
     try {
       await logoutApi();
     } finally {

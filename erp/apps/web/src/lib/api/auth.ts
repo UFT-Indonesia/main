@@ -11,11 +11,6 @@ export async function changePassword(currentPassword: string, newPassword: strin
   return data;
 }
 
-/**
- * Revokes the refresh-token family server-side and clears the HttpOnly cookie. Signing out
- * without this leaves the cookie live, and anything that then hits /api/auth/refresh signs the
- * browser straight back in as the user who just left.
- */
 export async function logout(): Promise<void> {
   await apiClient.post('/api/auth/logout', {});
 }
