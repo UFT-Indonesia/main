@@ -37,7 +37,7 @@ public class RecomputeAttendanceDaysJobTests
         var allLogs = new List<AttendanceLog> { punch };
 
         var newPolicyEntity = AttendancePolicy.Create(
-            new LocalTime(9, 0), new LocalTime(18, 0), 5, 5, "Asia/Jakarta",
+            new LocalTime(9, 0), new LocalTime(18, 0), 5, 5, "Asia/Jakarta", 4,
             Guid.Empty, Instant.FromUtc(2026, 1, 1, 0, 0));
         var newPolicy = newPolicyEntity.ToAttendanceDayPolicy();
 

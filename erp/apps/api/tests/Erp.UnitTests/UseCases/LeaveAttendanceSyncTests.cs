@@ -5,6 +5,7 @@ using Erp.Core.Aggregates.Leave;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
+using Erp.UseCases.Leave.Common;
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
@@ -15,6 +16,7 @@ public class LeaveAttendanceSyncTests
 {
     private static readonly EmployeeId Employee = new(Guid.NewGuid());
     private static readonly LeaveRequestId Request = new(Guid.NewGuid());
+    private static readonly Instant Now = Instant.FromUtc(2026, 7, 14, 8, 0);
 
     private readonly IRepository<AttendanceDay> _attendanceDays = Substitute.For<IRepository<AttendanceDay>>();
 
@@ -32,7 +34,7 @@ public class LeaveAttendanceSyncTests
         // Thu 2026-08-20 → Wed 2026-08-26, straddling Sat 22nd and Sun 23rd.
         await LeaveAttendanceSync.MaterializeAsync(
             Request, Employee, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 26),
-            _attendanceDays, CancellationToken.None);
+            isFractional: false, _attendanceDays, CancellationToken.None);
 
         added.Select(day => day.CalendarDate).Should().Equal(new LocalDate(2026, 8, 20));
 
@@ -50,7 +52,7 @@ public class LeaveAttendanceSyncTests
         // Sat 2026-08-22 → Tue 2026-08-25: the row belongs on Monday, not the start date.
         await LeaveAttendanceSync.MaterializeAsync(
             Request, Employee, new LocalDate(2026, 8, 22), new LocalDate(2026, 8, 25),
-            _attendanceDays, CancellationToken.None);
+            isFractional: false, _attendanceDays, CancellationToken.None);
 
         added.Select(day => day.CalendarDate).Should().Equal(new LocalDate(2026, 8, 24));
     }
@@ -65,13 +67,29 @@ public class LeaveAttendanceSyncTests
 
         await LeaveAttendanceSync.MaterializeAsync(
             Request, Employee, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 21),
-            _attendanceDays, CancellationToken.None);
+            isFractional: false, _attendanceDays, CancellationToken.None);
 
         // The first workday already has a row of its own, so the leave adds nothing: the day
         // is in the table on its own merits and a second row further in would be the
         // duplication this is removing.
         added.Should().BeEmpty();
         punched.Status.Should().Be(AttendanceDayStatus.Complete);
+    }
+
+    [Fact]
+    public async Task Materialize_does_nothing_for_a_fractional_leave()
+    {
+        var added = CaptureAdds();
+
+        // A half day or hourly Izin is quota-only — the employee works the rest of the day,
+        // so attendance must stay exactly what their punches say.
+        await LeaveAttendanceSync.MaterializeAsync(
+            Request, Employee, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 20),
+            isFractional: true, _attendanceDays, CancellationToken.None);
+
+        added.Should().BeEmpty();
+        await _attendanceDays.DidNotReceive().ListAsync(
+            Arg.Any<ISpecification<AttendanceDay>>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -122,6 +140,32 @@ public class LeaveAttendanceSyncTests
     }
 
     [Fact]
+    public void The_OnLeave_badge_spec_excludes_fractional_leave()
+    {
+        var fullDay = LeaveRequest.Create(
+            Employee, LeaveType.Sick, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 20),
+            "sakit", TestAttachments.DoctorsNote(), halfDay: false, halfDayPeriod: null,
+            startHour: null, endHour: null, Guid.NewGuid(), Now);
+        fullDay.Approve(Guid.NewGuid(), "Owner Utama", Now);
+
+        var halfDay = LeaveRequest.Create(
+            Employee, LeaveType.Annual, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 20),
+            "acara", null, halfDay: true, halfDayPeriod: HalfDayPeriod.Morning,
+            startHour: null, endHour: null, Guid.NewGuid(), Now);
+        halfDay.Approve(Guid.NewGuid(), "Owner Utama", Now);
+
+        var hourly = LeaveRequest.Create(
+            Employee, LeaveType.Permission, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 20),
+            "izin", null, halfDay: false, halfDayPeriod: null, startHour: 9, endHour: 11,
+            Guid.NewGuid(), Now);
+        hourly.Approve(Guid.NewGuid(), "Owner Utama", Now);
+
+        var spec = new FullDayApprovedLeaveOnDateSpec(Employee, new LocalDate(2026, 8, 20));
+
+        spec.Evaluate([fullDay, halfDay, hourly]).Should().Equal(fullDay);
+    }
+
+    [Fact]
     public void A_worked_day_under_leave_falls_back_to_leave_when_its_punches_go_away()
     {
         var day = AttendanceDay.CreateForLeave(Employee, new LocalDate(2026, 8, 20), Request);
@@ -141,6 +185,7 @@ public class LeaveAttendanceSyncTests
         new LocalTime(17, 0),
         ClockInGraceMinutes: 15,
         ClockOutGraceMinutes: 15,
+        MaxIzinHours: 4,
         DateTimeZoneProviders.Tzdb["Asia/Jakarta"]);
 
     private List<AttendanceDay> CaptureAdds()

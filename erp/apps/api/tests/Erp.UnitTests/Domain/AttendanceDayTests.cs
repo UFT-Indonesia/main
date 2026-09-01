@@ -15,6 +15,7 @@ public class AttendanceDayTests
         new LocalTime(18, 0),
         ClockInGraceMinutes: 5,
         ClockOutGraceMinutes: 5,
+        MaxIzinHours: 4,
         DateTimeZoneProviders.Tzdb["Asia/Jakarta"]);
 
     private static readonly LocalDate Date = new(2026, 6, 1);
