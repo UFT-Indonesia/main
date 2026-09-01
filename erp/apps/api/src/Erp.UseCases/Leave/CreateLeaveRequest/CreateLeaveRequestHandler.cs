@@ -47,11 +47,25 @@ public static class CreateLeaveRequestHandler
                 ResultErrors.Forbidden, "You cannot file leave for this employee.");
         }
 
-        // One open request per employee at a time.
-        if (await leaveRequests.AnyAsync(new PendingLeaveForEmployeeSpec(employeeId), ct))
+        // A capped number of undecided requests per calendar month, counted by filing date.
+        // Owners are exempt: their leave is auto-approved, so it never queues up on anyone.
+        if (employee.Role != EmployeeRole.Owner && command.Caller.Role != EmployeeRole.Owner)
         {
-            return new Result<LeaveRequestResult>.Error(
-                "leave.pending_exists", "This employee already has a pending leave request.");
+            var monthStart = DisplayZone.Today(clock).With(DateAdjusters.StartOfMonth);
+            var pendingThisMonth = await leaveRequests.CountAsync(
+                new PendingLeaveFiledBetweenSpec(
+                    employeeId,
+                    monthStart.AtStartOfDayInZone(DisplayZone.Jakarta).ToInstant(),
+                    monthStart.PlusMonths(1).AtStartOfDayInZone(DisplayZone.Jakarta).ToInstant()),
+                ct);
+
+            if (pendingThisMonth >= LeaveRules.MaxPendingRequestsPerMonth)
+            {
+                return new Result<LeaveRequestResult>.Error(
+                    "leave.pending_limit",
+                    $"{employee.FullName} already has {LeaveRules.MaxPendingRequestsPerMonth} leave "
+                    + "request(s) awaiting a decision this month. Wait for one to be decided first.");
+            }
         }
 
         var startDate = LocalDate.FromDateOnly(command.StartDate);
@@ -96,6 +110,7 @@ public static class CreateLeaveRequestHandler
                 startDate,
                 endDate,
                 command.Reason,
+                command.Attachment,
                 command.Caller.UserId,
                 now);
 
