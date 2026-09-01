@@ -227,6 +227,8 @@
       "applicationDate": "Application Date",
       "leaveDate": "Leave Date",
       "returnDate": "Return Date",
+      "attachment": "Sick Leave Attachment",
+      "download": "Download",
       "reason": "Leave Reason",
       "lengthInDays": "Leave Length",
       "startsIn": "Starts In",

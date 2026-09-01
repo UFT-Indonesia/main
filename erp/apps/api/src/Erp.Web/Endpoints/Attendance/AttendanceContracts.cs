@@ -98,6 +98,9 @@ public sealed class AttendanceDayListItemResponse
     public DateTimeOffset? LeaveRequestedAtUtc { get; init; }
     public string? LeaveDecidedByName { get; init; }
     public DateTimeOffset? LeaveDecidedAtUtc { get; init; }
+    /// <summary>Set alongside GET /api/leave/{id}/attachment, so the client knows which id to call.</summary>
+    public Guid? LeaveRequestId { get; init; }
+    public string? LeaveAttachmentFileName { get; init; }
     /// <summary>Whether the calling user may create or alter this employee's records.</summary>
     public bool CanWrite { get; init; }
 }

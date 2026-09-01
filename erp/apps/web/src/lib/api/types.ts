@@ -238,6 +238,9 @@ export interface AttendanceDayListItem {
   leaveRequestedAtUtc: string | null;
   leaveDecidedByName: string | null;
   leaveDecidedAtUtc: string | null;
+  /** Set together — the id GET /api/leave/{id}/attachment takes, and the file it returns. */
+  leaveRequestId: string | null;
+  leaveAttachmentFileName: string | null;
   /** Server-computed: whether the caller may alter this employee's records. */
   canWrite: boolean;
 }

@@ -227,6 +227,8 @@
       "applicationDate": "Tanggal Pengajuan",
       "leaveDate": "Tanggal Cuti",
       "returnDate": "Tanggal Kembali",
+      "attachment": "File Upload Keterangan Cuti",
+      "download": "Unduh",
       "reason": "Alasan Cuti",
       "lengthInDays": "Lama Cuti",
       "startsIn": "Mulai Dalam",
