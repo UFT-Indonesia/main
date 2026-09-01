@@ -335,6 +335,8 @@ export interface LeaveRequest {
   endDate: string;
   workdayCount: number;
   reason: string | null;
+  /** The doctor's note on a Sick request. Null when there is none, or it is not readable. */
+  attachment: LeaveAttachment | null;
   status: LeaveRequestStatus;
   requestedAtUtc: string;
   decidedByName: string | null;
@@ -436,6 +438,15 @@ export interface CreateLeaveRequestBody {
   startDate: string;
   endDate: string;
   reason: string;
+  /** Required for Sick, rejected for every other type. Sent as multipart, not JSON. */
+  attachment?: File | null;
+}
+
+/** What the API says about a stored attachment. The bytes come from a separate download call. */
+export interface LeaveAttachment {
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
 }
 
 /** One approved leave span, inclusive both ends. Dates only — no type, no reason. */

@@ -22,8 +22,39 @@ export async function listLeaveRequests(
   return data;
 }
 
+/**
+ * Multipart rather than JSON: Sick leave carries a doctor's note, and the endpoint takes the
+ * file alongside the fields in one request rather than staging an upload first.
+ */
 export async function createLeaveRequest(body: CreateLeaveRequestBody): Promise<LeaveRequest> {
-  const { data } = await apiClient.post<LeaveRequest>('/api/leave', body);
+  const form = new FormData();
+  form.append('employeeId', body.employeeId);
+  form.append('type', body.type);
+  form.append('startDate', body.startDate);
+  form.append('endDate', body.endDate);
+  form.append('reason', body.reason);
+  if (body.attachment) {
+    form.append('attachment', body.attachment);
+  }
+
+  // apiClient defaults every request to Content-Type: application/json, and axios only fills
+  // in the multipart boundary itself when no Content-Type is already set — so that default has
+  // to be cleared here, or the browser sends the form body under the wrong header and the
+  // server rejects it with 415 Unsupported Media Type.
+  const { data } = await apiClient.post<LeaveRequest>('/api/leave', form, {
+    headers: { 'Content-Type': undefined },
+  });
+  return data;
+}
+
+/**
+ * The attachment's bytes, as a blob for the caller to hand to a download. Separate from the
+ * request payload because it is served by an endpoint that re-checks who is asking.
+ */
+export async function downloadLeaveAttachment(id: string): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>(`/api/leave/${id}/attachment`, {
+    responseType: 'blob',
+  });
   return data;
 }
 
