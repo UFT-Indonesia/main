@@ -91,7 +91,7 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
         // Empty clears the override, falling back to the company default; 0 is a real setting
         // meaning "none of this type".
         const days = trimmed === '' ? null : Number(trimmed);
-        if (days !== null && (!Number.isInteger(days) || days < 0)) continue;
+        if (days !== null && (!Number.isFinite(days) || days < 0)) continue;
         if (days === (employee.leaveQuotaOverrides?.[type] ?? null)) continue;
 
         await quotaMutation.mutateAsync({ type, days });
@@ -187,7 +187,7 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
                   <Input
                     type="number"
                     min="0"
-                    step="1"
+                    step="0.5"
                     value={quotaValue(type)}
                     disabled={saving}
                     onChange={(e) => setQuotas((s) => ({ ...s, [type]: e.target.value }))}

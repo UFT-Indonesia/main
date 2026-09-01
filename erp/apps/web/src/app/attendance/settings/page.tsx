@@ -22,6 +22,7 @@ const formSchema = z
     clockInGraceMinutes: z.coerce.number().int().min(0, 'Must be zero or positive.'),
     clockOutGraceMinutes: z.coerce.number().int().min(0, 'Must be zero or positive.'),
     timeZoneId: z.string().min(1, 'Time zone is required.'),
+    maxIzinHours: z.coerce.number().int().min(1, 'Must be at least 1 hour.'),
   })
   .refine((v) => v.shiftStart < v.shiftEnd, {
     message: 'Shift start must be before shift end.',
@@ -54,6 +55,7 @@ export default function AttendanceSettingsPage() {
       clockInGraceMinutes: 5,
       clockOutGraceMinutes: 5,
       timeZoneId: 'Asia/Jakarta',
+      maxIzinHours: 4,
     },
   });
 
@@ -65,6 +67,7 @@ export default function AttendanceSettingsPage() {
         clockInGraceMinutes: data.clockInGraceMinutes,
         clockOutGraceMinutes: data.clockOutGraceMinutes,
         timeZoneId: data.timeZoneId,
+        maxIzinHours: data.maxIzinHours,
       });
     }
   }, [data, reset]);
@@ -130,6 +133,10 @@ export default function AttendanceSettingsPage() {
 
               <Field label={t('form.timeZoneId')} error={errors.timeZoneId?.message}>
                 <Input placeholder={t('form.timeZoneIdPlaceholder')} {...register('timeZoneId')} />
+              </Field>
+
+              <Field label={t('form.maxIzinHours')} error={errors.maxIzinHours?.message}>
+                <Input type="number" min="1" step="1" {...register('maxIzinHours')} />
               </Field>
             </div>
 

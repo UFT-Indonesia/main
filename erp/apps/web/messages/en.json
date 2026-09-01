@@ -267,6 +267,7 @@
       "clockOutGraceMinutes": "Clock-out grace (minutes)",
       "timeZoneId": "Time zone",
       "timeZoneIdPlaceholder": "e.g. Asia/Jakarta",
+      "maxIzinHours": "Max Izin Hours",
       "save": "Save changes"
     },
     "successTitle": "Policy updated",
@@ -325,7 +326,15 @@
       "successDescription": "Leave request created successfully.",
       "errorTitle": "Failed to submit request",
       "attachment": "Doctor's note",
-      "attachmentHint": "PDF, JPG or PNG · max 10MB"
+      "attachmentHint": "PDF, JPG or PNG · max 10MB",
+      "halfDayLabel": "Half Day",
+      "periodMorning": "Morning",
+      "periodAfternoon": "Afternoon",
+      "hourlyLabel": "Hourly",
+      "startHour": "Start Hour",
+      "endHour": "End Hour",
+      "chargePreviewHalfDay": "{workdays} workday(s) × half day = {days} day(s) deducted from quota",
+      "chargePreviewHourly": "{workdays} workday(s) × {hours} hour(s) = {days} day(s) deducted from quota"
     },
     "decide": {
       "note": "Note",
@@ -363,7 +372,8 @@
       "hidden": "Not shown",
       "quota": "Quota for this type",
       "attachment": "Doctor's note",
-      "attachmentError": "Could not download the file"
+      "attachmentError": "Could not download the file",
+      "chargedDays": "Type Detail"
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"

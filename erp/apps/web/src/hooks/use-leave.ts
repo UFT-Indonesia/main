@@ -8,15 +8,20 @@ import {
   getLeaveBalance,
   listLeaveRequests,
 } from '@/lib/api/leave';
-import type { CreateLeaveRequestBody, ListLeaveRequestsParams } from '@/lib/api/types';
+import type {
+  BlockedLeaveDatesParams,
+  CreateLeaveRequestBody,
+  ListLeaveRequestsParams,
+} from '@/lib/api/types';
 
 const leaveKeys = {
   all: ['leave'] as const,
   list: (params: ListLeaveRequestsParams) => [...leaveKeys.all, 'list', params] as const,
   balance: (employeeId: string, year?: number) =>
     [...leaveKeys.all, 'balance', employeeId, year ?? 'current'] as const,
-  blockedDates: (employeeId: string, from: string, to: string) =>
-    [...leaveKeys.all, 'blocked-dates', employeeId, from, to] as const,
+  blockedDates: (
+    employeeId: string, from: string, to: string, candidate: BlockedLeaveDatesParams | undefined,
+  ) => [...leaveKeys.all, 'blocked-dates', employeeId, from, to, candidate ?? {}] as const,
 };
 
 /**
@@ -73,15 +78,23 @@ export function useDecideLeaveRequest() {
 }
 
 /**
- * Approved leave spans for one employee, for the date pickers. Disabled until an employee is
+ * Which dates are blocked for one employee, for the date pickers. Disabled until an employee is
  * picked, so a dialog can call it unconditionally. Shares the leave keys, so approving or
  * cancelling a request re-greys the calendars.
+ *
+ * `candidate` is the in-progress request's own shape (half-day/hourly) — omit it for a picker
+ * that isn't filing leave itself (e.g. the manual punch picker), which should keep treating any
+ * approved leave as a full-day block. Passing it live as the leave form's fields change lets a
+ * date that only partially conflicts show up as merely a hint instead of fully blocked.
  */
-export function useBlockedLeaveDates(employeeId: string | null | undefined) {
+export function useBlockedLeaveDates(
+  employeeId: string | null | undefined,
+  candidate?: BlockedLeaveDatesParams,
+) {
   const { from, to } = blockedWindow();
   return useQuery({
-    queryKey: leaveKeys.blockedDates(employeeId ?? '', from, to),
-    queryFn: () => getBlockedLeaveDates(employeeId!, from, to),
+    queryKey: leaveKeys.blockedDates(employeeId ?? '', from, to, candidate),
+    queryFn: () => getBlockedLeaveDates(employeeId!, from, to, candidate),
     enabled: !!employeeId,
   });
 }

@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import type {
+  BlockedLeaveDatesParams,
   BlockedLeaveDatesResponse,
   CreateLeaveRequestBody,
   LeaveBalance,
@@ -35,6 +36,14 @@ export async function createLeaveRequest(body: CreateLeaveRequestBody): Promise<
   form.append('reason', body.reason);
   if (body.attachment) {
     form.append('attachment', body.attachment);
+  }
+  if (body.halfDay) {
+    form.append('halfDay', 'true');
+    if (body.halfDayPeriod) form.append('halfDayPeriod', body.halfDayPeriod);
+  }
+  if (body.startHour != null && body.endHour != null) {
+    form.append('startHour', String(body.startHour));
+    form.append('endHour', String(body.endHour));
   }
 
   // apiClient defaults every request to Content-Type: application/json, and axios only fills
@@ -78,16 +87,27 @@ export async function getLeaveBalance(employeeId: string, year?: number): Promis
 }
 
 /**
- * Approved leave spans for one employee inside a window, for the date pickers to grey out.
- * The window is required by the API — it is what keeps the query bounded as tenure grows.
+ * Which dates are blocked for one employee inside a window, given the in-progress request's own
+ * shape (`candidate`) — a date only genuinely conflicts when its occupied hours intersect the
+ * candidate's. The window is required by the API — it is what keeps the query bounded as tenure
+ * grows.
  */
 export async function getBlockedLeaveDates(
   employeeId: string,
   from: string,
   to: string,
+  candidate?: BlockedLeaveDatesParams,
 ): Promise<BlockedLeaveDatesResponse> {
   const { data } = await apiClient.get<BlockedLeaveDatesResponse>('/api/leave/blocked-dates', {
-    params: { employeeId, from, to },
+    params: {
+      employeeId,
+      from,
+      to,
+      halfDay: candidate?.halfDay || undefined,
+      halfDayPeriod: candidate?.halfDayPeriod || undefined,
+      startHour: candidate?.startHour ?? undefined,
+      endHour: candidate?.endHour ?? undefined,
+    },
   });
   return data;
 }

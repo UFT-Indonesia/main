@@ -43,13 +43,6 @@ import { cn } from '@/lib/utils';
  * the write path to be silently reinterpreted in the browser's zone.
  */
 
-export interface BlockedRange {
-  /** "YYYY-MM-DD", inclusive. */
-  startDate: string;
-  /** "YYYY-MM-DD", inclusive. */
-  endDate: string;
-}
-
 const fieldStyles =
   'flex h-9 w-full items-center rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-within:outline-none focus-within:ring-2 focus-within:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
@@ -59,18 +52,26 @@ const segmentStyles =
 const cellStyles =
   'm-0.5 flex h-7 w-7 cursor-default items-center justify-center rounded-md text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring selected:bg-primary selected:text-primary-foreground disabled:cursor-not-allowed disabled:text-muted-foreground/40 disabled:line-through disabled:hover:bg-transparent unavailable:cursor-not-allowed unavailable:bg-muted unavailable:text-muted-foreground/50 unavailable:hover:bg-muted';
 
+/**
+ * A date that carries an approved leave which doesn't conflict with what's being filed — still
+ * pickable, just worth a hint that part of the day is already spoken for. Skipped whenever the
+ * cell is selected or unavailable, both of which already carry their own, stronger color.
+ */
+const partialCellStyles = 'bg-warning/20';
+
 const popoverStyles =
   'z-50 rounded-md border border-border bg-background p-3 text-foreground shadow-md';
 
-/** Turns the API's blocked ranges into the matcher `isDateUnavailable` wants. */
-function unavailable(ranges: BlockedRange[] | undefined) {
-  if (!ranges?.length) return undefined;
-  const parsed = ranges.map((r) => [parseDate(r.startDate), parseDate(r.endDate)] as const);
-  return (date: DateValue) =>
-    parsed.some(([from, to]) => date.compare(from) >= 0 && date.compare(to) <= 0);
+/** Turns a flat "YYYY-MM-DD" list into the matcher `isDateUnavailable` wants. */
+function unavailableMatcher(dates: string[] | undefined) {
+  if (!dates?.length) return undefined;
+  const blocked = new Set(dates);
+  return (date: DateValue) => blocked.has(date.toString());
 }
 
-function CalendarBody() {
+function CalendarBody({ partialDates }: { partialDates?: string[] }) {
+  const partial = partialDates?.length ? new Set(partialDates) : undefined;
+
   return (
     <>
       <header className="mb-2 flex items-center justify-between gap-2">
@@ -90,7 +91,20 @@ function CalendarBody() {
             </CalendarHeaderCell>
           )}
         </CalendarGridHeader>
-        <CalendarGridBody>{(date) => <CalendarCell date={date} className={cellStyles} />}</CalendarGridBody>
+        <CalendarGridBody>
+          {(date) => (
+            <CalendarCell
+              date={date}
+              className={(render) =>
+                cn(
+                  cellStyles,
+                  partial?.has(date.toString()) && !render.isSelected && !render.isUnavailable
+                    && partialCellStyles,
+                )
+              }
+            />
+          )}
+        </CalendarGridBody>
       </CalendarGrid>
     </>
   );
@@ -108,7 +122,8 @@ interface DatePickerFieldProps {
   /** "YYYY-MM-DD", or empty for no selection. */
   value: string;
   onChange: (value: string) => void;
-  blocked?: BlockedRange[];
+  /** "YYYY-MM-DD" dates that must not be selectable. */
+  blockedDates?: string[];
   isDisabled?: boolean;
   'aria-label'?: string;
   className?: string;
@@ -118,7 +133,7 @@ interface DatePickerFieldProps {
 export function DatePickerField({
   value,
   onChange,
-  blocked,
+  blockedDates,
   isDisabled,
   className,
   ...rest
@@ -129,7 +144,7 @@ export function DatePickerField({
       value={value ? parseDate(value) : null}
       onChange={(next) => onChange(next ? next.toString() : '')}
       isDisabled={isDisabled}
-      isDateUnavailable={unavailable(blocked)}
+      isDateUnavailable={unavailableMatcher(blockedDates)}
       className={cn('flex flex-col gap-1', className)}
     >
       <Group className={fieldStyles}>
@@ -155,7 +170,8 @@ interface DateTimePickerFieldProps {
   onChange: (isoUtc: string) => void;
   /** IANA zone the wall-clock time is entered in — the attendance policy's zone. */
   timeZone: string;
-  blocked?: BlockedRange[];
+  /** "YYYY-MM-DD" dates that must not be selectable. */
+  blockedDates?: string[];
   isDisabled?: boolean;
   'aria-label'?: string;
   className?: string;
@@ -170,7 +186,7 @@ export function DateTimePickerField({
   value,
   onChange,
   timeZone,
-  blocked,
+  blockedDates,
   isDisabled,
   className,
   ...rest
@@ -185,7 +201,7 @@ export function DateTimePickerField({
       value={parsed}
       onChange={(next) => onChange(next ? next.toDate().toISOString() : '')}
       isDisabled={isDisabled}
-      isDateUnavailable={unavailable(blocked)}
+      isDateUnavailable={unavailableMatcher(blockedDates)}
       className={cn('flex flex-col gap-1', className)}
     >
       <Group className={fieldStyles}>
@@ -210,7 +226,10 @@ interface DateRangePickerFieldProps {
   start: string;
   end: string;
   onChange: (start: string, end: string) => void;
-  blocked?: BlockedRange[];
+  /** "YYYY-MM-DD" dates that must not be selectable. */
+  blockedDates?: string[];
+  /** "YYYY-MM-DD" dates that are pickable but carry a non-conflicting approved leave. */
+  partialDates?: string[];
   isDisabled?: boolean;
   'aria-label'?: string;
   className?: string;
@@ -224,7 +243,8 @@ export function DateRangePickerField({
   start,
   end,
   onChange,
-  blocked,
+  blockedDates,
+  partialDates,
   isDisabled,
   className,
   ...rest
@@ -238,7 +258,7 @@ export function DateRangePickerField({
       value={value}
       onChange={(next) => onChange(next?.start?.toString() ?? '', next?.end?.toString() ?? '')}
       isDisabled={isDisabled}
-      isDateUnavailable={unavailable(blocked)}
+      isDateUnavailable={unavailableMatcher(blockedDates)}
       className={cn('flex flex-col gap-1', className)}
     >
       <Group className={fieldStyles}>
@@ -256,7 +276,7 @@ export function DateRangePickerField({
       <Popover className={popoverStyles}>
         <Dialog>
           <RangeCalendar>
-            <CalendarBody />
+            <CalendarBody partialDates={partialDates} />
           </RangeCalendar>
         </Dialog>
       </Popover>

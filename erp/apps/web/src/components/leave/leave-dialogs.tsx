@@ -18,12 +18,14 @@ import { Badge } from '@/components/ui/badge';
 import { EmployeePicker } from '@/components/employees/employee-picker';
 import { DateRangePickerField } from '@/components/ui/date-picker';
 import { FileDropzone } from '@/components/ui/file-dropzone';
+import { Switch } from '@/components/ui/switch';
 import { useBlockedLeaveDates, useLeaveBalance } from '@/hooks/use-leave';
+import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
 import { useToast } from '@/hooks/use-toast';
 import { downloadLeaveAttachment } from '@/lib/api/leave';
 import { extractApiError } from '@/lib/api/client';
-import type { LeaveQuota, LeaveRequest, LeaveType } from '@/lib/api/types';
+import type { HalfDayPeriod, LeaveQuota, LeaveRequest, LeaveType } from '@/lib/api/types';
 
 export const LEAVE_TYPES: LeaveType[] = ['Annual', 'Sick', 'Permission', 'Unpaid'];
 
@@ -48,6 +50,20 @@ export const REASON_MIN_LENGTH = 2;
 /** Mirrors LeaveRequest.AllowedAttachmentContentTypes and AttachmentMaxBytes on the server. */
 export const ATTACHMENT_ACCEPT = ['application/pdf', 'image/jpeg', 'image/png'] as const;
 export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+// ponytail: mirrors LeaveRequest.AllowedHourlyBoundaries — 12:00 is excluded, and a range must
+// stay on one side of it. Update both together if the lunch hour ever moves.
+export const HOURLY_BOUNDARIES = [9, 10, 11, 13, 14, 15, 16, 17, 18] as const;
+
+function formatHour(hour: number): string {
+  return `${String(hour).padStart(2, '0')}:00`;
+}
+
+/** "HH:mm" → net minutes from midnight, so shift math stays a plain subtraction. */
+function minutesOfDay(hhmm: string): number {
+  const [h = 0, m = 0] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
 
 // ponytail: mirrors the backend's hardcoded Mon–Fri workday rule (LeaveRequest.CountWorkdays);
 // update both together if weekends ever become configurable.
@@ -85,6 +101,10 @@ interface CreateLeaveDialogProps {
     endDate: string,
     reason: string,
     attachment: File | null,
+    halfDay: boolean,
+    halfDayPeriod: HalfDayPeriod | null,
+    startHour: number | null,
+    endHour: number | null,
   ) => void | Promise<void>;
   submitting?: boolean;
   /** Set by the caller when the server rejected the attachment specifically — shown as its own
@@ -101,6 +121,11 @@ const EMPTY_FORM = {
   startDate: '',
   endDate: '',
   reason: '',
+  halfDay: false,
+  halfDayPeriod: 'Morning' as HalfDayPeriod,
+  hourly: false,
+  startHour: '' as number | '',
+  endHour: '' as number | '',
 };
 
 export function CreateLeaveDialog({
@@ -121,6 +146,18 @@ export function CreateLeaveDialog({
   // Only Sick takes a doctor's note, and it will not submit without one; the server rejects a
   // file on any other type outright.
   const needsAttachment = form.type === 'Sick';
+  // Annual's own toggle and Izin's own toggle — mutually exclusive by type, never both shown.
+  const canHalfDay = form.type === 'Annual';
+  const canHourly = form.type === 'Permission';
+
+  const policy = useAttendancePolicy();
+  // No cap yet known means don't block on it client-side — the server enforces it regardless.
+  const maxIzinHours = policy.data?.maxIzinHours ?? Infinity;
+
+  const hourlyValid =
+    !form.hourly
+    || (form.startHour !== '' && form.endHour !== '' && form.startHour < form.endHour
+      && form.endHour - form.startHour <= maxIzinHours);
 
   const workdays = countWorkdays(form.startDate, form.endDate);
   const canSubmit =
@@ -128,14 +165,35 @@ export function CreateLeaveDialog({
     && !!form.type
     && workdays > 0
     && form.reason.trim().length >= REASON_MIN_LENGTH
-    && (!needsAttachment || !!attachment);
+    && (!needsAttachment || !!attachment)
+    && hourlyValid;
 
   // Disabled until an employee is picked. The server enforces the quota either way — this is
   // only so the request is not filed blind and rejected a second later.
   const balance = useLeaveBalance(form.employeeId || null);
-  // Already-approved leave cannot be double-booked — the server rejects it with
-  // leave.overlaps_approved, this just stops the range being drawn over it in the first place.
-  const blocked = useBlockedLeaveDates(form.employeeId || null);
+
+  // Net working hours: shift length minus the 1-hour lunch LeaveRequest assumes at 12:00–13:00.
+  // A full day of hours taken off is a full day charged — lunch was never work time to begin with.
+  const netWorkingHours = policy.data
+    ? (minutesOfDay(policy.data.shiftEnd) - minutesOfDay(policy.data.shiftStart) - 60) / 60
+    : 8;
+
+  const chargePerWorkday = form.halfDay
+    ? 0.5
+    : form.hourly && form.startHour !== '' && form.endHour !== '' && form.startHour < form.endHour
+      ? (form.endHour - form.startHour) / netWorkingHours
+      : 1;
+  const chargedDays = workdays * chargePerWorkday;
+
+  // Already-approved leave only conflicts when its hours actually overlap what's being built
+  // here — the candidate window recomputes as half-day/hourly fields change, so the picker's
+  // highlight tracks exactly what the server would accept.
+  const blocked = useBlockedLeaveDates(form.employeeId || null, {
+    halfDay: form.halfDay,
+    halfDayPeriod: form.halfDay ? form.halfDayPeriod : null,
+    startHour: form.hourly && form.startHour !== '' ? form.startHour : null,
+    endHour: form.hourly && form.endHour !== '' ? form.endHour : null,
+  });
   const quota = balance.data?.quotas.find((q) => q.type === form.type);
 
   const typesReady = !!form.employeeId && !!balance.data;
@@ -156,6 +214,21 @@ export function CreateLeaveDialog({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAttachment(null);
   }, [needsAttachment]);
+
+  // Switching away from Annual/Permission drops the toggle each one owns: sending either on
+  // the wrong type is rejected outright, and a value left hanging on a hidden field is a value
+  // the user cannot see to clear.
+  useEffect(() => {
+    if (canHalfDay) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setForm((s) => (s.halfDay ? { ...s, halfDay: false } : s));
+  }, [canHalfDay]);
+
+  useEffect(() => {
+    if (canHourly) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setForm((s) => (s.hourly ? { ...s, hourly: false, startHour: '', endHour: '' } : s));
+  }, [canHourly]);
 
   // Switching employee can invalidate the chosen type (Annual for a probationer, Unpaid for a
   // confirmed employee), so land on the one type both sets share rather than leaving a value
@@ -224,16 +297,111 @@ export function CreateLeaveDialog({
           </div>
         )}
 
-        <div className="flex flex-col gap-1.5">
-          <Label>{t('create.dateRange')}</Label>
-          <DateRangePickerField
-            start={form.startDate}
-            end={form.endDate}
-            onChange={(startDate, endDate) => setForm((s) => ({ ...s, startDate, endDate }))}
-            blocked={blocked.data?.ranges}
-            isDisabled={!form.employeeId}
-          />
+        <div className="flex items-end gap-3">
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Label>{t('create.dateRange')}</Label>
+            <DateRangePickerField
+              start={form.startDate}
+              end={form.endDate}
+              onChange={(startDate, endDate) => setForm((s) => ({ ...s, startDate, endDate }))}
+              blockedDates={blocked.data?.blockedDates}
+              partialDates={blocked.data?.partialDates}
+              isDisabled={!form.employeeId}
+            />
+          </div>
+
+          {canHalfDay && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="half-day-toggle" className="cursor-pointer font-normal">
+                {t('create.halfDayLabel')}
+              </Label>
+              <div className="flex h-9 items-center">
+                <Switch
+                  id="half-day-toggle"
+                  checked={form.halfDay}
+                  onCheckedChange={(halfDay) => setForm((s) => ({ ...s, halfDay }))}
+                />
+              </div>
+            </div>
+          )}
+
+          {canHourly && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="hourly-toggle" className="cursor-pointer font-normal">
+                {t('create.hourlyLabel')}
+              </Label>
+              <div className="flex h-9 items-center">
+                <Switch
+                  id="hourly-toggle"
+                  checked={form.hourly}
+                  onCheckedChange={(hourly) => setForm((s) => ({ ...s, hourly, startHour: '', endHour: '' }))}
+                />
+              </div>
+            </div>
+          )}
         </div>
+
+        {form.halfDay && (
+          <div className="flex gap-2">
+            {(['Morning', 'Afternoon'] as const).map((period) => (
+              <Button
+                key={period}
+                type="button"
+                variant={form.halfDayPeriod === period ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => setForm((s) => ({ ...s, halfDayPeriod: period }))}
+              >
+                {t(`create.period${period}`)}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {form.hourly && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label>{t('create.startHour')}</Label>
+              <Select
+                value={form.startHour}
+                onChange={(e) => {
+                  const startHour = Number(e.target.value);
+                  setForm((s) => ({
+                    ...s,
+                    startHour,
+                    // A start picked after the current end, or one that now puts the span over
+                    // the configured max, leaves the end hour invalid — clear it rather than
+                    // submit something that was never actually chosen for this start.
+                    endHour: s.endHour !== '' && s.endHour > startHour && s.endHour - startHour <= maxIzinHours
+                      ? s.endHour
+                      : '',
+                  }));
+                }}
+              >
+                <option value="">-</option>
+                {HOURLY_BOUNDARIES.map((hour) => (
+                  <option key={hour} value={hour}>{formatHour(hour)}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>{t('create.endHour')}</Label>
+              <Select
+                value={form.endHour}
+                disabled={form.startHour === ''}
+                onChange={(e) => setForm((s) => ({ ...s, endHour: Number(e.target.value) }))}
+              >
+                <option value="">-</option>
+                {/* Only hours after Start, and within the configured max span — "should not be
+                    possible to Izin a whole day" is enforced here, not just server-side. */}
+                {HOURLY_BOUNDARIES.filter((hour) =>
+                  form.startHour !== '' && hour > form.startHour && hour - form.startHour <= maxIzinHours,
+                ).map((hour) => (
+                  <option key={hour} value={hour}>{formatHour(hour)}</option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <Label>{t('create.reason')}</Label>
@@ -246,8 +414,22 @@ export function CreateLeaveDialog({
           />
         </div>
 
+        {/* A plain request charges one day per workday, so the count says everything. A half
+            day or hourly Izin charges less than that, and showing the two numbers side by side
+            reads as a contradiction — so spell out the per-day rate that connects them. */}
         <p className="text-sm text-muted-foreground">
-          {t('create.workdayPreview', { count: workdays })}
+          {workdays > 0 && form.halfDay
+            ? t('create.chargePreviewHalfDay', {
+                workdays,
+                days: Number(chargedDays.toFixed(2)),
+              })
+            : workdays > 0 && form.hourly && form.startHour !== '' && form.endHour !== ''
+              ? t('create.chargePreviewHourly', {
+                  workdays,
+                  hours: form.endHour - form.startHour,
+                  days: Number(chargedDays.toFixed(2)),
+                })
+              : t('create.workdayPreview', { count: workdays })}
         </p>
       </div>
 
@@ -260,7 +442,17 @@ export function CreateLeaveDialog({
             // canSubmit already guarantees this; the guard is what narrows '' out of the type.
             if (!form.type) return;
             onConfirm(
-              form.employeeId, form.type, form.startDate, form.endDate, form.reason.trim(), attachment);
+              form.employeeId,
+              form.type,
+              form.startDate,
+              form.endDate,
+              form.reason.trim(),
+              attachment,
+              form.halfDay,
+              form.halfDay ? form.halfDayPeriod : null,
+              form.hourly && form.startHour !== '' ? form.startHour : null,
+              form.hourly && form.endHour !== '' ? form.endHour : null,
+            );
           }}
           disabled={submitting || !canSubmit}
         >
@@ -385,6 +577,13 @@ export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialog
     [t('columns.type'), t(`type.${request.type ?? 'Undisclosed'}`)],
     [t('columns.dates'), `${formatLeaveDate(request.startDate)} – ${formatLeaveDate(request.endDate)}`],
     [t('columns.workdays'), String(request.workdayCount)],
+    // Only shown when this request is a fraction of a day — a plain request's charge is
+    // already exactly its workday count, so repeating that number here would be noise.
+    ...(request.halfDay
+      ? ([[t('details.chargedDays'), `${t('create.halfDayLabel')} (${t(`create.period${request.halfDayPeriod}`)})`]] as [string, string][])
+      : request.startHour !== null && request.endHour !== null
+        ? ([[t('details.chargedDays'), `${formatHour(request.startHour)} – ${formatHour(request.endHour)}`]] as [string, string][])
+        : []),
     [t('columns.approvedThisYear'), request.approvedWorkdaysThisYear?.toString() ?? withheld],
     // The quota block is for this row's own type, unlike the all-types tally above it.
     ...(request.quota
