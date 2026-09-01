@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@plugin 'tailwindcss-react-aria-components';
 
 :root {
   --background: oklch(1 0 0);
@@ -15,8 +16,12 @@
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
+  --destructive-subtle: oklch(0.97 0.03 27.325);
+  --destructive-subtle-foreground: oklch(0.4 0.19 27.325);
   --success: oklch(0.65 0.18 145);
   --success-foreground: oklch(0.985 0 0);
+  --success-subtle: oklch(0.96 0.04 145);
+  --success-subtle-foreground: oklch(0.4 0.14 145);
   --warning: oklch(0.78 0.16 80);
   --warning-foreground: oklch(0.145 0 0);
   --border: oklch(0.922 0 0);
@@ -40,8 +45,12 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-destructive-subtle-foreground: var(--destructive-subtle-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-subtle-foreground: var(--success-subtle-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);

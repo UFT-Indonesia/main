@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import type {
+  BlockedLeaveDatesResponse,
   CreateLeaveRequestBody,
   LeaveBalance,
   LeaveRequest,
@@ -41,6 +42,21 @@ export async function decideLeaveRequest(
 export async function getLeaveBalance(employeeId: string, year?: number): Promise<LeaveBalance> {
   const { data } = await apiClient.get<LeaveBalance>('/api/leave/balance', {
     params: { employeeId, year },
+  });
+  return data;
+}
+
+/**
+ * Approved leave spans for one employee inside a window, for the date pickers to grey out.
+ * The window is required by the API — it is what keeps the query bounded as tenure grows.
+ */
+export async function getBlockedLeaveDates(
+  employeeId: string,
+  from: string,
+  to: string,
+): Promise<BlockedLeaveDatesResponse> {
+  const { data } = await apiClient.get<BlockedLeaveDatesResponse>('/api/leave/blocked-dates', {
+    params: { employeeId, from, to },
   });
   return data;
 }

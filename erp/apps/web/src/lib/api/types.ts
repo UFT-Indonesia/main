@@ -230,6 +230,14 @@ export interface AttendanceDayListItem {
   status: AttendanceDayStatus;
   /** The kind of leave covering this day (Annual/Sick/…), empty when none does. */
   leaveType: LeaveType | '';
+  /** Detail of that leave, all null when no leave covers the day. */
+  leaveStartDate: string | null;
+  leaveEndDate: string | null;
+  leaveWorkdayCount: number | null;
+  leaveReason: string | null;
+  leaveRequestedAtUtc: string | null;
+  leaveDecidedByName: string | null;
+  leaveDecidedAtUtc: string | null;
   /** Server-computed: whether the caller may alter this employee's records. */
   canWrite: boolean;
 }
@@ -427,7 +435,17 @@ export interface CreateLeaveRequestBody {
   type: LeaveType;
   startDate: string;
   endDate: string;
-  reason?: string | null;
+  reason: string;
+}
+
+/** One approved leave span, inclusive both ends. Dates only — no type, no reason. */
+export interface BlockedLeaveRange {
+  startDate: string;
+  endDate: string;
+}
+
+export interface BlockedLeaveDatesResponse {
+  ranges: BlockedLeaveRange[];
 }
 
 export interface AttendancePolicy {
