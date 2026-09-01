@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Input } from '@/components/ui/input';
+import { DateRangePickerField } from '@/components/ui/date-picker';
 import { Select } from '@/components/ui/select';
 import { EmployeePicker } from '@/components/employees/employee-picker';
 import { AUDIT_EVENT_TYPES } from '@/components/employees/audit-log-event-types';
@@ -38,20 +38,15 @@ export function AuditLogFilters({
           placeholder={t('filters.employeePlaceholder')}
         />
       </div>
-      <div className="w-full md:w-36">
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => onDateFromChange(e.target.value)}
-          aria-label={t('filters.dateFrom')}
-        />
-      </div>
-      <div className="w-full md:w-36">
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => onDateToChange(e.target.value)}
-          aria-label={t('filters.dateTo')}
+      <div className="w-full md:w-72">
+        <DateRangePickerField
+          start={dateFrom}
+          end={dateTo}
+          onChange={(from, to) => {
+            onDateFromChange(from);
+            onDateToChange(to);
+          }}
+          aria-label={t('filters.dateRange')}
         />
       </div>
       <div className="w-full md:w-56">

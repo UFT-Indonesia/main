@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { DateRangePickerField } from '@/components/ui/date-picker';
 import { Select } from '@/components/ui/select';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { AttendanceDayStatus } from '@/lib/api/types';
@@ -63,20 +64,15 @@ export function AttendanceDayFilters({
           />
         </div>
       </div>
-      <div className="w-full md:w-36">
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => onDateFromChange(e.target.value)}
-          aria-label={t('filters.dateFrom')}
-        />
-      </div>
-      <div className="w-full md:w-36">
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => onDateToChange(e.target.value)}
-          aria-label={t('filters.dateTo')}
+      <div className="w-full md:w-72">
+        <DateRangePickerField
+          start={dateFrom}
+          end={dateTo}
+          onChange={(from, to) => {
+            onDateFromChange(from);
+            onDateToChange(to);
+          }}
+          aria-label={t('filters.dateRange')}
         />
       </div>
       <div className="w-full md:w-36">

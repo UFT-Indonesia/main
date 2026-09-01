@@ -27,11 +27,26 @@ public class LeaveRulesTests
         new(Guid.NewGuid(), role, employeeId, "Caller");
 
     [Fact]
-    public void Only_an_owners_leave_is_auto_approved()
+    public void Owners_own_leave_is_auto_approved_regardless_of_who_files_it()
     {
-        LeaveRules.IsAutoApproved(EmployeeRole.Owner).Should().BeTrue();
-        LeaveRules.IsAutoApproved(EmployeeRole.Manager).Should().BeFalse();
-        LeaveRules.IsAutoApproved(EmployeeRole.Staff).Should().BeFalse();
+        LeaveRules.IsAutoApproved(EmployeeRole.Owner, EmployeeRole.Owner).Should().BeTrue();
+        LeaveRules.IsAutoApproved(EmployeeRole.Owner, EmployeeRole.Manager).Should().BeTrue();
+        LeaveRules.IsAutoApproved(EmployeeRole.Owner, EmployeeRole.Staff).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Leave_an_owner_files_for_someone_else_is_also_auto_approved()
+    {
+        LeaveRules.IsAutoApproved(EmployeeRole.Manager, EmployeeRole.Owner).Should().BeTrue();
+        LeaveRules.IsAutoApproved(EmployeeRole.Staff, EmployeeRole.Owner).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Leave_filed_by_a_non_owner_for_a_non_owner_is_not_auto_approved()
+    {
+        LeaveRules.IsAutoApproved(EmployeeRole.Manager, EmployeeRole.Manager).Should().BeFalse();
+        LeaveRules.IsAutoApproved(EmployeeRole.Staff, EmployeeRole.Manager).Should().BeFalse();
+        LeaveRules.IsAutoApproved(EmployeeRole.Staff, EmployeeRole.Staff).Should().BeFalse();
     }
 
     [Fact]

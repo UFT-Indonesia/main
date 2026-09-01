@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { parseAbsolute, toCalendarDate, today } from '@internationalized/date';
 import { MessageSquare, Pencil, Plus, X } from 'lucide-react';
 import {
   Dialog,
@@ -9,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,14 +29,19 @@ import {
   useDeleteAttendanceLogNote,
   useUpdateAttendanceLog,
 } from '@/hooks/use-attendance';
+import { DateTimePickerField } from '@/components/ui/date-picker';
+import { formatLeaveDate } from '@/components/leave/leave-dialogs';
 import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
+import { useBlockedLeaveDates } from '@/hooks/use-leave';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
+import { APP_TIME_ZONE } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type {
   AttendanceDayListItem,
   AttendanceLogListItem,
   AttendanceSource,
+  LeaveType,
   PunchType,
 } from '@/lib/api/types';
 
@@ -52,14 +58,9 @@ function formatPunchedAt(iso: string, timeZoneId: string | undefined): string {
   }).format(new Date(iso));
 }
 
-/** ISO UTC → value for <input type="datetime-local"> in the browser's zone. */
-function isoToLocalInput(iso: string): string {
-  const date = new Date(iso);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
-}
-
 interface FormState {
-  punchedAt: string;
+  /** UTC ISO instant, straight through — the picker owns the zone conversion. */
+  punchedAtUtc: string;
   punchType: PunchType;
 }
 
@@ -82,7 +83,7 @@ export function ViewLogDetailsDialog({
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notesForId, setNotesForId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>({ punchedAt: '', punchType: 'In' });
+  const [form, setForm] = useState<FormState>({ punchedAtUtc: '', punchType: 'In' });
   const [noteText, setNoteText] = useState('');
 
   const { data, isLoading, error } = useAttendanceDayLogs(
@@ -94,6 +95,9 @@ export function ViewLogDetailsDialog({
   const addNoteMutation = useAddAttendanceLogNote();
   const deleteNoteMutation = useDeleteAttendanceLogNote();
   const { data: policy } = useAttendancePolicy();
+  const timeZone = policy?.timeZoneId ?? APP_TIME_ZONE;
+  // Same rule as the create dialog: a punch cannot be moved onto a day the employee is on leave.
+  const blocked = useBlockedLeaveDates(day?.employeeId ?? null);
 
   // Notes are re-read from the (refetched) query data each render so the
   // thread reflects adds/deletes without local copies to keep in sync.
@@ -103,7 +107,7 @@ export function ViewLogDetailsDialog({
   function startEditing(log: AttendanceLogListItem) {
     setEditingId(log.id);
     setForm({
-      punchedAt: isoToLocalInput(log.punchedAtUtc),
+      punchedAtUtc: log.punchedAtUtc,
       punchType: log.punchType,
     });
   }
@@ -122,12 +126,12 @@ export function ViewLogDetailsDialog({
   }
 
   async function handleSave() {
-    if (!editingId || !form.punchedAt) return;
+    if (!editingId || !form.punchedAtUtc) return;
     try {
       await updateMutation.mutateAsync({
         id: editingId,
         body: {
-          punchedAtUtc: new Date(form.punchedAt).toISOString(),
+          punchedAtUtc: form.punchedAtUtc,
           punchType: form.punchType,
         },
       });
@@ -160,19 +164,34 @@ export function ViewLogDetailsDialog({
   const editing = editingId !== null;
   const viewingNotes = notesLog !== null;
 
+  // No punches means the logs table would render empty. A day only ever lacks punches because
+  // leave materialized it (AttendanceDay.CreateForLeave is the sole punchless path), so show
+  // what the day actually is instead of nothing.
+  const isLeaveOnly = !!day && !day.tapInUtc && !!day.leaveType;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} className="sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>
-          {editing ? t('edit.title') : viewingNotes ? t('notes.title') : t('details.title')}
+          {editing
+            ? t('edit.title')
+            : viewingNotes
+              ? t('notes.title')
+              : isLeaveOnly
+                ? t('leaveDetails.title')
+                : t('details.title')}
         </DialogTitle>
-        <DialogDescription>
-          {viewingNotes && day
-            ? `${day.employeeFullName} — ${formatPunchedAt(notesLog.punchedAtUtc, policy?.timeZoneId)} (${t(`punchType.${notesLog.punchType}`)})`
-            : day
-              ? `${day.employeeFullName} — ${day.date}`
-              : t('details.description')}
-        </DialogDescription>
+        {/* A leave day names the employee and both dates in the panel itself — repeating them
+            under the title is noise, so that branch runs without a subtitle. */}
+        {!isLeaveOnly && (
+          <DialogDescription>
+            {viewingNotes && day
+              ? `${day.employeeFullName} — ${formatPunchedAt(notesLog.punchedAtUtc, policy?.timeZoneId)} (${t(`punchType.${notesLog.punchType}`)})`
+              : day
+                ? `${day.employeeFullName} — ${formatLeaveDate(day.date)}`
+                : t('details.description')}
+          </DialogDescription>
+        )}
       </DialogHeader>
 
       <div className="mt-4 max-h-[70vh] overflow-y-auto">
@@ -251,10 +270,11 @@ export function ViewLogDetailsDialog({
           <div className="space-y-3">
             <div className="flex flex-col gap-1.5">
               <Label>{t('manualLog.punchedAt')}</Label>
-              <Input
-                type="datetime-local"
-                value={form.punchedAt}
-                onChange={(e) => setForm((s) => ({ ...s, punchedAt: e.target.value }))}
+              <DateTimePickerField
+                value={form.punchedAtUtc}
+                onChange={(v) => setForm((s) => ({ ...s, punchedAtUtc: v }))}
+                timeZone={timeZone}
+                blocked={blocked.data?.ranges}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -281,11 +301,13 @@ export function ViewLogDetailsDialog({
               >
                 {tCommon('cancel')}
               </Button>
-              <Button onClick={handleSave} disabled={updateMutation.isPending || !form.punchedAt}>
+              <Button onClick={handleSave} disabled={updateMutation.isPending || !form.punchedAtUtc}>
                 {updateMutation.isPending ? tCommon('loading') : tCommon('save')}
               </Button>
             </div>
           </div>
+        ) : isLeaveOnly ? (
+          <LeaveSummary day={day} timeZoneId={policy?.timeZoneId} />
         ) : (
           <Table>
             <TableHeader>
@@ -358,5 +380,147 @@ export function ViewLogDetailsDialog({
         )}
       </div>
     </Dialog>
+  );
+}
+
+// Izin/Sakit/Cuti Tahunan get the client's requested colors; Unpaid has none specified, so it
+// falls back to a neutral chip rather than inventing a fourth color.
+const LEAVE_TYPE_BADGE: Record<LeaveType, BadgeProps['variant']> = {
+  Permission: 'warning',
+  Sick: 'destructive',
+  Annual: 'success',
+  Unpaid: 'secondary',
+};
+
+function Field({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium">{value}</dd>
+    </div>
+  );
+}
+
+/** Footer stat — deliberately larger than the Field pairs above it. */
+function StatField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="mt-1 text-xl font-semibold">{value}</dd>
+    </div>
+  );
+}
+
+/** Adds whole days to a "YYYY-MM-DD" date. UTC-anchored, like every other date-only helper here. */
+function addDays(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Whole days between two date-only values, `to − from`. */
+function daysBetween(from: string, to: string): number {
+  const ms = new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime();
+  return Math.round(ms / 86_400_000);
+}
+
+/**
+ * What a punchless leave day has to say for itself. Everything here rides on the LeaveRequest
+ * navigation the day list already includes — no extra fetch. Reason is deliberately absent:
+ * it is health data for Sick leave, gated behind LeaveRules.CanReadDetails, which the
+ * attendance list does not evaluate per row.
+ */
+function LeaveSummary({
+  day,
+  timeZoneId,
+}: {
+  day: AttendanceDayListItem;
+  timeZoneId: string | undefined;
+}) {
+  const t = useTranslations('attendance');
+  const tLeave = useTranslations('leave');
+  const zone = timeZoneId ?? APP_TIME_ZONE;
+  const none = '–';
+
+  // Inclusive: 1–10 Sep is ten days off, not nine. Deliberately calendar days, not the stored
+  // WorkdayCount — it has to agree with the Leave/Return dates shown directly above it.
+  const lengthInDays =
+    day.leaveStartDate && day.leaveEndDate
+      ? daysBetween(day.leaveStartDate, day.leaveEndDate) + 1
+      : null;
+
+  // Countdown from today, not from the approval date — recomputed every time the dialog opens
+  // so it counts down day by day and flips to "On Leave" once the start date arrives.
+  const daysUntilStart = day.leaveStartDate
+    ? daysBetween(today(zone).toString(), day.leaveStartDate)
+    : null;
+
+  return (
+    <div className="space-y-4">
+      <dl className="grid grid-cols-2 gap-4">
+        <Field label={t('leaveDetails.employeeName')} value={day.employeeFullName} />
+        <Field label={t('leaveDetails.requestedTo')} value={day.leaveDecidedByName ?? none} />
+        <Field
+          label={t('leaveDetails.applicationDate')}
+          value={
+            day.leaveRequestedAtUtc
+              ? formatLeaveDate(toCalendarDate(parseAbsolute(day.leaveRequestedAtUtc, zone)).toString())
+              : none
+          }
+        />
+        <Field
+          label={t('leaveDetails.type')}
+          value={
+            day.leaveType ? (
+              <Badge variant={LEAVE_TYPE_BADGE[day.leaveType]}>
+                {tLeave(`type.${day.leaveType}`)}
+              </Badge>
+            ) : (
+              none
+            )
+          }
+        />
+        <Field
+          label={t('leaveDetails.leaveDate')}
+          value={day.leaveStartDate ? formatLeaveDate(day.leaveStartDate) : none}
+        />
+        <Field
+          label={t('leaveDetails.returnDate')}
+          value={day.leaveEndDate ? formatLeaveDate(addDays(day.leaveEndDate, 1)) : none}
+        />
+      </dl>
+
+      <div>
+        <p className="text-xs text-muted-foreground">{t('leaveDetails.reason')}</p>
+        <p className="mt-1 min-h-20 whitespace-pre-wrap rounded-lg border-1 border-border-strong bg-card p-3 text-sm">
+          {day.leaveReason || none}
+        </p>
+      </div>
+
+      <dl className="grid grid-cols-2 gap-4">
+        <StatField
+          label={t('leaveDetails.lengthInDays')}
+          value={lengthInDays === null ? none : t('leaveDetails.dayCount', { count: lengthInDays })}
+        />
+        <StatField
+          label={t('leaveDetails.startsIn')}
+          value={
+            daysUntilStart === null
+              ? none
+              : daysUntilStart <= 0
+                ? t('leaveDetails.alreadyStarted')
+                : t('leaveDetails.dayCount', { count: daysUntilStart })
+          }
+        />
+      </dl>
+    </div>
   );
 }

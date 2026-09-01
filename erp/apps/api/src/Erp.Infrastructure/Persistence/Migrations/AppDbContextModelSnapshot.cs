@@ -488,6 +488,7 @@ namespace Erp.Infrastructure.Persistence.Migrations
                         .HasColumnName("end_date");
 
                     b.Property<string>("Reason")
+                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("reason");

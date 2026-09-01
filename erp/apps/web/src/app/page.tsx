@@ -7,25 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEmployees } from '@/hooks/use-employees';
 import { useAttendanceLogs } from '@/hooks/use-attendance';
+import { today } from '@internationalized/date';
 import { useHasRole } from '@/lib/auth/store';
+import { APP_TIME_ZONE } from '@/lib/constants';
 
-function todayJakartaRange(): { dateFrom: string; dateTo: string } {
-  const dateStr = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Jakarta',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-  const start = new Date(`${dateStr}T00:00:00+07:00`);
-  const end = new Date(start.getTime() + 86_400_000);
+/** Today in the company zone as a UTC instant pair. Never the browser's zone, never UTC dates. */
+function todayRange(): { dateFrom: string; dateTo: string } {
+  const start = today(APP_TIME_ZONE);
   return {
-    dateFrom: start.toISOString(),
-    dateTo: end.toISOString(),
+    dateFrom: start.toDate(APP_TIME_ZONE).toISOString(),
+    dateTo: start.add({ days: 1 }).toDate(APP_TIME_ZONE).toISOString(),
   };
 }
 
 export default function HomePage() {
-  const { dateFrom, dateTo } = todayJakartaRange();
+  const { dateFrom, dateTo } = todayRange();
   const tNav = useTranslations('nav');
   const tHome = useTranslations('home');
 

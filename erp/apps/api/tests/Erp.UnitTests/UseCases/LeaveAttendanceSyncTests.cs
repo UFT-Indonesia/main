@@ -25,7 +25,7 @@ public class LeaveAttendanceSyncTests
     }
 
     [Fact]
-    public async Task Materialize_covers_workdays_only_and_skips_the_weekend()
+    public async Task Materialize_creates_one_row_on_the_first_day_only()
     {
         var added = CaptureAdds();
 
@@ -34,17 +34,25 @@ public class LeaveAttendanceSyncTests
             Request, Employee, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 26),
             _attendanceDays, CancellationToken.None);
 
-        added.Select(day => day.CalendarDate).Should().Equal(
-            new LocalDate(2026, 8, 20),
-            new LocalDate(2026, 8, 21),
-            new LocalDate(2026, 8, 24),
-            new LocalDate(2026, 8, 25),
-            new LocalDate(2026, 8, 26));
+        added.Select(day => day.CalendarDate).Should().Equal(new LocalDate(2026, 8, 20));
 
         added.Should().OnlyContain(day =>
             day.Status == AttendanceDayStatus.OnLeave
             && day.LeaveRequestId == Request
             && day.TapInUtc == null);
+    }
+
+    [Fact]
+    public async Task Materialize_starts_on_the_first_workday_when_the_leave_opens_on_a_weekend()
+    {
+        var added = CaptureAdds();
+
+        // Sat 2026-08-22 → Tue 2026-08-25: the row belongs on Monday, not the start date.
+        await LeaveAttendanceSync.MaterializeAsync(
+            Request, Employee, new LocalDate(2026, 8, 22), new LocalDate(2026, 8, 25),
+            _attendanceDays, CancellationToken.None);
+
+        added.Select(day => day.CalendarDate).Should().Equal(new LocalDate(2026, 8, 24));
     }
 
     [Fact]
@@ -59,8 +67,10 @@ public class LeaveAttendanceSyncTests
             Request, Employee, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 21),
             _attendanceDays, CancellationToken.None);
 
-        // The punched day keeps its own row; only the untouched day is materialized.
-        added.Select(day => day.CalendarDate).Should().Equal(new LocalDate(2026, 8, 21));
+        // The first workday already has a row of its own, so the leave adds nothing: the day
+        // is in the table on its own merits and a second row further in would be the
+        // duplication this is removing.
+        added.Should().BeEmpty();
         punched.Status.Should().Be(AttendanceDayStatus.Complete);
     }
 

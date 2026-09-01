@@ -78,7 +78,7 @@ try
         {
             options.AddDocumentTransformer((document, context, cancellationToken) =>
             {
-                document.Info.Title = "UFT Davis ERP API";
+                document.Info.Title = "UFT ERP API";
                 document.Info.Version = "v1";
                 return Task.CompletedTask;
             });
@@ -138,7 +138,7 @@ try
         app.MapOpenApi();
         app.MapScalarApiReference(options =>
         {
-            options.Title = "UFT Davis ERP API";
+            options.Title = "UFT ERP API";
             options.Theme = ScalarTheme.Kepler;
         });
     }

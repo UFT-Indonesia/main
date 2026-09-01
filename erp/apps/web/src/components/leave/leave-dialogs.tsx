@@ -15,11 +15,20 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { EmployeePicker } from '@/components/employees/employee-picker';
-import { useLeaveBalance } from '@/hooks/use-leave';
+import { DateRangePickerField } from '@/components/ui/date-picker';
+import { useBlockedLeaveDates, useLeaveBalance } from '@/hooks/use-leave';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
 import type { LeaveQuota, LeaveRequest, LeaveType } from '@/lib/api/types';
 
 export const LEAVE_TYPES: LeaveType[] = ['Annual', 'Sick', 'Permission', 'Unpaid'];
+
+// Annual and Unpaid are mutually exclusive: on probation you get Unpaid, once confirmed you get
+// Annual. Enforced server-side in CreateLeaveRequestHandler — this only keeps the picker honest.
+const PROBATION_TYPES: LeaveType[] = ['Permission', 'Sick', 'Unpaid'];
+const CONFIRMED_TYPES: LeaveType[] = ['Permission', 'Sick', 'Annual'];
+
+// Legal in both sets, so resetting to it can never land on a type the employee cannot file.
+const NEUTRAL_TYPE: LeaveType = 'Permission';
 
 export const LEAVE_STATUS_VARIANT = {
   Pending: 'warning',
@@ -27,6 +36,9 @@ export const LEAVE_STATUS_VARIANT = {
   Denied: 'destructive',
   Cancelled: 'secondary',
 } as const;
+
+// ponytail: mirrors LeaveRequest.ReasonMinLength; the server rejects anything shorter.
+export const REASON_MIN_LENGTH = 2;
 
 // ponytail: mirrors the backend's hardcoded Mon–Fri workday rule (LeaveRequest.CountWorkdays);
 // update both together if weekends ever become configurable.
@@ -62,12 +74,19 @@ interface CreateLeaveDialogProps {
     type: LeaveType,
     startDate: string,
     endDate: string,
-    reason: string | null,
+    reason: string,
   ) => void | Promise<void>;
   submitting?: boolean;
 }
 
-const EMPTY_FORM = { employeeId: '', type: 'Annual' as LeaveType, startDate: '', endDate: '', reason: '' };
+const EMPTY_FORM = {
+  employeeId: '',
+  // Empty until an employee is picked — which set of types applies depends on their probation.
+  type: '' as LeaveType | '',
+  startDate: '',
+  endDate: '',
+  reason: '',
+};
 
 export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }: CreateLeaveDialogProps) {
   const t = useTranslations('leave');
@@ -80,12 +99,22 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
   const [form, setForm] = useState(EMPTY_FORM);
 
   const workdays = countWorkdays(form.startDate, form.endDate);
-  const canSubmit = !!form.employeeId && workdays > 0;
+  const canSubmit =
+    !!form.employeeId
+    && !!form.type
+    && workdays > 0
+    && form.reason.trim().length >= REASON_MIN_LENGTH;
 
   // Disabled until an employee is picked. The server enforces the quota either way — this is
   // only so the request is not filed blind and rejected a second later.
   const balance = useLeaveBalance(form.employeeId || null);
+  // Already-approved leave cannot be double-booked — the server rejects it with
+  // leave.overlaps_approved, this just stops the range being drawn over it in the first place.
+  const blocked = useBlockedLeaveDates(form.employeeId || null);
   const quota = balance.data?.quotas.find((q) => q.type === form.type);
+
+  const typesReady = !!form.employeeId && !!balance.data;
+  const types = balance.data?.onProbation ? PROBATION_TYPES : CONFIRMED_TYPES;
 
   // Reset on every open and close, regardless of whether it closed via the dialog's own
   // affordances or a parent driving `open` to false after a successful submit.
@@ -93,6 +122,15 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({ ...EMPTY_FORM, employeeId: canPickEmployee ? '' : (self?.employeeId ?? '') });
   }, [open, canPickEmployee, self?.employeeId]);
+
+  // Switching employee can invalidate the chosen type (Annual for a probationer, Unpaid for a
+  // confirmed employee), so land on the one type both sets share rather than leaving a value
+  // the <select> no longer lists.
+  useEffect(() => {
+    if (!typesReady) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setForm((prev) => (types.includes(prev.type as LeaveType) ? prev : { ...prev, type: NEUTRAL_TYPE }));
+  }, [typesReady, types]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,38 +159,36 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
           <Label>{t('columns.type')}</Label>
           <Select
             value={form.type}
+            disabled={!typesReady}
             onChange={(e) => setForm((s) => ({ ...s, type: e.target.value as LeaveType }))}
           >
-            {LEAVE_TYPES.map((type) => (
-              <option key={type} value={type}>{t(`type.${type}`)}</option>
-            ))}
+            {typesReady ? (
+              types.map((type) => (
+                <option key={type} value={type}>{t(`type.${type}`)}</option>
+              ))
+            ) : (
+              <option value="">-</option>
+            )}
           </Select>
-          {quota && <QuotaHint quota={quota} onProbation={balance.data?.onProbation ?? false} />}
+          {quota && <QuotaHint quota={quota} />}
         </div>
 
-        <div className="flex gap-3">
-          <div className="flex flex-1 flex-col gap-1.5">
-            <Label>{t('create.startDate')}</Label>
-            <Input
-              type="date"
-              value={form.startDate}
-              onChange={(e) => setForm((s) => ({ ...s, startDate: e.target.value }))}
-            />
-          </div>
-          <div className="flex flex-1 flex-col gap-1.5">
-            <Label>{t('create.endDate')}</Label>
-            <Input
-              type="date"
-              value={form.endDate}
-              onChange={(e) => setForm((s) => ({ ...s, endDate: e.target.value }))}
-            />
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>{t('create.dateRange')}</Label>
+          <DateRangePickerField
+            start={form.startDate}
+            end={form.endDate}
+            onChange={(startDate, endDate) => setForm((s) => ({ ...s, startDate, endDate }))}
+            blocked={blocked.data?.ranges}
+            isDisabled={!form.employeeId}
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <Label>{t('create.reason')}</Label>
           <Input
             value={form.reason}
+            minLength={REASON_MIN_LENGTH}
             maxLength={500}
             onChange={(e) => setForm((s) => ({ ...s, reason: e.target.value }))}
             placeholder={t('create.reasonPlaceholder')}
@@ -169,7 +205,11 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
           {tCommon('cancel')}
         </Button>
         <Button
-          onClick={() => onConfirm(form.employeeId, form.type, form.startDate, form.endDate, form.reason || null)}
+          onClick={() => {
+            // canSubmit already guarantees this; the guard is what narrows '' out of the type.
+            if (!form.type) return;
+            onConfirm(form.employeeId, form.type, form.startDate, form.endDate, form.reason.trim());
+          }}
           disabled={submitting || !canSubmit}
         >
           {submitting ? tCommon('loading') : t('create.confirm')}
@@ -180,15 +220,11 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
 }
 
 /** Remaining days for the selected type, or why there are none. */
-function QuotaHint({ quota, onProbation }: { quota: LeaveQuota; onProbation: boolean }) {
+function QuotaHint({ quota }: { quota: LeaveQuota }) {
   const t = useTranslations('leave');
 
   if (quota.remainingDays === null) {
     return <p className="text-xs text-muted-foreground">{t('quota.uncapped')}</p>;
-  }
-
-  if (onProbation && quota.type === 'Annual') {
-    return <p className="text-xs text-warning">{t('quota.onProbation')}</p>;
   }
 
   return (

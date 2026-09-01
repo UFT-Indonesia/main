@@ -9,7 +9,7 @@ import '../styles/globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'ERP UFT Davis',
+  title: 'ERP UFT',
   description: 'Internal ERP system',
 };
 

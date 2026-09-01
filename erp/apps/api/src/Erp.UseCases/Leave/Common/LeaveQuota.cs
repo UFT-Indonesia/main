@@ -49,8 +49,10 @@ public static class LeaveQuota
 
         var over = employee.QuotaOverride(type);
 
-        // Probation only withholds paid annual leave. Someone on probation with flu still needs
-        // to be able to record the absence, so Sick/Permission/Unpaid stay filable throughout.
+        // Annual and Unpaid are mutually exclusive by probation status — see
+        // CreateLeaveRequestHandler, which is where that eligibility is enforced. Sick and
+        // Permission are filable throughout: someone on probation with flu still needs to be
+        // able to record the absence. Nothing but Annual is capped here.
         if (type != LeaveType.Annual)
         {
             return over;

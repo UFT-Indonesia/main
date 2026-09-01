@@ -84,7 +84,7 @@ public class LeaveRequestHandlersTests
         var request = LeaveRequest.Create(
             subject.Id, LeaveType.Annual,
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 7),
-            null, requestedByUserId, Now);
+            "cuti", requestedByUserId, Now);
         _leaveRequests.FirstOrDefaultAsync(Arg.Any<ISpecification<LeaveRequest>>(), Arg.Any<CancellationToken>())
             .Returns(request);
         return request;
@@ -154,6 +154,16 @@ public class LeaveRequestHandlersTests
         success.Value.Status.Should().Be("Approved");
         success.Value.DecidedByName.Should().Be("Owner Utama");
         success.Value.DecidedAtUtc.Should().Be(Now.ToDateTimeOffset());
+    }
+
+    [Fact]
+    public async Task Owner_filing_for_staff_is_approved_on_creation()
+    {
+        var result = await CreateAsync(_staff, _ownerCaller);
+
+        var success = result.Should().BeOfType<Result<LeaveRequestResult>.Success>().Subject;
+        success.Value.Status.Should().Be("Approved");
+        success.Value.DecidedByName.Should().Be("Owner Utama");
     }
 
     [Fact]

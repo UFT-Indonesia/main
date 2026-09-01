@@ -80,7 +80,7 @@ export default function LeavePage() {
     type: LeaveType,
     startDate: string,
     endDate: string,
-    reason: string | null,
+    reason: string,
   ) => {
     try {
       await createMutation.mutateAsync({ employeeId: empId, type, startDate, endDate, reason });

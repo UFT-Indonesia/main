@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePickerField, todayInZone } from '@/components/ui/date-picker';
+import { APP_TIME_ZONE } from '@/lib/constants';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
@@ -97,13 +99,13 @@ function toFormDefaults(
     // Left undefined for Managers so the wage is never sent back at all.
     monthlyWageAmount: canEditWage ? (initial?.monthlyWageAmount ?? undefined) : undefined,
     effectiveSalaryFrom: canEditWage
-      ? (initial?.effectiveSalaryFrom ?? new Date().toISOString().slice(0, 10))
+      ? (initial?.effectiveSalaryFrom ?? todayInZone(APP_TIME_ZONE))
       : undefined,
     role: canEditWage ? ((initial?.role ?? 'Staff') as EmployeeRole) : 'Staff',
     parentId: initial?.parentId ?? '',
     // Only Owners may write it, so a Manager's form leaves it empty and never sends it back.
     hireDate: canEditWage
-      ? (initial?.hireDate ?? (mode === 'create' ? new Date().toISOString().slice(0, 10) : ''))
+      ? (initial?.hireDate ?? (mode === 'create' ? todayInZone(APP_TIME_ZONE) : ''))
       : '',
   };
 }
@@ -180,7 +182,17 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
               </Field>
 
               <Field label={t('effectiveSalaryFrom')} error={errors.effectiveSalaryFrom?.message}>
-                <Input type="date" {...register('effectiveSalaryFrom')} />
+                <Controller
+                  name="effectiveSalaryFrom"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePickerField
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      aria-label={t('effectiveSalaryFrom')}
+                    />
+                  )}
+                />
               </Field>
 
               <Field
@@ -188,7 +200,17 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
                 error={errors.hireDate?.message}
                 hint={initial && !initial.hireDate ? t('hireDateLegacyHint') : t('hireDateHint')}
               >
-                <Input type="date" {...register('hireDate')} />
+                <Controller
+                  name="hireDate"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePickerField
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      aria-label={t('hireDate')}
+                    />
+                  )}
+                />
               </Field>
             </>
           )}

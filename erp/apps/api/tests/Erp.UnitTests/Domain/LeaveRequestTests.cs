@@ -37,6 +37,40 @@ public class LeaveRequestTests
     }
 
     [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("x")]        // one character is below ReasonMinLength
+    public void Create_requires_a_reason(string? reason)
+    {
+        var act = () => LeaveRequest.Create(
+            EmployeeId.New(),
+            LeaveType.Annual,
+            new LocalDate(2026, 8, 3),
+            new LocalDate(2026, 8, 7),
+            reason!,
+            Requester,
+            Now);
+
+        act.Should().Throw<DomainException>().Which.Code.Should().Be("leave.reason_required");
+    }
+
+    [Fact]
+    public void Create_trims_the_reason()
+    {
+        var request = LeaveRequest.Create(
+            EmployeeId.New(),
+            LeaveType.Sick,
+            new LocalDate(2026, 8, 3),
+            new LocalDate(2026, 8, 3),
+            "  demam  ",
+            Requester,
+            Now);
+
+        request.Reason.Should().Be("demam");
+    }
+
+    [Theory]
     [InlineData(2026, 8, 7, 2026, 8, 10, 2)]   // Fri–Mon: weekend skipped
     [InlineData(2026, 8, 3, 2026, 8, 3, 1)]    // single Monday
     [InlineData(2026, 7, 27, 2026, 8, 9, 10)]  // two full weeks

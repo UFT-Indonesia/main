@@ -15,6 +15,7 @@ namespace Erp.Core.Aggregates.Leave;
 /// </summary>
 public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
 {
+    public const int ReasonMinLength = 2;
     public const int ReasonMaxLength = 500;
     public const int DecisionNoteMaxLength = 500;
 
@@ -31,7 +32,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         LocalDate startDate,
         LocalDate endDate,
         int workdayCount,
-        string? reason,
+        string reason,
         Guid requestedByUserId,
         Instant requestedAtUtc)
         : base(id)
@@ -63,7 +64,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     /// <summary>Mon–Fri days inside the range, computed at creation.</summary>
     public int WorkdayCount { get; private set; }
 
-    public string? Reason { get; private set; }
+    public string Reason { get; private set; } = default!;
 
     public LeaveRequestStatus Status { get; private set; }
 
@@ -92,7 +93,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         LeaveType type,
         LocalDate startDate,
         LocalDate endDate,
-        string? reason,
+        string reason,
         Guid requestedByUserId,
         Instant requestedAtUtc)
     {
@@ -117,8 +118,16 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
             throw new DomainException("leave.no_workdays", "Leave range contains no working days (Mon–Fri).");
         }
 
-        var trimmedReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
-        if (trimmedReason is { Length: > ReasonMaxLength })
+        // Required since 2026-08: an absence with no stated reason is not reviewable. Mirrors
+        // ProbationExtensionRequest.Create, which has always demanded one.
+        var trimmedReason = reason?.Trim();
+        if (string.IsNullOrEmpty(trimmedReason) || trimmedReason.Length < ReasonMinLength)
+        {
+            throw new DomainException(
+                "leave.reason_required", $"A reason of at least {ReasonMinLength} characters is required.");
+        }
+
+        if (trimmedReason.Length > ReasonMaxLength)
         {
             throw new DomainException("leave.reason_length", $"Reason cannot exceed {ReasonMaxLength} characters.");
         }

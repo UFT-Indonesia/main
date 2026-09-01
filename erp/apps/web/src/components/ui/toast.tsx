@@ -11,9 +11,11 @@ const ICONS = {
   info: Info,
 } as const;
 
+// Solid (non-alpha) tone colors: an alpha-blended bg/text pair can render as a near-uniform
+// block on engines that composite oklch alpha poorly, sinking the text into the background.
 const TONES = {
-  success: 'border-success/40 bg-success/10 text-success-foreground',
-  error: 'border-destructive/40 bg-destructive/10 text-destructive-foreground',
+  success: 'border-success/40 bg-success-subtle text-success-subtle-foreground',
+  error: 'border-destructive/40 bg-destructive-subtle text-destructive-subtle-foreground',
   info: 'border-border bg-card text-card-foreground',
 } as const;
 
@@ -42,15 +44,13 @@ function ToastItem({ toast }: { toast: Toast }) {
     >
       <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', ICON_TONES[toast.variant])} />
       <div className="flex-1">
-        <p className="text-sm font-medium text-foreground">{toast.title}</p>
-        {toast.description && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{toast.description}</p>
-        )}
+        <p className="text-sm font-medium">{toast.title}</p>
+        {toast.description && <p className="mt-0.5 text-xs opacity-80">{toast.description}</p>}
       </div>
       <button
         type="button"
         onClick={() => dismiss(toast.id)}
-        className="text-muted-foreground hover:text-foreground"
+        className="opacity-70 hover:opacity-100"
         aria-label="Dismiss"
       >
         <X className="h-4 w-4" />

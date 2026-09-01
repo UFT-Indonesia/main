@@ -18,11 +18,17 @@ namespace Erp.UseCases.Attendance.Common;
 public static class LeaveAttendanceSync
 {
     /// <summary>
-    /// Materializes an <see cref="AttendanceDayStatus.OnLeave"/> row for every workday the
-    /// leave covers that has no row yet. Weekends are skipped — nobody has a row for those —
-    /// and so is any date that already has one: a real punch outranks the leave, and the
-    /// unique (employee, date) index would reject the insert anyway.
+    /// Materializes a single <see cref="AttendanceDayStatus.OnLeave"/> row, on the first
+    /// workday the leave covers. One decision produces one row: a ten-day leave used to fill
+    /// the table with eight near-identical "Cuti" entries, and the detail dialog on the one
+    /// row spells out the whole range anyway.
     /// </summary>
+    /// <remarks>
+    /// Weekends are skipped, so the first row is the first *workday*, not necessarily
+    /// <paramref name="startDate"/>. If that day already has a row it is left alone — a real
+    /// punch outranks the leave, the day is already in the table, and the unique
+    /// (employee, date) index would reject the insert anyway.
+    /// </remarks>
     public static async Task MaterializeAsync(
         LeaveRequestId leaveRequestId,
         EmployeeId employeeId,
@@ -31,20 +37,25 @@ public static class LeaveAttendanceSync
         IRepository<AttendanceDay> attendanceDays,
         CancellationToken ct)
     {
-        var existing = await attendanceDays.ListAsync(
-            new AttendanceDayDatesInRangeSpec(employeeId, startDate, endDate), ct);
-        var taken = existing.Select(day => day.CalendarDate).ToHashSet();
+        var firstWorkday = LeaveRequest.Workdays(startDate, endDate)
+            .Select(date => (LocalDate?)date)
+            .FirstOrDefault();
 
-        foreach (var date in LeaveRequest.Workdays(startDate, endDate))
+        if (firstWorkday is not { } workday)
         {
-            if (taken.Contains(date))
-            {
-                continue;
-            }
-
-            await attendanceDays.AddAsync(
-                AttendanceDay.CreateForLeave(employeeId, date, leaveRequestId), ct);
+            return;
         }
+
+        var existing = await attendanceDays.ListAsync(
+            new AttendanceDayDatesInRangeSpec(employeeId, workday, workday), ct);
+
+        if (existing.Count > 0)
+        {
+            return;
+        }
+
+        await attendanceDays.AddAsync(
+            AttendanceDay.CreateForLeave(employeeId, workday, leaveRequestId), ct);
     }
 
     /// <summary>

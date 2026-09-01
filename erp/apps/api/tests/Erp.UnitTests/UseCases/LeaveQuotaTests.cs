@@ -157,7 +157,7 @@ public class LeaveQuotaTests
             LeaveType.Annual,
             new LocalDate(2026, 12, 28),
             new LocalDate(2027, 1, 8),
-            null,
+            "cuti",
             Guid.NewGuid(),
             Instant.FromUtc(2026, 12, 1, 0, 0));
 
@@ -173,11 +173,11 @@ public class LeaveQuotaTests
         var annual = LeaveRequest.Create(
             employeeId, LeaveType.Annual,
             new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 6),
-            null, Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
+            "cuti", Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
         var sick = LeaveRequest.Create(
             employeeId, LeaveType.Sick,
             new LocalDate(2026, 4, 6), new LocalDate(2026, 4, 7),
-            null, Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
+            "sakit", Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
 
         LeaveRequest[] approved = [annual, sick];
 
