@@ -89,6 +89,15 @@ public sealed class AttendanceDayListItemResponse
     public string Status { get; init; } = default!;
     /// <summary>The kind of leave covering this day (Annual/Sick/…), empty when none does.</summary>
     public string LeaveType { get; init; } = string.Empty;
+
+    /// <summary>Detail of the leave covering this day, all null when none does.</summary>
+    public DateOnly? LeaveStartDate { get; init; }
+    public DateOnly? LeaveEndDate { get; init; }
+    public int? LeaveWorkdayCount { get; init; }
+    public string? LeaveReason { get; init; }
+    public DateTimeOffset? LeaveRequestedAtUtc { get; init; }
+    public string? LeaveDecidedByName { get; init; }
+    public DateTimeOffset? LeaveDecidedAtUtc { get; init; }
     /// <summary>Whether the calling user may create or alter this employee's records.</summary>
     public bool CanWrite { get; init; }
 }

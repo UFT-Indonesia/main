@@ -57,7 +57,8 @@ public sealed class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRe
 
         builder.Property(request => request.Reason)
             .HasColumnName("reason")
-            .HasMaxLength(LeaveRequest.ReasonMaxLength);
+            .HasMaxLength(LeaveRequest.ReasonMaxLength)
+            .IsRequired();
 
         builder.Property(request => request.Status)
             .HasColumnName("status")

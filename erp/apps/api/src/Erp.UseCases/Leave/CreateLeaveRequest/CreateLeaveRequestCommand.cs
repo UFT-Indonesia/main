@@ -7,5 +7,5 @@ public sealed record CreateLeaveRequestCommand(
     string Type,
     DateOnly StartDate,
     DateOnly EndDate,
-    string? Reason,
+    string Reason,
     Caller Caller);

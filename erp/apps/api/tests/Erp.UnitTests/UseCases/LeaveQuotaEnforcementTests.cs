@@ -75,7 +75,7 @@ public class LeaveQuotaEnforcementTests
 
     private static LeaveRequest ApprovedLeave(Employee subject, LeaveType type, LocalDate start, LocalDate end)
     {
-        var request = LeaveRequest.Create(subject.Id, type, start, end, null, Guid.NewGuid(), Now);
+        var request = LeaveRequest.Create(subject.Id, type, start, end, "cuti", Guid.NewGuid(), Now);
         request.Approve(Guid.NewGuid(), "Owner Utama", Now);
         return request;
     }
@@ -86,6 +86,41 @@ public class LeaveQuotaEnforcementTests
             new CreateLeaveRequestCommand(
                 subject.Id.Value, type.ToString(), start, end, "alasan", caller ?? _managerCaller),
             _employees, _leaveRequests, _clock, _bus, CancellationToken.None);
+
+    [Fact]
+    public async Task Unpaid_is_rejected_for_a_confirmed_employee()
+    {
+        // _staff was hired 1 Jan 2026 and confirmed 1 Apr 2026, so on 1 Oct they are permanent.
+        var result = await FileAsync(
+            _staff, LeaveType.Unpaid, new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 6));
+
+        result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
+            .Which.Code.Should().Be("leave.unpaid_not_on_probation");
+    }
+
+    [Fact]
+    public async Task Unpaid_is_rejected_for_an_owner()
+    {
+        // An Owner is never on probation, so the ordinary rule catches them — no special case.
+        var result = await FileAsync(
+            _owner, LeaveType.Unpaid, new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 6), _ownerCaller);
+
+        result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
+            .Which.Code.Should().Be("leave.unpaid_not_on_probation");
+    }
+
+    [Fact]
+    public async Task Unpaid_is_allowed_on_probation()
+    {
+        var probationer = NewEmployee(
+            "Staff Baru", EmployeeRole.Staff, _manager.Id, "3201234567890126", new LocalDate(2026, 9, 1));
+        _employees.GetByIdAsync(probationer.Id, Arg.Any<CancellationToken>()).Returns(probationer);
+
+        var result = await FileAsync(
+            probationer, LeaveType.Unpaid, new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 6));
+
+        result.Should().BeOfType<Result<LeaveRequestResult>.Success>();
+    }
 
     [Fact]
     public async Task Probation_blocks_annual_leave()

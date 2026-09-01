@@ -16,6 +16,25 @@ public sealed class AttendanceDayListItemResult
     /// </summary>
     public string LeaveType { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Detail of the leave covering this day, all null when none does. Denormalized off the
+    /// already-Include'd LeaveRequest navigation (see AttendanceDayListSpec), so this costs no
+    /// extra query.
+    /// </summary>
+    /// <remarks>
+    /// Reason needs no per-row permission check of its own: AttendanceDayListSpec.ApplyCallerScope
+    /// already restricts Staff to their own days and lets only Owner/Manager see everyone's, which
+    /// is exactly the rule this reason is meant to follow. Any row a caller can fetch is a row
+    /// whose reason they may read.
+    /// </remarks>
+    public DateOnly? LeaveStartDate { get; init; }
+    public DateOnly? LeaveEndDate { get; init; }
+    public int? LeaveWorkdayCount { get; init; }
+    public string? LeaveReason { get; init; }
+    public DateTimeOffset? LeaveRequestedAtUtc { get; init; }
+    public string? LeaveDecidedByName { get; init; }
+    public DateTimeOffset? LeaveDecidedAtUtc { get; init; }
+
     /// <summary>Server-computed: whether the caller may create or alter this employee's records.</summary>
     public bool CanWrite { get; init; }
 }

@@ -10,10 +10,13 @@ namespace Erp.UseCases.Leave.Common;
 public static class LeaveRules
 {
     /// <summary>
-    /// An Owner's leave is a calendar label rather than a request — there is nobody above
-    /// them to approve it, so it is approved the moment it is filed.
+    /// Auto-approved when there is nobody left who both outranks the subject and isn't the
+    /// filer: an Owner's own leave (nothing outranks an Owner), or any leave an Owner files for
+    /// someone else (an Owner could always decide it, but filing excludes the filer from
+    /// deciding their own request — so without this it would be stuck, undecidable).
     /// </summary>
-    public static bool IsAutoApproved(EmployeeRole subjectRole) => subjectRole == EmployeeRole.Owner;
+    public static bool IsAutoApproved(EmployeeRole subjectRole, EmployeeRole callerRole) =>
+        subjectRole == EmployeeRole.Owner || callerRole == EmployeeRole.Owner;
 
     /// <summary>Owner files for anyone; Manager for themselves or their own Staff; everyone else only for themselves.</summary>
     public static bool CanFileFor(Caller caller, Employee subject) => caller.Role switch

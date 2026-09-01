@@ -64,9 +64,21 @@ public static class CreateLeaveRequestHandler
                 "leave.overlaps_approved", "The requested dates overlap an already approved leave.");
         }
 
+        var today = DisplayZone.Today(clock);
+
+        // Unpaid is the probationary counterpart of Annual: on probation you get Sick/Permission/
+        // Unpaid, once confirmed you get Sick/Permission/Annual. Deliberately checked here and not
+        // in LeaveQuotaGuard, which also runs at approval — filing date decides, so a probationer
+        // who graduates before their manager gets round to it still has an approvable request.
+        if (type == LeaveType.Unpaid && !employee.IsOnProbation(today))
+        {
+            return new Result<LeaveRequestResult>.Error(
+                "leave.unpaid_not_on_probation",
+                $"{employee.FullName} is not on probation; unpaid leave does not apply.");
+        }
+
         // Fast feedback on the way in. The authoritative check is on approval — a quota lowered
         // while this request sits pending must not be approvable past.
-        var today = DisplayZone.Today(clock);
         var overQuota = await LeaveQuotaGuard.CheckAsync(
             employee, type, startDate, endDate, leaveRequests, today, ct);
         if (overQuota is { } violation)
@@ -87,9 +99,11 @@ public static class CreateLeaveRequestHandler
                 command.Caller.UserId,
                 now);
 
-            // Nobody outranks an Owner, so their leave is recorded already-approved — it is a
-            // note on the calendar rather than something awaiting a decision.
-            if (LeaveRules.IsAutoApproved(employee.Role))
+            // Nobody outranks an Owner, so their own leave is recorded already-approved. An
+            // Owner filing for someone else gets the same treatment: they could always approve
+            // it, but the filer-can't-decide-their-own-request rule would otherwise leave it
+            // permanently stuck on Pending.
+            if (LeaveRules.IsAutoApproved(employee.Role, command.Caller.Role))
             {
                 request.Approve(command.Caller.UserId, command.Caller.Name, now);
             }
@@ -101,8 +115,8 @@ public static class CreateLeaveRequestHandler
 
         await leaveRequests.AddAsync(request, ct);
 
-        // An Owner's leave is approved right here rather than by a later decision, so this is
-        // the only place its approval can reach attendance from.
+        // Auto-approved leave is approved right here rather than by a later decision, so this
+        // is the only place its approval can reach attendance from.
         await LeaveRequestEventPublisher.PublishAsync(request, bus);
 
         var (canDecide, canCancel) = LeaveRequestResult.PermissionsFor(command.Caller, request, employee);

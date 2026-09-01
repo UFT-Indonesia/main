@@ -57,6 +57,13 @@ public static class ListAttendanceDaysHandler
             TapOutUtc = day.TapOutUtc?.ToDateTimeOffset(),
             Status = day.Status.ToString(),
             LeaveType = day.LeaveRequest?.Type.ToString() ?? string.Empty,
+            LeaveStartDate = day.LeaveRequest?.StartDate.ToDateOnly(),
+            LeaveEndDate = day.LeaveRequest?.EndDate.ToDateOnly(),
+            LeaveWorkdayCount = day.LeaveRequest?.WorkdayCount,
+            LeaveReason = day.LeaveRequest?.Reason,
+            LeaveRequestedAtUtc = day.LeaveRequest?.RequestedAtUtc.ToDateTimeOffset(),
+            LeaveDecidedByName = day.LeaveRequest?.DecidedByName,
+            LeaveDecidedAtUtc = day.LeaveRequest?.DecidedAtUtc?.ToDateTimeOffset(),
             CanWrite = day.Employee is not null
                 && AttendanceRules.CanWriteFor(query.Caller, day.Employee),
         }).ToList();

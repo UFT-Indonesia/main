@@ -9,7 +9,7 @@ public sealed class CreateLeaveRequestRequest
     public string Type { get; init; } = default!;
     public DateOnly StartDate { get; init; }
     public DateOnly EndDate { get; init; }
-    public string? Reason { get; init; }
+    public string Reason { get; init; } = default!;
 }
 
 public sealed class ListLeaveRequestsRequest
@@ -25,6 +25,25 @@ public sealed class GetLeaveBalanceRequest
     public Guid EmployeeId { get; init; }
     /// <summary>Null means the current year.</summary>
     public int? Year { get; init; }
+}
+
+/// <summary>The window is required — see GetBlockedLeaveDatesHandler for why it is not optional.</summary>
+public sealed class GetBlockedLeaveDatesRequest
+{
+    public Guid EmployeeId { get; init; }
+    public DateOnly From { get; init; }
+    public DateOnly To { get; init; }
+}
+
+public sealed class BlockedLeaveRangeResponse
+{
+    public DateOnly StartDate { get; init; }
+    public DateOnly EndDate { get; init; }
+}
+
+public sealed class BlockedLeaveDatesResponse
+{
+    public IReadOnlyList<BlockedLeaveRangeResponse> Ranges { get; init; } = [];
 }
 
 /// <summary>
