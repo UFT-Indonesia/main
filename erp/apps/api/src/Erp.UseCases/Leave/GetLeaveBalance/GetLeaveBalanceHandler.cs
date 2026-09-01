@@ -1,3 +1,4 @@
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Interfaces;
@@ -19,6 +20,7 @@ public static class GetLeaveBalanceHandler
         GetLeaveBalanceQuery query,
         IReadRepository<Employee> employees,
         IReadRepository<LeaveRequest> leaveRequests,
+        AttendanceDayPolicy policy,
         IClock clock,
         CancellationToken ct)
     {
@@ -48,7 +50,7 @@ public static class GetLeaveBalanceHandler
             OnProbation = employee.IsOnProbation(today),
             ProbationEndsOn = employee.ProbationEndsOn?.ToDateOnly(),
             Quotas = Enum.GetValues<LeaveType>()
-                .Select(type => LeaveQuotaResult.For(employee, type, year, today, approved))
+                .Select(type => LeaveQuotaResult.For(employee, type, year, today, approved, policy))
                 .ToList(),
         });
     }

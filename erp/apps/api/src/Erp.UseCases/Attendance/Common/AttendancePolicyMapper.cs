@@ -15,6 +15,7 @@ public static class AttendancePolicyMapper
         ClockInGraceMinutes = policy.ClockInGraceMinutes,
         ClockOutGraceMinutes = policy.ClockOutGraceMinutes,
         TimeZoneId = policy.TimeZoneId,
+        MaxIzinHours = policy.MaxIzinHours,
         UpdatedByUserId = policy.UpdatedByUserId,
         UpdatedAtUtc = policy.UpdatedAtUtc.ToDateTimeOffset(),
     };

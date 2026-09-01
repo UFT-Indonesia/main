@@ -10,6 +10,6 @@ namespace Erp.Core.Aggregates.Employees.Events;
 public sealed record EmployeeLeaveQuotaChanged(
     Guid EmployeeId,
     LeaveType Type,
-    int? OldEntitledDays,
-    int? NewEntitledDays)
+    decimal? OldEntitledDays,
+    decimal? NewEntitledDays)
     : DomainEvent(EmployeeId, nameof(Employee), "employee.leave_quota_changed");

@@ -27,6 +27,6 @@ public sealed class EmployeeResult
     public DateOnly? ProbationEndsOnOverride { get; init; }
 
     /// <summary>Leave-type name to overridden entitlement. Types with no override are absent.</summary>
-    public IReadOnlyDictionary<string, int> LeaveQuotaOverrides { get; init; } =
-        new Dictionary<string, int>();
+    public IReadOnlyDictionary<string, decimal> LeaveQuotaOverrides { get; init; } =
+        new Dictionary<string, decimal>();
 }

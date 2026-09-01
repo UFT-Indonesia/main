@@ -1,3 +1,4 @@
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Interfaces;
@@ -19,6 +20,7 @@ public static class ApproveLeaveRequestHandler
         ApproveLeaveRequestCommand command,
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
+        AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
         CancellationToken ct) =>
@@ -29,13 +31,15 @@ public static class ApproveLeaveRequestHandler
             (request, _, now) => request.Approve(command.Caller.UserId, command.Caller.Name, now),
             leaveRequests,
             employees,
+            policy,
             clock,
             bus,
             ct,
             // Authoritative quota check. The same request passed this on the way in, but an
             // override lowered or a probation extended since then must still stop it here.
             guard: (request, subject, today) => LeaveQuotaGuard.CheckAsync(
-                subject, request.Type, request.StartDate, request.EndDate, leaveRequests, today, ct));
+                subject, request.Type, request.StartDate, request.EndDate,
+                request.HalfDay, request.StartHour, request.EndHour, policy, leaveRequests, today, ct));
 }
 
 public static class DenyLeaveRequestHandler
@@ -44,6 +48,7 @@ public static class DenyLeaveRequestHandler
         DenyLeaveRequestCommand command,
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
+        AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
         CancellationToken ct) =>
@@ -54,6 +59,7 @@ public static class DenyLeaveRequestHandler
             (request, _, now) => request.Deny(command.Caller.UserId, command.Caller.Name, now, command.Note),
             leaveRequests,
             employees,
+            policy,
             clock,
             bus,
             ct);
@@ -65,6 +71,7 @@ public static class CancelLeaveRequestHandler
         CancelLeaveRequestCommand command,
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
+        AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
         CancellationToken ct) =>
@@ -85,6 +92,7 @@ public static class CancelLeaveRequestHandler
                     : LeaveCancellationReason.RecalledForWork),
             leaveRequests,
             employees,
+            policy,
             clock,
             bus,
             ct);
@@ -108,6 +116,7 @@ internal static class DecideLeaveRequestService
         Action<LeaveRequest, Employee, Instant> decide,
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
+        AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
         CancellationToken ct,
@@ -156,6 +165,7 @@ internal static class DecideLeaveRequestService
         return new Result<LeaveRequestResult>.Success(
             LeaveRequestResult.From(
                 request,
+                policy,
                 // Single-request responses do not run the yearly rollup query.
                 approvedWorkdaysThisYear: null,
                 employeeFullName: subject.FullName,

@@ -47,6 +47,25 @@ internal sealed class LeaveRequestByIdSpec : SingleResultSpecification<LeaveRequ
 }
 
 /// <summary>
+/// Approved, full-day leave for the employee covering the given date — a half day or hourly
+/// Izin excluded, since the employee is expected to work the rest of that day and must not flip
+/// the OnLeave badge on.
+/// </summary>
+internal sealed class FullDayApprovedLeaveOnDateSpec : Specification<LeaveRequest>
+{
+    public FullDayApprovedLeaveOnDateSpec(EmployeeId employeeId, LocalDate date)
+    {
+        Query.Where(request => request.EmployeeId == employeeId
+                               && request.Status == LeaveRequestStatus.Approved
+                               && !request.HalfDay
+                               && request.StartHour == null
+                               && request.StartDate <= date
+                               && date <= request.EndDate);
+        Query.AsNoTracking();
+    }
+}
+
+/// <summary>
 /// Approved requests for a set of employees that OVERLAP the given calendar year span. Overlap
 /// rather than "starts in the year", because a request spanning New Year is charged to both
 /// years — the days are attributed per year by <see cref="LeaveQuota.WorkdaysInYear"/>, so the

@@ -15,6 +15,15 @@ public sealed class CreateLeaveRequestRequest
     public DateOnly EndDate { get; init; }
     public string Reason { get; init; } = default!;
     public IFormFile? Attachment { get; init; }
+
+    /// <summary>Annual's own toggle.</summary>
+    public bool HalfDay { get; init; }
+    /// <summary>"Morning" or "Afternoon". Required when <see cref="HalfDay"/> is true.</summary>
+    public string? HalfDayPeriod { get; init; }
+
+    /// <summary>Izin's own toggle. Both required together, whole hours, 12:00 excluded.</summary>
+    public int? StartHour { get; init; }
+    public int? EndHour { get; init; }
 }
 
 public sealed class GetLeaveAttachmentRequest
@@ -50,17 +59,18 @@ public sealed class GetBlockedLeaveDatesRequest
     public Guid EmployeeId { get; init; }
     public DateOnly From { get; init; }
     public DateOnly To { get; init; }
-}
 
-public sealed class BlockedLeaveRangeResponse
-{
-    public DateOnly StartDate { get; init; }
-    public DateOnly EndDate { get; init; }
+    /// <summary>The in-progress request's own shape — see GetBlockedLeaveDatesQuery.</summary>
+    public bool HalfDay { get; init; }
+    public string? HalfDayPeriod { get; init; }
+    public int? StartHour { get; init; }
+    public int? EndHour { get; init; }
 }
 
 public sealed class BlockedLeaveDatesResponse
 {
-    public IReadOnlyList<BlockedLeaveRangeResponse> Ranges { get; init; } = [];
+    public IReadOnlyList<DateOnly> BlockedDates { get; init; } = [];
+    public IReadOnlyList<DateOnly> PartialDates { get; init; } = [];
 }
 
 /// <summary>
@@ -71,9 +81,9 @@ public sealed class BlockedLeaveDatesResponse
 public sealed class LeaveQuotaResponse
 {
     public string Type { get; init; } = default!;
-    public int? EntitledDays { get; init; }
-    public int UsedDays { get; init; }
-    public int? RemainingDays { get; init; }
+    public decimal? EntitledDays { get; init; }
+    public decimal UsedDays { get; init; }
+    public decimal? RemainingDays { get; init; }
 
     public static LeaveQuotaResponse From(LeaveQuotaResult result) => new()
     {
@@ -130,10 +140,25 @@ public sealed class LeaveRequestResponse
     public string? DecidedByName { get; init; }
     public DateTimeOffset? DecidedAtUtc { get; init; }
     public string? DecisionNote { get; init; }
+
+    /// <summary>
+    /// Annual's own toggle. <see cref="HalfDayPeriod"/> says which half when true. False/null
+    /// when the caller may not read this request's details, same as <see cref="Type"/>.
+    /// </summary>
+    public bool HalfDay { get; init; }
+    public string? HalfDayPeriod { get; init; }
+
+    /// <summary>Izin's own toggle. Both set together, null when hidden or on any other request.</summary>
+    public int? StartHour { get; init; }
+    public int? EndHour { get; init; }
+
+    /// <summary>Quota this request actually spends — see LeaveRequestResult.ChargedDays.</summary>
+    public decimal? ChargedDays { get; init; }
+
     /// <summary>Set only once Status is Cancelled.</summary>
     public string? CancellationReason { get; init; }
     /// <summary>Null when the caller may not read this employee's leave balance.</summary>
-    public int? ApprovedWorkdaysThisYear { get; init; }
+    public decimal? ApprovedWorkdaysThisYear { get; init; }
 
     /// <summary>
     /// What is enforced for this request's own type. Null when the caller may not read the
@@ -163,6 +188,11 @@ public sealed class LeaveRequestResponse
                 SizeBytes = file.SizeBytes,
             }
             : null,
+        HalfDay = result.HalfDay,
+        HalfDayPeriod = result.HalfDayPeriod,
+        StartHour = result.StartHour,
+        EndHour = result.EndHour,
+        ChargedDays = result.ChargedDays,
         Status = result.Status,
         RequestedAtUtc = result.RequestedAtUtc,
         DecidedByName = result.DecidedByName,

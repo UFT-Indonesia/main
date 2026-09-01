@@ -53,6 +53,10 @@ public sealed class AttendancePolicyHistoryConfiguration : IEntityTypeConfigurat
             .HasMaxLength(64)
             .IsRequired();
 
+        builder.Property(history => history.MaxIzinHours)
+            .HasColumnName("max_izin_hours")
+            .IsRequired();
+
         builder.Property(history => history.ChangedByUserId)
             .HasColumnName("changed_by_user_id")
             .IsRequired();

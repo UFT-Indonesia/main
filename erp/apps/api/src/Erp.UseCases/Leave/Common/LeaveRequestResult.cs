@@ -1,3 +1,4 @@
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.UseCases.Common;
@@ -23,6 +24,26 @@ public sealed class LeaveRequestResult
     public string? DecisionNote { get; init; }
 
     /// <summary>
+    /// Annual's own toggle. <see cref="HalfDayPeriod"/> says which half when true. False/null
+    /// when the caller may not read this request's details — same gate as <see cref="Type"/>,
+    /// because a non-null hour or half-day flag would otherwise prove the hidden type (only
+    /// Permission sets hours, only Annual sets HalfDay).
+    /// </summary>
+    public bool HalfDay { get; init; }
+    public string? HalfDayPeriod { get; init; }
+
+    /// <summary>Izin's own toggle. Both set together, null when hidden or on any other request.</summary>
+    public int? StartHour { get; init; }
+    public int? EndHour { get; init; }
+
+    /// <summary>
+    /// Quota this request actually spends: WorkdayCount for a plain request, half that for a
+    /// half day, an hourly fraction for Izin. Null when the caller may not read this request's
+    /// details — a fractional value would itself hint at the hidden half-day/hourly shape.
+    /// </summary>
+    public decimal? ChargedDays { get; init; }
+
+    /// <summary>
     /// Set only once Cancelled. Unlike Reason/DecisionNote, not gated behind canReadDetails —
     /// it's no more sensitive than the Cancelled status itself, which is already visible to
     /// everyone the request is visible to.
@@ -34,7 +55,7 @@ public sealed class LeaveRequestResult
     /// caller may not read this employee's balance. Null rather than 0 — 0 would read as
     /// "has taken no leave", which is a different claim from "you may not see this".
     /// </summary>
-    public int? ApprovedWorkdaysThisYear { get; init; }
+    public decimal? ApprovedWorkdaysThisYear { get; init; }
 
     /// <summary>
     /// What is actually enforced for *this request's own type*, in the year it falls in. Null
@@ -60,7 +81,8 @@ public sealed class LeaveRequestResult
 
     public static LeaveRequestResult From(
         LeaveRequest request,
-        int? approvedWorkdaysThisYear = 0,
+        AttendanceDayPolicy policy,
+        decimal? approvedWorkdaysThisYear = 0,
         string? employeeFullName = null,
         bool canDecide = false,
         bool canCancel = false,
@@ -83,6 +105,11 @@ public sealed class LeaveRequestResult
                 SizeBytes = file.SizeBytes,
             }
             : null,
+        HalfDay = canReadDetails && request.HalfDay,
+        HalfDayPeriod = canReadDetails ? request.Period?.ToString() : null,
+        StartHour = canReadDetails ? request.StartHour : null,
+        EndHour = canReadDetails ? request.EndHour : null,
+        ChargedDays = canReadDetails ? request.TotalCharge(policy) : null,
         Status = request.Status.ToString(),
         RequestedByUserId = request.RequestedByUserId,
         RequestedAtUtc = request.RequestedAtUtc.ToDateTimeOffset(),

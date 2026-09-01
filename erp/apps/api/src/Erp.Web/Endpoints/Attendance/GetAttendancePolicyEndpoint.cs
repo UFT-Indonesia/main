@@ -55,6 +55,7 @@ public sealed class GetAttendancePolicyEndpoint : EndpointWithoutRequest<Attenda
         ClockInGraceMinutes = result.ClockInGraceMinutes,
         ClockOutGraceMinutes = result.ClockOutGraceMinutes,
         TimeZoneId = result.TimeZoneId,
+        MaxIzinHours = result.MaxIzinHours,
         UpdatedByUserId = result.UpdatedByUserId,
         UpdatedAtUtc = result.UpdatedAtUtc,
     };

@@ -85,7 +85,7 @@ public sealed class Employee : AggregateRoot<EmployeeId>
     public IReadOnlyCollection<EmployeeLeaveQuota> LeaveQuotas => _leaveQuotas.AsReadOnly();
 
     /// <summary>The override for one leave type, or null when there is no row for it.</summary>
-    public int? QuotaOverride(LeaveType type) =>
+    public decimal? QuotaOverride(LeaveType type) =>
         _leaveQuotas.FirstOrDefault(quota => quota.Type == type)?.EntitledDays;
 
     public static Employee Create(
@@ -391,7 +391,7 @@ public sealed class Employee : AggregateRoot<EmployeeId>
     /// to the default (the computed formula for Annual, uncapped for everything else).
     /// Zero is a real value and means "none of this type".
     /// </summary>
-    public void SetLeaveQuota(LeaveType type, int? entitledDays)
+    public void SetLeaveQuota(LeaveType type, decimal? entitledDays)
     {
         EnsureActive();
         if (entitledDays is < 0)

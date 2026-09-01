@@ -3,6 +3,7 @@ using System;
 using Erp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Erp.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901160830_AddLeaveHalfDayAndHourlyIzin")]
+    partial class AddLeaveHalfDayAndHourlyIzin
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -200,10 +203,6 @@ namespace Erp.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("clock_out_grace_minutes");
 
-                    b.Property<int>("MaxIzinHours")
-                        .HasColumnType("integer")
-                        .HasColumnName("max_izin_hours");
-
                     b.Property<TimeOnly>("ShiftEnd")
                         .HasColumnType("time")
                         .HasColumnName("shift_end");
@@ -252,10 +251,6 @@ namespace Erp.Infrastructure.Persistence.Migrations
                     b.Property<int>("ClockOutGraceMinutes")
                         .HasColumnType("integer")
                         .HasColumnName("clock_out_grace_minutes");
-
-                    b.Property<int>("MaxIzinHours")
-                        .HasColumnType("integer")
-                        .HasColumnName("max_izin_hours");
 
                     b.Property<Guid>("PolicyId")
                         .HasColumnType("uuid")

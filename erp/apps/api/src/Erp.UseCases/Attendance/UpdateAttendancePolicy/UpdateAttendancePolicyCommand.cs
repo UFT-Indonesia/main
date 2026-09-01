@@ -6,4 +6,5 @@ public sealed record UpdateAttendancePolicyCommand(
     int ClockInGraceMinutes,
     int ClockOutGraceMinutes,
     string TimeZoneId,
+    int MaxIzinHours,
     Guid ChangedByUserId);

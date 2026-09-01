@@ -45,7 +45,7 @@ public sealed class SetLeaveQuotaRouteRequest
     public Guid Id { get; init; }
     public string Type { get; init; } = default!;
     /// <summary>Null clears the override. Zero is a real setting and means "none of this type".</summary>
-    public int? Days { get; init; }
+    public decimal? Days { get; init; }
 }
 
 public sealed class DeleteEmployeeRouteRequest
@@ -91,7 +91,7 @@ public sealed class EmployeeResponse
     /// <summary>Set only when an owner pinned the date by hand, rather than it being the default.</summary>
     public DateOnly? ProbationEndsOnOverride { get; init; }
     /// <summary>Leave type to overridden entitlement; types on the default are absent.</summary>
-    public IReadOnlyDictionary<string, int>? LeaveQuotaOverrides { get; init; }
+    public IReadOnlyDictionary<string, decimal>? LeaveQuotaOverrides { get; init; }
 }
 
 public sealed class ListEmployeesResponse
