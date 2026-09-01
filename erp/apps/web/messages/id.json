@@ -1,6 +1,5 @@
 {
   "common": {
-    "appName": "ERP UFT Davis",
     "loading": "Memuat...",
     "save": "Simpan",
     "cancel": "Batal",
@@ -26,7 +25,7 @@
   },
   "home": {
     "title": "Selamat datang",
-    "subtitle": "Sistem ERP internal UFT Davis.",
+    "subtitle": "Sistem ERP internal UFT.",
     "cards": {
       "activeEmployees": "Karyawan aktif",
       "owners": "Pemilik",
@@ -153,6 +152,7 @@
     "searchPlaceholder": "Cari nama karyawan...",
     "filters": {
       "dateFrom": "Dari tanggal",
+      "dateRange": "Rentang tanggal",
       "dateTo": "Sampai tanggal",
       "allPunchTypes": "Semua tipe",
       "allSources": "Semua sumber",
@@ -211,6 +211,20 @@
     "details": {
       "title": "Detail log presensi",
       "description": "Daftar kronologis semua presensi pada hari ini."
+    },
+    "leaveDetails": {
+      "title": "Detail Cuti",
+      "type": "Jenis Cuti",
+      "employeeName": "Nama Karyawan",
+      "requestedTo": "Diajukan Kepada",
+      "applicationDate": "Tanggal Pengajuan",
+      "leaveDate": "Tanggal Cuti",
+      "returnDate": "Tanggal Kembali",
+      "reason": "Alasan Cuti",
+      "lengthInDays": "Lama Cuti",
+      "startsIn": "Mulai Dalam",
+      "alreadyStarted": "Sedang Cuti",
+      "dayCount": "{count, plural, =0 {0 hari} other {# hari}}"
     },
     "edit": {
       "title": "Ubah log presensi",
@@ -271,7 +285,7 @@
       "Annual": "Cuti tahunan",
       "Sick": "Sakit",
       "Permission": "Izin",
-      "Unpaid": "Di luar tanggungan",
+      "Unpaid": "Unpaid",
       "Undisclosed": "Tidak masuk"
     },
     "status": {
@@ -293,8 +307,9 @@
       "employeePlaceholder": "Pilih karyawan...",
       "startDate": "Tanggal mulai",
       "endDate": "Tanggal selesai",
+      "dateRange": "Tanggal cuti",
       "reason": "Alasan",
-      "reasonPlaceholder": "Alasan (opsional)",
+      "reasonPlaceholder": "Alasan pengajuan cuti",
       "workdayPreview": "{count, plural, =0 {Tidak ada hari kerja dalam rentang} other {# hari kerja}}",
       "confirm": "Ajukan",
       "successTitle": "Permintaan diajukan",
@@ -343,7 +358,6 @@
     "subtitleStaff": "Ajukan cuti dan lihat riwayat pengajuan Anda, termasuk yang sudah lewat atau ditolak.",
     "quota": {
       "uncapped": "Jenis ini tidak dibatasi.",
-      "onProbation": "Belum ada cuti tahunan sampai masa percobaan selesai.",
       "remaining": "Sisa {remaining} dari {entitled} hari ({used} terpakai)."
     }
   },
@@ -465,6 +479,7 @@
     "filters": {
       "employeePlaceholder": "Saring berdasarkan karyawan...",
       "dateFrom": "Dari tanggal",
+      "dateRange": "Rentang tanggal",
       "dateTo": "Sampai tanggal",
       "allEventTypes": "Semua jenis peristiwa"
     },
