@@ -1,3 +1,4 @@
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using NodaTime;
@@ -11,24 +12,25 @@ namespace Erp.UseCases.Leave.Common;
 public sealed class LeaveQuotaResult
 {
     public string Type { get; init; } = default!;
-    public int? EntitledDays { get; init; }
-    public int UsedDays { get; init; }
+    public decimal? EntitledDays { get; init; }
+    public decimal UsedDays { get; init; }
 
     /// <summary>
     /// May be negative, for an employee who was already over when a cap was set. Reported raw
     /// rather than clamped to zero — an Owner setting a cap should see the overage they created.
     /// </summary>
-    public int? RemainingDays { get; init; }
+    public decimal? RemainingDays { get; init; }
 
     public static LeaveQuotaResult For(
         Employee employee,
         LeaveType type,
         int year,
         LocalDate today,
-        IEnumerable<LeaveRequest> approvedOverlappingYear)
+        IEnumerable<LeaveRequest> approvedOverlappingYear,
+        AttendanceDayPolicy policy)
     {
         var entitled = LeaveQuota.Entitled(type, employee, year, today);
-        var used = LeaveQuota.UsedDays(approvedOverlappingYear, type, year);
+        var used = LeaveQuota.UsedDays(approvedOverlappingYear, type, year, policy);
 
         return new LeaveQuotaResult
         {

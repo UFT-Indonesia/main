@@ -1,4 +1,5 @@
 using Ardalis.Specification;
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Interfaces;
 using Erp.UseCases.Common;
@@ -20,6 +21,7 @@ public static class ListLeaveRequestsHandler
     public static async Task<Result<ListLeaveRequestsResult>> Handle(
         ListLeaveRequestsQuery query,
         IReadRepository<LeaveRequest> leaveRequests,
+        AttendanceDayPolicy policy,
         IClock clock,
         CancellationToken ct)
     {
@@ -85,14 +87,15 @@ public static class ListLeaveRequestsHandler
 
                     return LeaveRequestResult.From(
                         request,
-                        canReadBalance ? LeaveQuota.UsedDaysAllTypes(approved, year) : null,
+                        policy,
+                        canReadBalance ? LeaveQuota.UsedDaysAllTypes(approved, year, policy) : null,
                         canDecide: canDecide,
                         canCancel: canCancel,
                         canReadDetails: canReadDetails,
                         // Gated on details too, not just the balance: the block names the leave
                         // type, which is redacted from anyone without standing to read it.
                         quota: canReadBalance && canReadDetails && subject is not null
-                            ? LeaveQuotaResult.For(subject, request.Type, year, today, approved)
+                            ? LeaveQuotaResult.For(subject, request.Type, year, today, approved, policy)
                             : null);
                 })
                 .ToList(),

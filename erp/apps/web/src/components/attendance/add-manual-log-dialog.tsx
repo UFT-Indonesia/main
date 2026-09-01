@@ -104,7 +104,7 @@ export function AddManualLogDialog({
             value={form.punchedAtUtc}
             onChange={(v) => setForm((s) => ({ ...s, punchedAtUtc: v }))}
             timeZone={timeZone}
-            blocked={blocked.data?.ranges}
+            blockedDates={blocked.data?.blockedDates}
           />
         </div>
 

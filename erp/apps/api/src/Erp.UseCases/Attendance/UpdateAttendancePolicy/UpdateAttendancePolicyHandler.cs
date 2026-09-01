@@ -54,6 +54,7 @@ public static class UpdateAttendancePolicyHandler
             command.ClockInGraceMinutes,
             command.ClockOutGraceMinutes,
             command.TimeZoneId,
+            command.MaxIzinHours,
             command.ChangedByUserId,
             now);
 

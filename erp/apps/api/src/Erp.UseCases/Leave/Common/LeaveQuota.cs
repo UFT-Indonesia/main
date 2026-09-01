@@ -1,3 +1,4 @@
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using NodaTime;
@@ -13,23 +14,23 @@ namespace Erp.UseCases.Leave.Common;
 public static class LeaveQuota
 {
     /// <summary>Full-year annual entitlement for a confirmed employee.</summary>
-    public const int FullAnnualDays = 12;
+    public const decimal FullAnnualDays = 12m;
 
     /// <summary>
     /// Full-year entitlement for the types that are not prorated by probation. Unlike Annual
     /// these are flat: someone still on probation with flu gets the same thirty sick days as
     /// anyone else, because the alternative is an absence that cannot be recorded at all.
     /// </summary>
-    public const int FullSickDays = 30;
-    public const int FullPermissionDays = 6;
-    public const int FullUnpaidDays = 30;
+    public const decimal FullSickDays = 30m;
+    public const decimal FullPermissionDays = 6m;
+    public const decimal FullUnpaidDays = 30m;
 
     /// <summary>
     /// The company-wide default for a type before any per-employee override. Annual is absent
     /// here on purpose — it is the only type whose default depends on the employee, so it is
     /// computed by <see cref="AnnualEntitlement"/> instead.
     /// </summary>
-    public static int DefaultDays(LeaveType type) => type switch
+    public static decimal DefaultDays(LeaveType type) => type switch
     {
         LeaveType.Sick => FullSickDays,
         LeaveType.Permission => FullPermissionDays,
@@ -49,21 +50,21 @@ public static class LeaveQuota
     /// </code>
     /// Known wart: confirmation on the 1st of a month loses that month. Capped at one day, once.
     /// </summary>
-    public static int AnnualEntitlement(LocalDate? probationEndsOn, int year)
+    public static decimal AnnualEntitlement(LocalDate? probationEndsOn, int year)
     {
         if (probationEndsOn is not { } endsOn || endsOn.Year < year)
         {
             return FullAnnualDays;
         }
 
-        return endsOn.Year > year ? 0 : FullAnnualDays - endsOn.Month;
+        return endsOn.Year > year ? 0m : FullAnnualDays - endsOn.Month;
     }
 
     /// <summary>
     /// The enforced cap for one type in one year, or null when nothing is capped — which now
     /// means an Owner only, since nobody enforces a cap on an Owner's behalf.
     /// </summary>
-    public static int? Entitled(LeaveType type, Employee employee, int year, LocalDate today)
+    public static decimal? Entitled(LeaveType type, Employee employee, int year, LocalDate today)
     {
         if (employee.Role == EmployeeRole.Owner)
         {
@@ -83,7 +84,7 @@ public static class LeaveQuota
 
         if (employee.IsOnProbation(today))
         {
-            return 0;
+            return 0m;
         }
 
         // An override is the whole-year figure — an Owner who typed a number meant that number,
@@ -99,11 +100,21 @@ public static class LeaveQuota
     public static int WorkdaysInYear(LeaveRequest request, int year) =>
         LeaveRequest.Workdays(request.StartDate, request.EndDate).Count(date => date.Year == year);
 
-    /// <summary>Approved workdays of one type falling in the given year.</summary>
-    public static int UsedDays(IEnumerable<LeaveRequest> approved, LeaveType type, int year) =>
-        approved.Where(request => request.Type == type).Sum(request => WorkdaysInYear(request, year));
+    /// <summary>
+    /// Quota this request actually spends in the given year — <see cref="WorkdaysInYear"/> times
+    /// its own <see cref="LeaveRequest.ChargePerWorkday"/> (1 for a plain request, 0.5 for a half
+    /// day, an hourly fraction for Izin).
+    /// </summary>
+    public static decimal ChargedDaysInYear(LeaveRequest request, int year, AttendanceDayPolicy policy) =>
+        WorkdaysInYear(request, year) * request.ChargePerWorkday(policy);
 
-    /// <summary>Approved workdays of every type falling in the given year.</summary>
-    public static int UsedDaysAllTypes(IEnumerable<LeaveRequest> approved, int year) =>
-        approved.Sum(request => WorkdaysInYear(request, year));
+    /// <summary>Approved quota of one type spent in the given year.</summary>
+    public static decimal UsedDays(
+        IEnumerable<LeaveRequest> approved, LeaveType type, int year, AttendanceDayPolicy policy) =>
+        approved.Where(request => request.Type == type).Sum(request => ChargedDaysInYear(request, year, policy));
+
+    /// <summary>Approved quota of every type spent in the given year.</summary>
+    public static decimal UsedDaysAllTypes(
+        IEnumerable<LeaveRequest> approved, int year, AttendanceDayPolicy policy) =>
+        approved.Sum(request => ChargedDaysInYear(request, year, policy));
 }

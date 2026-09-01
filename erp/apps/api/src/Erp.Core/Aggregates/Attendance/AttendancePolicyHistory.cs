@@ -23,6 +23,7 @@ public sealed class AttendancePolicyHistory : Entity
         int clockInGraceMinutes,
         int clockOutGraceMinutes,
         string timeZoneId,
+        int maxIzinHours,
         Guid changedByUserId,
         Instant changedAtUtc)
         : base(id)
@@ -33,6 +34,7 @@ public sealed class AttendancePolicyHistory : Entity
         ClockInGraceMinutes = clockInGraceMinutes;
         ClockOutGraceMinutes = clockOutGraceMinutes;
         TimeZoneId = timeZoneId;
+        MaxIzinHours = maxIzinHours;
         ChangedByUserId = changedByUserId;
         ChangedAtUtc = changedAtUtc;
     }
@@ -49,6 +51,8 @@ public sealed class AttendancePolicyHistory : Entity
 
     public string TimeZoneId { get; private set; } = default!;
 
+    public int MaxIzinHours { get; private set; }
+
     public Guid ChangedByUserId { get; private set; }
 
     public Instant ChangedAtUtc { get; private set; }
@@ -64,6 +68,7 @@ public sealed class AttendancePolicyHistory : Entity
             policy.ClockInGraceMinutes,
             policy.ClockOutGraceMinutes,
             policy.TimeZoneId,
+            policy.MaxIzinHours,
             changedByUserId,
             changedAtUtc);
 }

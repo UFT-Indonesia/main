@@ -16,7 +16,7 @@ public sealed class EmployeeLeaveQuota
     // EF Core constructor.
     private EmployeeLeaveQuota() { }
 
-    internal EmployeeLeaveQuota(LeaveType type, int entitledDays)
+    internal EmployeeLeaveQuota(LeaveType type, decimal entitledDays)
     {
         Type = type;
         EntitledDays = entitledDays;
@@ -24,7 +24,7 @@ public sealed class EmployeeLeaveQuota
 
     public LeaveType Type { get; private set; }
 
-    public int EntitledDays { get; private set; }
+    public decimal EntitledDays { get; private set; }
 
-    internal void SetEntitledDays(int entitledDays) => EntitledDays = entitledDays;
+    internal void SetEntitledDays(decimal entitledDays) => EntitledDays = entitledDays;
 }

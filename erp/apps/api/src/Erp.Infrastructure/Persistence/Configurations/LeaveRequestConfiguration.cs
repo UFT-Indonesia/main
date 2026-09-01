@@ -60,6 +60,21 @@ public sealed class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRe
             .HasMaxLength(LeaveRequest.ReasonMaxLength)
             .IsRequired();
 
+        builder.Property(request => request.HalfDay)
+            .HasColumnName("half_day")
+            .IsRequired();
+
+        builder.Property(request => request.Period)
+            .HasColumnName("half_day_period")
+            .HasConversion<string>()
+            .HasMaxLength(16);
+
+        builder.Property(request => request.StartHour)
+            .HasColumnName("start_hour");
+
+        builder.Property(request => request.EndHour)
+            .HasColumnName("end_hour");
+
         // Owned rather than a table of its own: an attachment has no life apart from the one
         // request it belongs to, and is always loaded and deleted with it.
         builder.OwnsOne(request => request.Attachment, attachment =>

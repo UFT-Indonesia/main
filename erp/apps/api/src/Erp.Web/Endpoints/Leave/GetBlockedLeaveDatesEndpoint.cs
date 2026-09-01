@@ -1,3 +1,4 @@
+using Erp.Core.Aggregates.Leave;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Common;
@@ -38,18 +39,31 @@ public sealed class GetBlockedLeaveDatesEndpoint
             return;
         }
 
+        HalfDayPeriod? halfDayPeriod = null;
+        if (!string.IsNullOrWhiteSpace(req.HalfDayPeriod))
+        {
+            if (!Enum.TryParse<HalfDayPeriod>(req.HalfDayPeriod, ignoreCase: true, out var parsedPeriod)
+                || !Enum.IsDefined(parsedPeriod))
+            {
+                throw new DomainException(
+                    "leave.half_day_period", "Half-day period must be Morning or Afternoon.");
+            }
+
+            halfDayPeriod = parsedPeriod;
+        }
+
         var result = await _bus.InvokeAsync<Result<BlockedLeaveDatesResult>>(
-            new GetBlockedLeaveDatesQuery(req.EmployeeId, req.From, req.To, caller), ct);
+            new GetBlockedLeaveDatesQuery(
+                req.EmployeeId, req.From, req.To,
+                req.HalfDay, halfDayPeriod, req.StartHour, req.EndHour, caller),
+            ct);
 
         if (result is Result<BlockedLeaveDatesResult>.Success s)
         {
             await SendOkAsync(new BlockedLeaveDatesResponse
             {
-                Ranges = [.. s.Value.Ranges.Select(r => new BlockedLeaveRangeResponse
-                {
-                    StartDate = r.StartDate,
-                    EndDate = r.EndDate,
-                })],
+                BlockedDates = s.Value.BlockedDates,
+                PartialDates = s.Value.PartialDates,
             }, ct);
             return;
         }

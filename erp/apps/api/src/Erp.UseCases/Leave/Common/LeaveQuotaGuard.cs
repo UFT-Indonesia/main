@@ -1,3 +1,4 @@
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Interfaces;
@@ -18,6 +19,10 @@ internal static class LeaveQuotaGuard
         LeaveType type,
         LocalDate startDate,
         LocalDate endDate,
+        bool halfDay,
+        int? startHour,
+        int? endHour,
+        AttendanceDayPolicy policy,
         IRepository<LeaveRequest> leaveRequests,
         LocalDate today,
         CancellationToken ct)
@@ -34,11 +39,13 @@ internal static class LeaveQuotaGuard
                 + $"{employee.ProbationEndsOn!.Value:yyyy-MM-dd} and has no annual leave yet.");
         }
 
+        var chargePerWorkday = LeaveRequest.ChargePerWorkday(halfDay, startHour, endHour, policy);
+
         // Days are charged to the year they fall in, so a request across New Year has to fit
         // both years' remaining quota — neither year subsidises the other.
         var requestedByYear = LeaveRequest.Workdays(startDate, endDate)
             .GroupBy(date => date.Year)
-            .ToDictionary(group => group.Key, group => group.Count());
+            .ToDictionary(group => group.Key, group => group.Count() * chargePerWorkday);
 
         var capped = requestedByYear.Keys
             .Select(year => (Year: year, Entitled: LeaveQuota.Entitled(type, employee, year, today)))
@@ -57,7 +64,7 @@ internal static class LeaveQuotaGuard
         {
             // Pending requests do not reserve days: only an approval actually spends quota, so a
             // request that sits unapproved never blocks the next one.
-            var remaining = entitled!.Value - LeaveQuota.UsedDays(approved, type, year);
+            var remaining = entitled!.Value - LeaveQuota.UsedDays(approved, type, year, policy);
             var requested = requestedByYear[year];
             if (requested <= remaining)
             {

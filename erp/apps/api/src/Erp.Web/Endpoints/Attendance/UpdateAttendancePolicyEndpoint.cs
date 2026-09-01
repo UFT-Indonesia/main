@@ -40,6 +40,7 @@ public sealed class UpdateAttendancePolicyEndpoint : Endpoint<UpdateAttendancePo
             req.ClockInGraceMinutes,
             req.ClockOutGraceMinutes,
             req.TimeZoneId,
+            req.MaxIzinHours,
             userId), ct);
 
         if (result is Result<AttendancePolicyResult>.Success s)
@@ -51,6 +52,7 @@ public sealed class UpdateAttendancePolicyEndpoint : Endpoint<UpdateAttendancePo
                 ClockInGraceMinutes = s.Value.ClockInGraceMinutes,
                 ClockOutGraceMinutes = s.Value.ClockOutGraceMinutes,
                 TimeZoneId = s.Value.TimeZoneId,
+                MaxIzinHours = s.Value.MaxIzinHours,
                 UpdatedByUserId = s.Value.UpdatedByUserId,
                 UpdatedAtUtc = s.Value.UpdatedAtUtc,
             }, ct);

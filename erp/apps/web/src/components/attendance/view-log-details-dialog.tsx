@@ -275,7 +275,7 @@ export function ViewLogDetailsDialog({
                 value={form.punchedAtUtc}
                 onChange={(v) => setForm((s) => ({ ...s, punchedAtUtc: v }))}
                 timeZone={timeZone}
-                blocked={blocked.data?.ranges}
+                blockedDates={blocked.data?.blockedDates}
               />
             </div>
             <div className="flex flex-col gap-1.5">

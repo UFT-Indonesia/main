@@ -15,6 +15,7 @@ public class AttendancePolicyTests
         clockInGraceMinutes: 5,
         clockOutGraceMinutes: 5,
         "Asia/Jakarta",
+        maxIzinHours: 4,
         Guid.Empty,
         Instant.FromUtc(2026, 1, 1, 0, 0));
 
@@ -37,6 +38,7 @@ public class AttendancePolicyTests
             5,
             5,
             "Asia/Jakarta",
+            4,
             Guid.NewGuid(),
             Instant.FromUtc(2026, 1, 2, 0, 0));
 
@@ -56,10 +58,52 @@ public class AttendancePolicyTests
             clockIn,
             clockOut,
             "Asia/Jakarta",
+            4,
             Guid.NewGuid(),
             Instant.FromUtc(2026, 1, 2, 0, 0));
 
         act.Should().Throw<DomainException>();
+    }
+
+    [Theory]
+    [InlineData(9, 0, 10, 0)]  // exactly 60 minutes — leaves no room for the assumed lunch
+    [InlineData(9, 0, 9, 30)]  // shorter still
+    public void Update_rejects_a_shift_of_60_minutes_or_less(
+        int startHour, int startMinute, int endHour, int endMinute)
+    {
+        var policy = CreatePolicy();
+
+        var act = () => policy.Update(
+            new LocalTime(startHour, startMinute),
+            new LocalTime(endHour, endMinute),
+            5,
+            5,
+            "Asia/Jakarta",
+            4,
+            Guid.NewGuid(),
+            Instant.FromUtc(2026, 1, 2, 0, 0));
+
+        act.Should().Throw<DomainException>().Where(e => e.Code == "attendance_policy.shift_too_short");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Update_rejects_non_positive_max_izin_hours(int maxIzinHours)
+    {
+        var policy = CreatePolicy();
+
+        var act = () => policy.Update(
+            new LocalTime(9, 0),
+            new LocalTime(18, 0),
+            5,
+            5,
+            "Asia/Jakarta",
+            maxIzinHours,
+            Guid.NewGuid(),
+            Instant.FromUtc(2026, 1, 2, 0, 0));
+
+        act.Should().Throw<DomainException>().Where(e => e.Code == "attendance_policy.max_izin_hours");
     }
 
     [Fact]
@@ -73,6 +117,7 @@ public class AttendancePolicyTests
             5,
             5,
             "Not/A_Real_Zone",
+            4,
             Guid.NewGuid(),
             Instant.FromUtc(2026, 1, 2, 0, 0));
 
@@ -86,13 +131,14 @@ public class AttendancePolicyTests
         var updatedBy = Guid.NewGuid();
         var now = Instant.FromUtc(2026, 1, 2, 0, 0);
 
-        policy.Update(new LocalTime(8, 0), new LocalTime(17, 0), 10, 10, "Asia/Makassar", updatedBy, now);
+        policy.Update(new LocalTime(8, 0), new LocalTime(17, 0), 10, 10, "Asia/Makassar", 6, updatedBy, now);
 
         policy.ShiftStart.Should().Be(new LocalTime(8, 0));
         policy.ShiftEnd.Should().Be(new LocalTime(17, 0));
         policy.ClockInGraceMinutes.Should().Be(10);
         policy.ClockOutGraceMinutes.Should().Be(10);
         policy.TimeZoneId.Should().Be("Asia/Makassar");
+        policy.MaxIzinHours.Should().Be(6);
         policy.UpdatedByUserId.Should().Be(updatedBy);
         policy.UpdatedAtUtc.Should().Be(now);
         policy.DomainEvents.Should().ContainSingle(e => e is AttendancePolicyUpdated);
@@ -109,6 +155,7 @@ public class AttendancePolicyTests
         mapped.ShiftEnd.Should().Be(policy.ShiftEnd);
         mapped.ClockInGraceMinutes.Should().Be(policy.ClockInGraceMinutes);
         mapped.ClockOutGraceMinutes.Should().Be(policy.ClockOutGraceMinutes);
+        mapped.MaxIzinHours.Should().Be(policy.MaxIzinHours);
         mapped.TimeZone.Id.Should().Be(policy.TimeZoneId);
     }
 }

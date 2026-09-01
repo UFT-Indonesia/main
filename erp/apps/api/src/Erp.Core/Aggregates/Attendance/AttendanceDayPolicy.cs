@@ -11,4 +11,5 @@ public sealed record AttendanceDayPolicy(
     LocalTime ShiftEnd,
     int ClockInGraceMinutes,
     int ClockOutGraceMinutes,
+    int MaxIzinHours,
     DateTimeZone TimeZone);

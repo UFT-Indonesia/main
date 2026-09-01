@@ -23,6 +23,7 @@ public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
         int clockInGraceMinutes,
         int clockOutGraceMinutes,
         string timeZoneId,
+        int maxIzinHours,
         Guid updatedByUserId,
         Instant updatedAtUtc)
         : base(id)
@@ -32,6 +33,7 @@ public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
         ClockInGraceMinutes = clockInGraceMinutes;
         ClockOutGraceMinutes = clockOutGraceMinutes;
         TimeZoneId = timeZoneId;
+        MaxIzinHours = maxIzinHours;
         UpdatedByUserId = updatedByUserId;
         UpdatedAtUtc = updatedAtUtc;
     }
@@ -47,6 +49,13 @@ public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
     /// <summary>IANA time zone id (e.g. "Asia/Jakarta").</summary>
     public string TimeZoneId { get; private set; } = default!;
 
+    /// <summary>
+    /// Longest span an hourly Izin may cover, in hours. Without a cap, "hourly" Izin could
+    /// span an entire side of the shift (e.g. 13:00–18:00) — a whole day off in every way that
+    /// matters, filed as if it were a quick errand.
+    /// </summary>
+    public int MaxIzinHours { get; private set; }
+
     public Guid UpdatedByUserId { get; private set; }
 
     public Instant UpdatedAtUtc { get; private set; }
@@ -57,10 +66,11 @@ public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
         int clockInGraceMinutes,
         int clockOutGraceMinutes,
         string timeZoneId,
+        int maxIzinHours,
         Guid updatedByUserId,
         Instant updatedAtUtc)
     {
-        EnsureValid(shiftStart, shiftEnd, clockInGraceMinutes, clockOutGraceMinutes, timeZoneId);
+        EnsureValid(shiftStart, shiftEnd, clockInGraceMinutes, clockOutGraceMinutes, timeZoneId, maxIzinHours);
 
         return new AttendancePolicy(
             AttendancePolicyId.Singleton,
@@ -69,6 +79,7 @@ public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
             clockInGraceMinutes,
             clockOutGraceMinutes,
             timeZoneId,
+            maxIzinHours,
             updatedByUserId,
             updatedAtUtc);
     }
@@ -83,16 +94,18 @@ public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
         int clockInGraceMinutes,
         int clockOutGraceMinutes,
         string timeZoneId,
+        int maxIzinHours,
         Guid updatedByUserId,
         Instant updatedAtUtc)
     {
-        EnsureValid(shiftStart, shiftEnd, clockInGraceMinutes, clockOutGraceMinutes, timeZoneId);
+        EnsureValid(shiftStart, shiftEnd, clockInGraceMinutes, clockOutGraceMinutes, timeZoneId, maxIzinHours);
 
         ShiftStart = shiftStart;
         ShiftEnd = shiftEnd;
         ClockInGraceMinutes = clockInGraceMinutes;
         ClockOutGraceMinutes = clockOutGraceMinutes;
         TimeZoneId = timeZoneId;
+        MaxIzinHours = maxIzinHours;
         UpdatedByUserId = updatedByUserId;
         UpdatedAtUtc = updatedAtUtc;
 
@@ -105,6 +118,7 @@ public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
         ShiftEnd,
         ClockInGraceMinutes,
         ClockOutGraceMinutes,
+        MaxIzinHours,
         DateTimeZoneProviders.Tzdb[TimeZoneId]);
 
     private static void EnsureValid(
@@ -112,11 +126,24 @@ public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
         LocalTime shiftEnd,
         int clockInGraceMinutes,
         int clockOutGraceMinutes,
-        string timeZoneId)
+        string timeZoneId,
+        int maxIzinHours)
     {
         if (shiftStart >= shiftEnd)
         {
             throw new DomainException("attendance_policy.shift_window", "Shift start must be before shift end.");
+        }
+
+        // LeaveRequest.ChargePerWorkday divides an hourly Izin's minutes by (shift length − the
+        // 1-hour lunch it assumes at 12:00–13:00). A shift of 60 minutes or less makes that
+        // divisor zero or negative — decimal division by zero throws, and a negative divisor
+        // would flip an Izin's charge into topping quota back up instead of spending it.
+        var shiftMinutes = (shiftEnd.Hour * 60 + shiftEnd.Minute) - (shiftStart.Hour * 60 + shiftStart.Minute);
+        if (shiftMinutes <= 60)
+        {
+            throw new DomainException(
+                "attendance_policy.shift_too_short",
+                "Shift must be longer than 60 minutes, to leave room for the assumed 1-hour lunch.");
         }
 
         if (clockInGraceMinutes < 0)
@@ -135,6 +162,12 @@ public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
         {
             throw new DomainException(
                 "attendance_policy.time_zone", "Time zone must be a valid IANA time zone id.");
+        }
+
+        if (maxIzinHours <= 0)
+        {
+            throw new DomainException(
+                "attendance_policy.max_izin_hours", "Max Izin hours must be positive.");
         }
     }
 }

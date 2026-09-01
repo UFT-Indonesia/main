@@ -1,3 +1,4 @@
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Interfaces;
@@ -17,6 +18,7 @@ public static class CreateLeaveRequestHandler
         CreateLeaveRequestCommand command,
         IReadRepository<Employee> employees,
         IRepository<LeaveRequest> leaveRequests,
+        AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
         CancellationToken ct)
@@ -71,8 +73,25 @@ public static class CreateLeaveRequestHandler
         var startDate = LocalDate.FromDateOnly(command.StartDate);
         var endDate = LocalDate.FromDateOnly(command.EndDate);
 
-        // New leave cannot double-book dates that are already approved.
-        if (await leaveRequests.AnyAsync(new ApprovedLeaveOverlappingSpec(employeeId, startDate, endDate), ct))
+        // A cap on how much of a day an hourly Izin may claim — without one, "hourly" could
+        // span an entire side of the shift, which is a full day off in every way that matters.
+        if (command.StartHour is { } startHour && command.EndHour is { } endHour
+            && endHour - startHour > policy.MaxIzinHours)
+        {
+            return new Result<LeaveRequestResult>.Error(
+                "leave.izin_hours_exceeded",
+                $"Izin cannot exceed {policy.MaxIzinHours} hour(s); this request spans {endHour - startHour}.");
+        }
+
+        // New leave only conflicts with an already-approved request when their occupied hours
+        // actually intersect — a morning half day and an afternoon Izin on the same date don't
+        // touch each other's time and are both allowed to stand.
+        var candidateWindow = LeaveRequest.OccupiedWindow(
+            command.HalfDay, command.HalfDayPeriod, command.StartHour, command.EndHour, policy);
+        var overlappingApproved = await leaveRequests.ListAsync(
+            new ApprovedLeaveOverlappingSpec(employeeId, startDate, endDate), ct);
+        if (overlappingApproved.Any(existing =>
+            LeaveRequest.WindowsIntersect(existing.OccupiedWindow(policy), candidateWindow)))
         {
             return new Result<LeaveRequestResult>.Error(
                 "leave.overlaps_approved", "The requested dates overlap an already approved leave.");
@@ -94,7 +113,8 @@ public static class CreateLeaveRequestHandler
         // Fast feedback on the way in. The authoritative check is on approval — a quota lowered
         // while this request sits pending must not be approvable past.
         var overQuota = await LeaveQuotaGuard.CheckAsync(
-            employee, type, startDate, endDate, leaveRequests, today, ct);
+            employee, type, startDate, endDate, command.HalfDay, command.StartHour, command.EndHour, policy,
+            leaveRequests, today, ct);
         if (overQuota is { } violation)
         {
             return new Result<LeaveRequestResult>.Error(violation.Code, violation.Message);
@@ -111,6 +131,10 @@ public static class CreateLeaveRequestHandler
                 endDate,
                 command.Reason,
                 command.Attachment,
+                command.HalfDay,
+                command.HalfDayPeriod,
+                command.StartHour,
+                command.EndHour,
                 command.Caller.UserId,
                 now);
 
@@ -138,6 +162,7 @@ public static class CreateLeaveRequestHandler
         return new Result<LeaveRequestResult>.Success(
             LeaveRequestResult.From(
                 request,
+                policy,
                 // Single-request responses do not run the yearly rollup query.
                 approvedWorkdaysThisYear: null,
                 employeeFullName: employee.FullName,

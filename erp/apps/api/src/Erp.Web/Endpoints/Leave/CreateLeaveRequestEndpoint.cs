@@ -64,9 +64,35 @@ public sealed class CreateLeaveRequestEndpoint : Endpoint<CreateLeaveRequestRequ
             }
 
             await using var stream = upload.OpenReadStream();
+
+            // The Content-Type header is just a string the client typed in — trusting it alone
+            // would let anyone store an arbitrary file under a spoofed "application/pdf". The
+            // file's own leading bytes don't lie the same way.
+            var header = new byte[LeaveAttachment.SignatureBytesToRead];
+            var headerLength = await stream.ReadAsync(header.AsMemory(0, header.Length), ct);
+            if (!LeaveAttachment.MatchesSignature(upload.ContentType, header.AsSpan(0, headerLength)))
+            {
+                throw new DomainException(
+                    "leave.attachment_type", "The file must be a PDF, JPEG, or PNG.");
+            }
+
+            stream.Position = 0;
             var storageKey = await _attachments.SaveAsync(stream, upload.FileName, ct);
             attachment = LeaveAttachment.Create(
                 storageKey, upload.FileName, upload.ContentType, upload.Length);
+        }
+
+        HalfDayPeriod? halfDayPeriod = null;
+        if (!string.IsNullOrWhiteSpace(req.HalfDayPeriod))
+        {
+            if (!Enum.TryParse<HalfDayPeriod>(req.HalfDayPeriod, ignoreCase: true, out var parsedPeriod)
+                || !Enum.IsDefined(parsedPeriod))
+            {
+                throw new DomainException(
+                    "leave.half_day_period", "Half-day period must be Morning or Afternoon.");
+            }
+
+            halfDayPeriod = parsedPeriod;
         }
 
         var result = await _bus.InvokeAsync<Result<LeaveRequestResult>>(new CreateLeaveRequestCommand(
@@ -76,6 +102,10 @@ public sealed class CreateLeaveRequestEndpoint : Endpoint<CreateLeaveRequestRequ
             req.EndDate,
             req.Reason,
             attachment,
+            req.HalfDay,
+            halfDayPeriod,
+            req.StartHour,
+            req.EndHour,
             caller), ct);
 
         // The file is written before the request is validated, so anything short of success

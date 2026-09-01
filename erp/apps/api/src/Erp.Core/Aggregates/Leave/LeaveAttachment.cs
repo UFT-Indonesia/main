@@ -25,6 +25,41 @@ public sealed record LeaveAttachment(
     /// <summary>Longest filename kept. Anything longer is truncated rather than rejected.</summary>
     public const int FileNameMaxLength = 200;
 
+    /// <summary>
+    /// Magic-number signatures for each allowed content type. A client's declared Content-Type
+    /// header is just a string it typed in — checking it alone lets anyone store, say, an HTML
+    /// file under "application/pdf". The actual bytes don't lie the same way.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, byte[][]> SignaturesByContentType =
+        new Dictionary<string, byte[][]>
+        {
+            ["application/pdf"] = [[0x25, 0x50, 0x44, 0x46]], // "%PDF"
+            ["image/jpeg"] = [[0xFF, 0xD8, 0xFF]],
+            ["image/png"] = [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
+        };
+
+    /// <summary>Longest signature above, so callers know how many leading bytes to read.</summary>
+    public const int SignatureBytesToRead = 8;
+
+    /// <summary>True when the file's own leading bytes match what <paramref name="contentType"/> claims.</summary>
+    public static bool MatchesSignature(string contentType, ReadOnlySpan<byte> header)
+    {
+        if (!SignaturesByContentType.TryGetValue(contentType, out var signatures))
+        {
+            return false;
+        }
+
+        foreach (var signature in signatures)
+        {
+            if (header.Length >= signature.Length && header[..signature.Length].SequenceEqual(signature))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static LeaveAttachment Create(
         string storageKey, string fileName, string contentType, long sizeBytes)
     {

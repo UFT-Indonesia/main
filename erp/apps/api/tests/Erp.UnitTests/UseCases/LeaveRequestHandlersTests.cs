@@ -1,4 +1,5 @@
 using Ardalis.Specification;
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
@@ -23,6 +24,7 @@ public class LeaveRequestHandlersTests
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
     private readonly IRepository<LeaveRequest> _leaveRequests = Substitute.For<IRepository<LeaveRequest>>();
     private readonly IClock _clock = Substitute.For<IClock>();
+    private readonly AttendanceDayPolicy _policy = TestPolicies.Standard;
     private readonly IMessageBus _bus = Substitute.For<IMessageBus>();
 
     private readonly Employee _owner;
@@ -74,18 +76,23 @@ public class LeaveRequestHandlersTests
         new DateOnly(2026, 8, 7),
         "acara keluarga",
         null,
-        caller);
+        HalfDay: false,
+        HalfDayPeriod: null,
+        StartHour: null,
+        EndHour: null,
+        Caller: caller);
 
     private Task<Result<LeaveRequestResult>> CreateAsync(Employee subject, Caller caller) =>
         CreateLeaveRequestHandler.Handle(
-            CommandFor(subject, caller), _employees, _leaveRequests, _clock, _bus, CancellationToken.None);
+            CommandFor(subject, caller), _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
 
     private LeaveRequest PendingFor(Employee subject, Guid requestedByUserId)
     {
         var request = LeaveRequest.Create(
             subject.Id, LeaveType.Annual,
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 7),
-            "cuti", null, requestedByUserId, Now);
+            "cuti", null, halfDay: false, halfDayPeriod: null, startHour: null, endHour: null,
+            requestedByUserId, Now);
         _leaveRequests.FirstOrDefaultAsync(Arg.Any<ISpecification<LeaveRequest>>(), Arg.Any<CancellationToken>())
             .Returns(request);
         return request;
@@ -184,7 +191,7 @@ public class LeaveRequestHandlersTests
         var command = CommandFor(_staff, _staffCaller) with { Type = "Vacation" };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, _clock, _bus, CancellationToken.None);
+            command, _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
             .Which.Code.Should().Be("leave.type");
@@ -196,7 +203,7 @@ public class LeaveRequestHandlersTests
         var command = CommandFor(_staff, _staffCaller) with { EmployeeId = Guid.NewGuid() };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, _clock, _bus, CancellationToken.None);
+            command, _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.NotFound>();
     }
@@ -228,13 +235,62 @@ public class LeaveRequestHandlersTests
     [Fact]
     public async Task Create_rejects_overlap_with_approved_leave()
     {
-        _leaveRequests.AnyAsync(Arg.Any<ApprovedLeaveOverlappingSpec>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        // A full-day approved request occupies the whole shift, so it conflicts with anything.
+        var existing = PendingFor(_staff, requestedByUserId: Guid.NewGuid());
+        existing.Approve(Guid.NewGuid(), "Owner Utama", Now);
+        _leaveRequests.ListAsync(Arg.Any<ApprovedLeaveOverlappingSpec>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LeaveRequest> { existing });
 
         var result = await CreateAsync(_staff, _staffCaller);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
             .Which.Code.Should().Be("leave.overlaps_approved");
+    }
+
+    [Fact]
+    public async Task A_morning_half_day_and_an_afternoon_izin_on_the_same_date_do_not_conflict()
+    {
+        var morningHalfDay = LeaveRequest.Create(
+            _staff.Id, LeaveType.Annual,
+            new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
+            "acara pagi", null, halfDay: true, halfDayPeriod: HalfDayPeriod.Morning,
+            startHour: null, endHour: null, Guid.NewGuid(), Now);
+        morningHalfDay.Approve(Guid.NewGuid(), "Owner Utama", Now);
+
+        _leaveRequests.ListAsync(Arg.Any<ApprovedLeaveOverlappingSpec>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LeaveRequest> { morningHalfDay });
+
+        var command = CommandFor(_staff, _staffCaller) with
+        {
+            Type = "Permission",
+            StartDate = new DateOnly(2026, 8, 3),
+            EndDate = new DateOnly(2026, 8, 3),
+            StartHour = 14,
+            EndHour = 16,
+        };
+
+        var result = await CreateLeaveRequestHandler.Handle(
+            command, _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
+
+        result.Should().BeOfType<Result<LeaveRequestResult>.Success>();
+    }
+
+    [Fact]
+    public async Task Create_rejects_hourly_izin_longer_than_the_configured_max()
+    {
+        // TestPolicies.Standard caps Izin at 4 hours; 13:00-18:00 is 5.
+        var command = CommandFor(_staff, _staffCaller) with
+        {
+            Type = "Permission",
+            StartHour = 13,
+            EndHour = 18,
+        };
+
+        var result = await CreateLeaveRequestHandler.Handle(
+            command, _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
+
+        result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
+            .Which.Code.Should().Be("leave.izin_hours_exceeded");
     }
 
     [Fact]
@@ -256,7 +312,7 @@ public class LeaveRequestHandlersTests
     private Task<Result<LeaveRequestResult>> ApproveAsync(LeaveRequest request, Caller caller) =>
         ApproveLeaveRequestHandler.Handle(
             new ApproveLeaveRequestCommand(request.Id.Value, caller),
-            _leaveRequests, _employees, _clock, _bus, CancellationToken.None);
+            _leaveRequests, _employees, _policy, _clock, _bus, CancellationToken.None);
 
     [Fact]
     public async Task A_managers_own_staff_leave_is_approvable_by_that_manager()
@@ -338,7 +394,7 @@ public class LeaveRequestHandlersTests
 
         var result = await DenyLeaveRequestHandler.Handle(
             new DenyLeaveRequestCommand(Guid.NewGuid(), _ownerCaller, null),
-            _leaveRequests, _employees, _clock, _bus, CancellationToken.None);
+            _leaveRequests, _employees, _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.NotFound>();
     }
@@ -348,7 +404,7 @@ public class LeaveRequestHandlersTests
     private Task<Result<LeaveRequestResult>> CancelAsync(LeaveRequest request, Caller caller, string? note) =>
         CancelLeaveRequestHandler.Handle(
             new CancelLeaveRequestCommand(request.Id.Value, caller, note),
-            _leaveRequests, _employees, _clock, _bus, CancellationToken.None);
+            _leaveRequests, _employees, _policy, _clock, _bus, CancellationToken.None);
 
     [Fact]
     public async Task The_subject_can_cancel_their_own_approved_leave()

@@ -30,6 +30,10 @@ public class EmployeeTerminatedLeaveHandlerTests
         new LocalDate(2026, 9, 4),
         "cuti",
         null,
+        halfDay: false,
+        halfDayPeriod: null,
+        startHour: null,
+        endHour: null,
         Guid.NewGuid(),
         Now);
 

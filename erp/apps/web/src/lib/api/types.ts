@@ -325,6 +325,7 @@ export type LeaveRequestStatus = 'Pending' | 'Approved' | 'Denied' | 'Cancelled'
 /** Server-side pseudo-status: Pending or Approved, i.e. everything still standing. */
 export type LeaveStatusFilter = LeaveRequestStatus | 'Open';
 export type LeaveCancellationReason = 'WithdrawnByEmployee' | 'RecalledForWork';
+export type HalfDayPeriod = 'Morning' | 'Afternoon';
 
 export interface LeaveRequest {
   id: string;
@@ -345,9 +346,20 @@ export interface LeaveRequest {
   decidedByName: string | null;
   decidedAtUtc: string | null;
   decisionNote: string | null;
+  /**
+   * Annual's own toggle. `halfDayPeriod` says which half when true. False/null when the
+   * caller may not read this request's details — same gate as `type`.
+   */
+  halfDay: boolean;
+  halfDayPeriod: HalfDayPeriod | null;
+  /** Izin's own toggle. Both set together, null when hidden or on any other request. */
+  startHour: number | null;
+  endHour: number | null;
+  /** Quota this request actually spends. Null when the caller may not read this request's details. */
+  chargedDays: number | null;
   /** Set only once status is Cancelled. */
   cancellationReason: LeaveCancellationReason | null;
-  /** Total approved workdays away this year, all types. Null when the caller may not read the balance. */
+  /** Total approved quota spent this year, all types. Null when the caller may not read the balance. */
   approvedWorkdaysThisYear: number | null;
   /**
    * What is actually enforced for this request's own type. Null when the caller may not read
@@ -443,6 +455,12 @@ export interface CreateLeaveRequestBody {
   reason: string;
   /** Required for Sick, rejected for every other type. Sent as multipart, not JSON. */
   attachment?: File | null;
+  /** Annual's own toggle. */
+  halfDay?: boolean;
+  halfDayPeriod?: HalfDayPeriod | null;
+  /** Izin's own toggle. Both required together, whole hours, 12:00 excluded. */
+  startHour?: number | null;
+  endHour?: number | null;
 }
 
 /** What the API says about a stored attachment. The bytes come from a separate download call. */
@@ -452,14 +470,23 @@ export interface LeaveAttachment {
   sizeBytes: number;
 }
 
-/** One approved leave span, inclusive both ends. Dates only — no type, no reason. */
-export interface BlockedLeaveRange {
-  startDate: string;
-  endDate: string;
+/**
+ * Which dates in a window are blocked for one employee, given the request currently being
+ * built. `blockedDates` genuinely conflict and must not be selectable; `partialDates` carry an
+ * approved leave that doesn't conflict with the candidate window — selectable, but worth a
+ * visual hint. Both are "YYYY-MM-DD".
+ */
+export interface BlockedLeaveDatesResponse {
+  blockedDates: string[];
+  partialDates: string[];
 }
 
-export interface BlockedLeaveDatesResponse {
-  ranges: BlockedLeaveRange[];
+/** The in-progress request's own shape, so the picker can tell what actually conflicts. */
+export interface BlockedLeaveDatesParams {
+  halfDay?: boolean;
+  halfDayPeriod?: HalfDayPeriod | null;
+  startHour?: number | null;
+  endHour?: number | null;
 }
 
 export interface AttendancePolicy {
@@ -471,6 +498,8 @@ export interface AttendancePolicy {
   clockOutGraceMinutes: number;
   /** IANA time zone id (e.g. "Asia/Jakarta"). */
   timeZoneId: string;
+  /** Longest span, in hours, an hourly Izin may cover. */
+  maxIzinHours: number;
   updatedByUserId: string;
   updatedAtUtc: string;
 }
@@ -481,4 +510,5 @@ export interface UpdateAttendancePolicyBody {
   clockInGraceMinutes: number;
   clockOutGraceMinutes: number;
   timeZoneId: string;
+  maxIzinHours: number;
 }

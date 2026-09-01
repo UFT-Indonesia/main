@@ -77,7 +77,7 @@ internal sealed record HireDateAuditValue(DateOnly? HireDate);
 internal sealed record ProbationEndAuditValue(DateOnly? ProbationEndsOn);
 
 /// <summary>Null days means no override — the default entitlement applies.</summary>
-internal sealed record LeaveQuotaAuditValue(string LeaveType, int? EntitledDays);
+internal sealed record LeaveQuotaAuditValue(string LeaveType, decimal? EntitledDays);
 
 internal sealed record CreatedAuditValue(
     string FullName,

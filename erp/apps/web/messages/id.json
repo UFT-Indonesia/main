@@ -267,6 +267,7 @@
       "clockOutGraceMinutes": "Toleransi pulang (menit)",
       "timeZoneId": "Zona waktu",
       "timeZoneIdPlaceholder": "cth. Asia/Jakarta",
+      "maxIzinHours": "Max Jam Izin",
       "save": "Simpan perubahan"
     },
     "successTitle": "Kebijakan diperbarui",
@@ -325,7 +326,15 @@
       "successDescription": "Permintaan cuti berhasil dibuat.",
       "errorTitle": "Gagal mengajukan permintaan",
       "attachment": "Surat Dokter",
-      "attachmentHint": "PDF, JPG atau PNG · maks 10MB"
+      "attachmentHint": "PDF, JPG atau PNG · maks 10MB",
+      "halfDayLabel": "Setengah Hari",
+      "periodMorning": "Pagi",
+      "periodAfternoon": "Siang",
+      "hourlyLabel": "Per Jam",
+      "startHour": "Jam Mulai",
+      "endHour": "Jam Selesai",
+      "chargePreviewHalfDay": "{workdays} hari kerja × setengah hari = {days} hari dipotong dari kuota",
+      "chargePreviewHourly": "{workdays} hari kerja × {hours} jam = {days} hari dipotong dari kuota"
     },
     "decide": {
       "note": "Catatan",
@@ -363,7 +372,8 @@
       "hidden": "Tidak ditampilkan",
       "quota": "Kuota jenis ini",
       "attachment": "Surat Dokter",
-      "attachmentError": "Gagal mengunduh berkas"
+      "attachmentError": "Gagal mengunduh berkas",
+      "chargedDays": "Rincian Jenis"
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"

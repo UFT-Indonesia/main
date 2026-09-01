@@ -53,6 +53,10 @@ public sealed class AttendancePolicyConfiguration : IEntityTypeConfiguration<Att
             .HasMaxLength(64)
             .IsRequired();
 
+        builder.Property(policy => policy.MaxIzinHours)
+            .HasColumnName("max_izin_hours")
+            .IsRequired();
+
         builder.Property(policy => policy.UpdatedByUserId)
             .HasColumnName("updated_by_user_id")
             .IsRequired();

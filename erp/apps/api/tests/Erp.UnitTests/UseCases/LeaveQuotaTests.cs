@@ -176,6 +176,10 @@ public class LeaveQuotaTests
             new LocalDate(2027, 1, 8),
             "cuti",
             null,
+            halfDay: false,
+            halfDayPeriod: null,
+            startHour: null,
+            endHour: null,
             Guid.NewGuid(),
             Instant.FromUtc(2026, 12, 1, 0, 0));
 
@@ -191,18 +195,19 @@ public class LeaveQuotaTests
         var annual = LeaveRequest.Create(
             employeeId, LeaveType.Annual,
             new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 6),
-            "cuti", null, Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
+            "cuti", null, halfDay: false, halfDayPeriod: null, startHour: null, endHour: null,
+            Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
         var sick = LeaveRequest.Create(
             employeeId, LeaveType.Sick,
             new LocalDate(2026, 4, 6), new LocalDate(2026, 4, 7),
-            "sakit", TestAttachments.DoctorsNote(), Guid.NewGuid(),
-            Instant.FromUtc(2026, 1, 1, 0, 0));
+            "sakit", TestAttachments.DoctorsNote(), halfDay: false, halfDayPeriod: null,
+            startHour: null, endHour: null, Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
 
         LeaveRequest[] approved = [annual, sick];
 
-        LeaveQuota.UsedDays(approved, LeaveType.Annual, 2026).Should().Be(5);
-        LeaveQuota.UsedDays(approved, LeaveType.Sick, 2026).Should().Be(2);
-        LeaveQuota.UsedDaysAllTypes(approved, 2026).Should().Be(7);
-        LeaveQuota.UsedDaysAllTypes(approved, 2025).Should().Be(0);
+        LeaveQuota.UsedDays(approved, LeaveType.Annual, 2026, TestPolicies.Standard).Should().Be(5);
+        LeaveQuota.UsedDays(approved, LeaveType.Sick, 2026, TestPolicies.Standard).Should().Be(2);
+        LeaveQuota.UsedDaysAllTypes(approved, 2026, TestPolicies.Standard).Should().Be(7);
+        LeaveQuota.UsedDaysAllTypes(approved, 2025, TestPolicies.Standard).Should().Be(0);
     }
 }

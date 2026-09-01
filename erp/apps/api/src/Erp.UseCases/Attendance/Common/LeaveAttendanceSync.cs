@@ -28,15 +28,25 @@ public static class LeaveAttendanceSync
     /// <paramref name="startDate"/>. If that day already has a row it is left alone — a real
     /// punch outranks the leave, the day is already in the table, and the unique
     /// (employee, date) index would reject the insert anyway.
+    ///
+    /// <paramref name="isFractional"/> (a half day or hourly Izin) skips materialization
+    /// entirely: the employee is expected to work the rest of that day, so attendance stays
+    /// exactly whatever their real punches say — this exists purely as a quota deduction.
     /// </remarks>
     public static async Task MaterializeAsync(
         LeaveRequestId leaveRequestId,
         EmployeeId employeeId,
         LocalDate startDate,
         LocalDate endDate,
+        bool isFractional,
         IRepository<AttendanceDay> attendanceDays,
         CancellationToken ct)
     {
+        if (isFractional)
+        {
+            return;
+        }
+
         var firstWorkday = LeaveRequest.Workdays(startDate, endDate)
             .Select(date => (LocalDate?)date)
             .FirstOrDefault();
@@ -128,7 +138,7 @@ public static class LeaveAttendanceSync
         }
 
         var onLeave = await leaveRequests.AnyAsync(
-            new ApprovedLeaveOverlappingSpec(employeeId, today, today), ct);
+            new FullDayApprovedLeaveOnDateSpec(employeeId, today), ct);
 
         if ((employee.Status == EmployeeStatus.OnLeave) == onLeave)
         {
@@ -158,6 +168,7 @@ public static class LeaveRequestApprovedHandler
             employeeId,
             message.StartDate,
             message.EndDate,
+            message.IsFractional,
             attendanceDays,
             ct);
 

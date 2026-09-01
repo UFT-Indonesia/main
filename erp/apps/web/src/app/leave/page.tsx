@@ -30,7 +30,7 @@ import { useEmployees } from '@/hooks/use-employees';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
-import type { LeaveRequest, LeaveStatusFilter, LeaveType } from '@/lib/api/types';
+import type { HalfDayPeriod, LeaveRequest, LeaveStatusFilter, LeaveType } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 const STATUSES: LeaveStatusFilter[] = ['Open', 'Pending', 'Approved', 'Denied', 'Cancelled'];
@@ -83,11 +83,16 @@ export default function LeavePage() {
     endDate: string,
     reason: string,
     attachment: File | null,
+    halfDay: boolean,
+    halfDayPeriod: HalfDayPeriod | null,
+    startHour: number | null,
+    endHour: number | null,
   ) => {
     setAttachmentError(null);
     try {
       await createMutation.mutateAsync({
         employeeId: empId, type, startDate, endDate, reason, attachment,
+        halfDay, halfDayPeriod, startHour, endHour,
       });
       toast.success(t('create.successTitle'), t('create.successDescription'));
       setCreateOpen(false);

@@ -25,6 +25,7 @@ public class UpdateAttendancePolicyHandlerTests
         clockInGraceMinutes: 5,
         clockOutGraceMinutes: 5,
         "Asia/Jakarta",
+        maxIzinHours: 4,
         Guid.Empty,
         Instant.FromUtc(2026, 1, 1, 0, 0));
 
@@ -35,7 +36,7 @@ public class UpdateAttendancePolicyHandlerTests
             .Returns((AttendancePolicy?)null);
 
         var result = await UpdateAttendancePolicyHandler.Handle(
-            new UpdateAttendancePolicyCommand("08:00", "17:00", 5, 5, "Asia/Jakarta", Guid.NewGuid()),
+            new UpdateAttendancePolicyCommand("08:00", "17:00", 5, 5, "Asia/Jakarta", 4, Guid.NewGuid()),
             _policies,
             _histories,
             _clock,
@@ -49,7 +50,7 @@ public class UpdateAttendancePolicyHandlerTests
     public async Task Handle_returns_error_for_unparsable_shift_time()
     {
         var result = await UpdateAttendancePolicyHandler.Handle(
-            new UpdateAttendancePolicyCommand("not-a-time", "17:00", 5, 5, "Asia/Jakarta", Guid.NewGuid()),
+            new UpdateAttendancePolicyCommand("not-a-time", "17:00", 5, 5, "Asia/Jakarta", 4, Guid.NewGuid()),
             _policies,
             _histories,
             _clock,
@@ -68,7 +69,7 @@ public class UpdateAttendancePolicyHandlerTests
         _clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 1, 2, 0, 0));
 
         var act = () => UpdateAttendancePolicyHandler.Handle(
-            new UpdateAttendancePolicyCommand("18:00", "09:00", 5, 5, "Asia/Jakarta", Guid.NewGuid()),
+            new UpdateAttendancePolicyCommand("18:00", "09:00", 5, 5, "Asia/Jakarta", 4, Guid.NewGuid()),
             _policies,
             _histories,
             _clock,
@@ -87,7 +88,7 @@ public class UpdateAttendancePolicyHandlerTests
         _clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 1, 2, 0, 0));
 
         var act = () => UpdateAttendancePolicyHandler.Handle(
-            new UpdateAttendancePolicyCommand("18:00", "09:00", 5, 5, "Asia/Jakarta", Guid.NewGuid()),
+            new UpdateAttendancePolicyCommand("18:00", "09:00", 5, 5, "Asia/Jakarta", 4, Guid.NewGuid()),
             _policies,
             _histories,
             _clock,
@@ -116,7 +117,7 @@ public class UpdateAttendancePolicyHandlerTests
             .Returns(callInfo => callInfo.Arg<AttendancePolicyHistory>());
 
         var result = await UpdateAttendancePolicyHandler.Handle(
-            new UpdateAttendancePolicyCommand("08:00", "17:00", 10, 10, "Asia/Makassar", changedBy),
+            new UpdateAttendancePolicyCommand("08:00", "17:00", 10, 10, "Asia/Makassar", 6, changedBy),
             _policies,
             _histories,
             _clock,
@@ -132,12 +133,14 @@ public class UpdateAttendancePolicyHandlerTests
         capturedHistory.ClockInGraceMinutes.Should().Be(5);
         capturedHistory.ClockOutGraceMinutes.Should().Be(5);
         capturedHistory.TimeZoneId.Should().Be("Asia/Jakarta");
+        capturedHistory.MaxIzinHours.Should().Be(4);
         capturedHistory.ChangedByUserId.Should().Be(changedBy);
         capturedHistory.ChangedAtUtc.Should().Be(now);
 
         // The aggregate itself now holds the NEW values.
         policy.ShiftStart.Should().Be(new LocalTime(8, 0));
         policy.TimeZoneId.Should().Be("Asia/Makassar");
+        policy.MaxIzinHours.Should().Be(6);
 
         await _policies.Received(1).UpdateAsync(policy, Arg.Any<CancellationToken>());
         await _bus.Received(1).PublishAsync(Arg.Any<AttendancePolicyUpdated>());

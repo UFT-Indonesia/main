@@ -2,6 +2,7 @@ using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave.Events;
 using Erp.SharedKernel.Domain;
 using Erp.SharedKernel.Domain.Errors;
+using Erp.Core.Aggregates.Attendance;
 using Erp.SharedKernel.Identity;
 using NodaTime;
 
@@ -29,6 +30,18 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     /// <summary>Stands in for a human decider on decisions the system makes on its own.</summary>
     public const string SystemDecider = "System";
 
+    /// <summary>
+    /// The lunch break every partial request is measured against: a half-day's Morning/Afternoon
+    /// split, and the "must stay on one side" rule for hourly Izin. Fixed rather than read from
+    /// <see cref="AttendancePolicy"/>, which has no lunch field —
+    /// only shift start/end.
+    /// </summary>
+    public static readonly LocalTime LunchStart = new(12, 0);
+    public static readonly LocalTime LunchEnd = new(13, 0);
+
+    /// <summary>The hour values <see cref="StartHour"/>/<see cref="EndHour"/> may take. 12 excluded.</summary>
+    public static readonly IReadOnlyCollection<int> AllowedHourlyBoundaries = [9, 10, 11, 13, 14, 15, 16, 17, 18];
+
     // EF Core constructor.
     private LeaveRequest() { }
 
@@ -41,6 +54,10 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         int workdayCount,
         string reason,
         LeaveAttachment? attachment,
+        bool halfDay,
+        HalfDayPeriod? halfDayPeriod,
+        int? startHour,
+        int? endHour,
         Guid requestedByUserId,
         Instant requestedAtUtc)
         : base(id)
@@ -52,6 +69,10 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         WorkdayCount = workdayCount;
         Reason = reason;
         Attachment = attachment;
+        HalfDay = halfDay;
+        Period = halfDayPeriod;
+        StartHour = startHour;
+        EndHour = endHour;
         Status = LeaveRequestStatus.Pending;
         RequestedByUserId = requestedByUserId;
         RequestedAtUtc = requestedAtUtc;
@@ -80,6 +101,19 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     /// <see cref="Create"/>. Null on requests filed before attachments existed.
     /// </summary>
     public LeaveAttachment? Attachment { get; private set; }
+
+    /// <summary>Half-day, Annual only. When true, <see cref="HalfDayPeriod"/> says which half.</summary>
+    public bool HalfDay { get; private set; }
+
+    public HalfDayPeriod? Period { get; private set; }
+
+    /// <summary>
+    /// Whole-hour bounds of an hourly Izin, both from <see cref="AllowedHourlyBoundaries"/> and
+    /// on the same side of the lunch hour. Null on every request that isn't hourly Izin.
+    /// </summary>
+    public int? StartHour { get; private set; }
+
+    public int? EndHour { get; private set; }
 
     public LeaveRequestStatus Status { get; private set; }
 
@@ -110,6 +144,10 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         LocalDate endDate,
         string reason,
         LeaveAttachment? attachment,
+        bool halfDay,
+        HalfDayPeriod? halfDayPeriod,
+        int? startHour,
+        int? endHour,
         Guid requestedByUserId,
         Instant requestedAtUtc)
     {
@@ -162,6 +200,60 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
                 "leave.attachment_not_allowed", $"{type} leave does not take a supporting document.");
         }
 
+        // Half-day is Annual's own toggle; every other type must leave both fields alone.
+        if (halfDay && type != LeaveType.Annual)
+        {
+            throw new DomainException(
+                "leave.half_day_not_allowed", $"{type} leave cannot be filed as a half day.");
+        }
+
+        if (halfDay != halfDayPeriod.HasValue)
+        {
+            throw new DomainException(
+                "leave.half_day_period", "A half-day request requires choosing Morning or Afternoon.");
+        }
+
+        // Hourly is Izin's own toggle; every other type must leave both hours alone.
+        var hourly = startHour.HasValue || endHour.HasValue;
+        if (hourly && type != LeaveType.Permission)
+        {
+            throw new DomainException(
+                "leave.hourly_not_allowed", $"{type} leave cannot be filed as hourly.");
+        }
+
+        if (hourly)
+        {
+            // The same clock-hour range is charged on every workday in [startDate, endDate] —
+            // see ChargePerWorkday.
+            if (startHour is not { } sh || endHour is not { } eh)
+            {
+                throw new DomainException(
+                    "leave.hourly_range_incomplete", "Hourly Izin requires both a start and an end hour.");
+            }
+
+            if (!AllowedHourlyBoundaries.Contains(sh) || !AllowedHourlyBoundaries.Contains(eh))
+            {
+                throw new DomainException(
+                    "leave.hourly_range_invalid", "Start and end hour must be whole hours between 09:00 and " +
+                    "18:00, excluding the 12:00 lunch hour.");
+            }
+
+            if (sh >= eh)
+            {
+                throw new DomainException(
+                    "leave.hourly_range_invalid", "Start hour must be before end hour.");
+            }
+
+            var bothMorning = sh < LunchStart.Hour && eh <= LunchStart.Hour;
+            var bothAfternoon = sh >= LunchEnd.Hour && eh >= LunchEnd.Hour;
+            if (!bothMorning && !bothAfternoon)
+            {
+                throw new DomainException(
+                    "leave.hourly_range_crosses_lunch",
+                    "Start and end hour must both fall before or both fall after the lunch hour.");
+            }
+        }
+
         return new LeaveRequest(
             LeaveRequestId.New(),
             employeeId,
@@ -171,6 +263,10 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
             workdays,
             trimmedReason,
             attachment,
+            halfDay,
+            halfDayPeriod,
+            hourly ? startHour : null,
+            hourly ? endHour : null,
             requestedByUserId,
             requestedAtUtc);
     }
@@ -180,7 +276,8 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         EnsurePending("approve");
         SetDecision(decidedByUserId, decidedByName, nowUtc, null);
         Status = LeaveRequestStatus.Approved;
-        RaiseDomainEvent(new LeaveRequestApproved(Id.Value, EmployeeId.Value, StartDate, EndDate));
+        RaiseDomainEvent(new LeaveRequestApproved(
+            Id.Value, EmployeeId.Value, StartDate, EndDate, IsFractional: HalfDay || StartHour is not null));
     }
 
     public void Deny(Guid decidedByUserId, string decidedByName, Instant nowUtc, string? note)
@@ -238,6 +335,78 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     /// <summary>True when this request's date range overlaps the given inclusive range.</summary>
     public bool Overlaps(LocalDate startDate, LocalDate endDate) =>
         StartDate <= endDate && startDate <= EndDate;
+
+    /// <summary>
+    /// The hours of the shift this request actually occupies, once approved. A plain full-day
+    /// request (Sick, Unpaid, non-half Annual, non-hourly Izin) occupies the whole shift; a
+    /// half-day occupies whichever side of lunch it named; an hourly Izin occupies exactly its
+    /// own range. Two approved requests conflict only when these windows actually intersect —
+    /// see ApprovedLeaveOverlappingSpec's use in CreateLeaveRequestHandler.
+    /// </summary>
+    public (LocalTime Start, LocalTime End) OccupiedWindow(AttendanceDayPolicy policy) =>
+        OccupiedWindow(HalfDay, Period, StartHour, EndHour, policy);
+
+    /// <summary>
+    /// Static twin of the instance method, for checking a candidate request against approved
+    /// ones before it has been constructed — see its use in CreateLeaveRequestHandler.
+    /// </summary>
+    public static (LocalTime Start, LocalTime End) OccupiedWindow(
+        bool halfDay, HalfDayPeriod? period, int? startHour, int? endHour, AttendanceDayPolicy policy)
+    {
+        if (startHour is { } sh && endHour is { } eh)
+        {
+            return (new LocalTime(sh, 0), new LocalTime(eh, 0));
+        }
+
+        if (halfDay)
+        {
+            return period == HalfDayPeriod.Morning
+                ? (policy.ShiftStart, LunchStart)
+                : (LunchEnd, policy.ShiftEnd);
+        }
+
+        return (policy.ShiftStart, policy.ShiftEnd);
+    }
+
+    /// <summary>True when two occupied windows share any time at all.</summary>
+    public static bool WindowsIntersect(
+        (LocalTime Start, LocalTime End) a, (LocalTime Start, LocalTime End) b) =>
+        a.Start < b.End && b.Start < a.End;
+
+    /// <summary>
+    /// Quota this request spends for each workday it covers: 1 for a plain request, 0.5 for a
+    /// half day, or the hourly range as a fraction of a net working day (shift length minus the
+    /// one-hour lunch — lunch isn't work time, so a full day of hours taken is a full day charged).
+    /// </summary>
+    public decimal ChargePerWorkday(AttendanceDayPolicy policy) =>
+        ChargePerWorkday(HalfDay, StartHour, EndHour, policy);
+
+    /// <summary>
+    /// Static so <c>LeaveQuotaGuard</c> can price a request before one is ever constructed —
+    /// the fast, pre-creation quota check runs on raw form fields, not a built aggregate.
+    /// </summary>
+    public static decimal ChargePerWorkday(
+        bool halfDay, int? startHour, int? endHour, AttendanceDayPolicy policy)
+    {
+        if (halfDay)
+        {
+            return 0.5m;
+        }
+
+        if (startHour is { } sh && endHour is { } eh)
+        {
+            var netMinutes = MinutesOfDay(policy.ShiftEnd) - MinutesOfDay(policy.ShiftStart) - 60;
+            var takenMinutes = (eh - sh) * 60;
+            return (decimal)takenMinutes / netMinutes;
+        }
+
+        return 1m;
+    }
+
+    /// <summary>Total quota this request spends across every workday it covers, once approved.</summary>
+    public decimal TotalCharge(AttendanceDayPolicy policy) => WorkdayCount * ChargePerWorkday(policy);
+
+    private static int MinutesOfDay(LocalTime time) => time.Hour * 60 + time.Minute;
 
     // Workweek hardcoded to Mon–Fri; lift into AttendancePolicy when the
     // office's working days actually vary (Saturday shifts, etc.).
