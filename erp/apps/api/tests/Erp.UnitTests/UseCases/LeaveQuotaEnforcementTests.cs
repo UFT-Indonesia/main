@@ -75,16 +75,22 @@ public class LeaveQuotaEnforcementTests
 
     private static LeaveRequest ApprovedLeave(Employee subject, LeaveType type, LocalDate start, LocalDate end)
     {
-        var request = LeaveRequest.Create(subject.Id, type, start, end, "cuti", Guid.NewGuid(), Now);
+        var request = LeaveRequest.Create(
+            subject.Id, type, start, end, "cuti", AttachmentFor(type), Guid.NewGuid(), Now);
         request.Approve(Guid.NewGuid(), "Owner Utama", Now);
         return request;
     }
+
+    /// <summary>Sick leave will not construct without a document; nothing else may carry one.</summary>
+    private static LeaveAttachment? AttachmentFor(LeaveType type) =>
+        type == LeaveType.Sick ? TestAttachments.DoctorsNote() : null;
 
     private Task<Result<LeaveRequestResult>> FileAsync(
         Employee subject, LeaveType type, DateOnly start, DateOnly end, Caller? caller = null) =>
         CreateLeaveRequestHandler.Handle(
             new CreateLeaveRequestCommand(
-                subject.Id.Value, type.ToString(), start, end, "alasan", caller ?? _managerCaller),
+                subject.Id.Value, type.ToString(), start, end, "alasan", AttachmentFor(type),
+                caller ?? _managerCaller),
             _employees, _leaveRequests, _clock, _bus, CancellationToken.None);
 
     [Fact]

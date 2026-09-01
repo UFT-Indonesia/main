@@ -73,6 +73,7 @@ public class LeaveRequestHandlersTests
         new DateOnly(2026, 8, 3),
         new DateOnly(2026, 8, 7),
         "acara keluarga",
+        null,
         caller);
 
     private Task<Result<LeaveRequestResult>> CreateAsync(Employee subject, Caller caller) =>
@@ -84,7 +85,7 @@ public class LeaveRequestHandlersTests
         var request = LeaveRequest.Create(
             subject.Id, LeaveType.Annual,
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 7),
-            "cuti", requestedByUserId, Now);
+            "cuti", null, requestedByUserId, Now);
         _leaveRequests.FirstOrDefaultAsync(Arg.Any<ISpecification<LeaveRequest>>(), Arg.Any<CancellationToken>())
             .Returns(request);
         return request;
@@ -201,16 +202,27 @@ public class LeaveRequestHandlersTests
     }
 
     [Fact]
-    public async Task Create_rejects_when_pending_request_exists()
+    public async Task Create_rejects_once_the_monthly_pending_limit_is_reached()
     {
-        _leaveRequests.AnyAsync(Arg.Any<PendingLeaveForEmployeeSpec>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        _leaveRequests.CountAsync(Arg.Any<PendingLeaveFiledBetweenSpec>(), Arg.Any<CancellationToken>())
+            .Returns(LeaveRules.MaxPendingRequestsPerMonth);
 
         var result = await CreateAsync(_staff, _staffCaller);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
-            .Which.Code.Should().Be("leave.pending_exists");
+            .Which.Code.Should().Be("leave.pending_limit");
         await _leaveRequests.DidNotReceive().AddAsync(Arg.Any<LeaveRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Create_allows_a_further_request_below_the_monthly_pending_limit()
+    {
+        _leaveRequests.CountAsync(Arg.Any<PendingLeaveFiledBetweenSpec>(), Arg.Any<CancellationToken>())
+            .Returns(LeaveRules.MaxPendingRequestsPerMonth - 1);
+
+        var result = await CreateAsync(_staff, _staffCaller);
+
+        result.Should().BeOfType<Result<LeaveRequestResult>.Success>();
     }
 
     [Fact]
