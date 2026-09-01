@@ -51,6 +51,13 @@ public sealed class LeaveRequestResult
 
     public bool CanCancel { get; init; }
 
+    /// <summary>
+    /// The doctor's note on a Sick request, or null when there is none — or when the caller may
+    /// not read the details. Gated with Reason, not separately: the file is the same health
+    /// data the reason is, and a second rule is a second thing to get wrong.
+    /// </summary>
+    public LeaveAttachmentResult? Attachment { get; init; }
+
     public static LeaveRequestResult From(
         LeaveRequest request,
         int? approvedWorkdaysThisYear = 0,
@@ -68,6 +75,14 @@ public sealed class LeaveRequestResult
         EndDate = request.EndDate.ToDateOnly(),
         WorkdayCount = request.WorkdayCount,
         Reason = canReadDetails ? request.Reason : null,
+        Attachment = canReadDetails && request.Attachment is { } file
+            ? new LeaveAttachmentResult
+            {
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                SizeBytes = file.SizeBytes,
+            }
+            : null,
         Status = request.Status.ToString(),
         RequestedByUserId = request.RequestedByUserId,
         RequestedAtUtc = request.RequestedAtUtc.ToDateTimeOffset(),
@@ -100,4 +115,15 @@ public sealed class LeaveRequestResult
                 && !LeaveRules.IsRequester(caller, request.RequestedByUserId),
             open && LeaveRules.CanCancel(caller, subject));
     }
+}
+
+/// <summary>
+/// What a client is told about an attachment. Deliberately not the storage key — the file is
+/// fetched by leave request id, so the key never has to leave the server.
+/// </summary>
+public sealed class LeaveAttachmentResult
+{
+    public string FileName { get; init; } = default!;
+    public string ContentType { get; init; } = default!;
+    public long SizeBytes { get; init; }
 }

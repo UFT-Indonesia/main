@@ -10,6 +10,14 @@ namespace Erp.UseCases.Leave.Common;
 public static class LeaveRules
 {
     /// <summary>
+    /// How many still-undecided requests one employee may have filed in a calendar month.
+    /// Deciding one frees a slot, so this caps the queue a manager can be handed, not how much
+    /// leave anyone takes — the days themselves are capped by <see cref="LeaveQuota"/>.
+    /// Owners are exempt, as they are from every other leave cap.
+    /// </summary>
+    public const int MaxPendingRequestsPerMonth = 10;
+
+    /// <summary>
     /// Auto-approved when there is nobody left who both outranks the subject and isn't the
     /// filer: an Owner's own leave (nothing outranks an Owner), or any leave an Owner files for
     /// someone else (an Owner could always decide it, but filing excludes the filer from
