@@ -5,13 +5,20 @@ using NodaTime;
 
 namespace Erp.UseCases.Leave.Common;
 
-/// <summary>The employee's open request, if any — at most one Pending is allowed at a time.</summary>
-internal sealed class PendingLeaveForEmployeeSpec : Specification<LeaveRequest>
+/// <summary>
+/// The employee's still-undecided requests filed within the given instant range — the month
+/// the cap in <see cref="LeaveRules.MaxPendingRequestsPerMonth"/> is counted over. Filed date,
+/// not leave date: the cap guards a manager's queue against a flood of submissions, and dates
+/// spread across future months would sail straight past a start-date count.
+/// </summary>
+internal sealed class PendingLeaveFiledBetweenSpec : Specification<LeaveRequest>
 {
-    public PendingLeaveForEmployeeSpec(EmployeeId employeeId)
+    public PendingLeaveFiledBetweenSpec(EmployeeId employeeId, Instant fromInclusive, Instant toExclusive)
     {
         Query.Where(request => request.EmployeeId == employeeId
-                               && request.Status == LeaveRequestStatus.Pending);
+                               && request.Status == LeaveRequestStatus.Pending
+                               && request.RequestedAtUtc >= fromInclusive
+                               && request.RequestedAtUtc < toExclusive);
         Query.AsNoTracking();
     }
 }

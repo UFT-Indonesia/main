@@ -16,6 +16,29 @@ public static class LeaveQuota
     public const int FullAnnualDays = 12;
 
     /// <summary>
+    /// Full-year entitlement for the types that are not prorated by probation. Unlike Annual
+    /// these are flat: someone still on probation with flu gets the same thirty sick days as
+    /// anyone else, because the alternative is an absence that cannot be recorded at all.
+    /// </summary>
+    public const int FullSickDays = 30;
+    public const int FullPermissionDays = 6;
+    public const int FullUnpaidDays = 30;
+
+    /// <summary>
+    /// The company-wide default for a type before any per-employee override. Annual is absent
+    /// here on purpose — it is the only type whose default depends on the employee, so it is
+    /// computed by <see cref="AnnualEntitlement"/> instead.
+    /// </summary>
+    public static int DefaultDays(LeaveType type) => type switch
+    {
+        LeaveType.Sick => FullSickDays,
+        LeaveType.Permission => FullPermissionDays,
+        LeaveType.Unpaid => FullUnpaidDays,
+        LeaveType.Annual => FullAnnualDays,
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown leave type."),
+    };
+
+    /// <summary>
     /// Annual days for the year, prorated by when probation ends. One day per remaining whole
     /// month, so the month probation ends in does not count.
     /// <code>
@@ -37,8 +60,8 @@ public static class LeaveQuota
     }
 
     /// <summary>
-    /// The enforced cap for one type in one year, or null when nothing is capped — an Owner
-    /// (nobody enforces a cap on their behalf), or a non-Annual type with no override.
+    /// The enforced cap for one type in one year, or null when nothing is capped — which now
+    /// means an Owner only, since nobody enforces a cap on an Owner's behalf.
     /// </summary>
     public static int? Entitled(LeaveType type, Employee employee, int year, LocalDate today)
     {
@@ -52,10 +75,10 @@ public static class LeaveQuota
         // Annual and Unpaid are mutually exclusive by probation status — see
         // CreateLeaveRequestHandler, which is where that eligibility is enforced. Sick and
         // Permission are filable throughout: someone on probation with flu still needs to be
-        // able to record the absence. Nothing but Annual is capped here.
+        // able to record the absence, so their cap is the flat default, not a prorated one.
         if (type != LeaveType.Annual)
         {
-            return over;
+            return over ?? DefaultDays(type);
         }
 
         if (employee.IsOnProbation(today))

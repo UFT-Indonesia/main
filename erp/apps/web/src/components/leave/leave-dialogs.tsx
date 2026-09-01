@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Download } from 'lucide-react';
 import {
   Dialog,
   DialogDescription,
@@ -16,8 +17,12 @@ import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { EmployeePicker } from '@/components/employees/employee-picker';
 import { DateRangePickerField } from '@/components/ui/date-picker';
+import { FileDropzone } from '@/components/ui/file-dropzone';
 import { useBlockedLeaveDates, useLeaveBalance } from '@/hooks/use-leave';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
+import { useToast } from '@/hooks/use-toast';
+import { downloadLeaveAttachment } from '@/lib/api/leave';
+import { extractApiError } from '@/lib/api/client';
 import type { LeaveQuota, LeaveRequest, LeaveType } from '@/lib/api/types';
 
 export const LEAVE_TYPES: LeaveType[] = ['Annual', 'Sick', 'Permission', 'Unpaid'];
@@ -39,6 +44,10 @@ export const LEAVE_STATUS_VARIANT = {
 
 // ponytail: mirrors LeaveRequest.ReasonMinLength; the server rejects anything shorter.
 export const REASON_MIN_LENGTH = 2;
+
+/** Mirrors LeaveRequest.AllowedAttachmentContentTypes and AttachmentMaxBytes on the server. */
+export const ATTACHMENT_ACCEPT = ['application/pdf', 'image/jpeg', 'image/png'] as const;
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 
 // ponytail: mirrors the backend's hardcoded Mon–Fri workday rule (LeaveRequest.CountWorkdays);
 // update both together if weekends ever become configurable.
@@ -75,8 +84,14 @@ interface CreateLeaveDialogProps {
     startDate: string,
     endDate: string,
     reason: string,
+    attachment: File | null,
   ) => void | Promise<void>;
   submitting?: boolean;
+  /** Set by the caller when the server rejected the attachment specifically — shown as its own
+   * row under the uploader instead of a generic toast, since it names exactly what's wrong. */
+  attachmentError?: string | null;
+  /** Called when the user picks a new file, so a stale rejection isn't left showing. */
+  onAttachmentErrorClear?: () => void;
 }
 
 const EMPTY_FORM = {
@@ -88,7 +103,9 @@ const EMPTY_FORM = {
   reason: '',
 };
 
-export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }: CreateLeaveDialogProps) {
+export function CreateLeaveDialog({
+  open, onOpenChange, onConfirm, submitting, attachmentError, onAttachmentErrorClear,
+}: CreateLeaveDialogProps) {
   const t = useTranslations('leave');
   const tCommon = useTranslations('common');
 
@@ -97,13 +114,21 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
   const self = useAuthStore((s) => s.user);
 
   const [form, setForm] = useState(EMPTY_FORM);
+  // Kept outside `form` because a File is not part of the serialisable shape the rest of the
+  // form is, and it is cleared by its own rules — see the effect below.
+  const [attachment, setAttachment] = useState<File | null>(null);
+
+  // Only Sick takes a doctor's note, and it will not submit without one; the server rejects a
+  // file on any other type outright.
+  const needsAttachment = form.type === 'Sick';
 
   const workdays = countWorkdays(form.startDate, form.endDate);
   const canSubmit =
     !!form.employeeId
     && !!form.type
     && workdays > 0
-    && form.reason.trim().length >= REASON_MIN_LENGTH;
+    && form.reason.trim().length >= REASON_MIN_LENGTH
+    && (!needsAttachment || !!attachment);
 
   // Disabled until an employee is picked. The server enforces the quota either way — this is
   // only so the request is not filed blind and rejected a second later.
@@ -121,7 +146,16 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({ ...EMPTY_FORM, employeeId: canPickEmployee ? '' : (self?.employeeId ?? '') });
+    setAttachment(null);
   }, [open, canPickEmployee, self?.employeeId]);
+
+  // Switching away from Sick drops the file: sending one on any other type is rejected, and a
+  // file left hanging on a hidden field is a file the user cannot see to remove.
+  useEffect(() => {
+    if (needsAttachment) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAttachment(null);
+  }, [needsAttachment]);
 
   // Switching employee can invalidate the chosen type (Annual for a probationer, Unpaid for a
   // confirmed employee), so land on the one type both sets share rather than leaving a value
@@ -173,6 +207,23 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
           {quota && <QuotaHint quota={quota} />}
         </div>
 
+        {needsAttachment && (
+          <div className="flex flex-col gap-1.5">
+            <Label>{t('create.attachment')}</Label>
+            <FileDropzone
+              value={attachment}
+              onChange={(file) => { onAttachmentErrorClear?.(); setAttachment(file); }}
+              accept={ATTACHMENT_ACCEPT}
+              maxBytes={ATTACHMENT_MAX_BYTES}
+              disabled={submitting}
+              hint={t('create.attachmentHint')}
+            />
+            {attachmentError && (
+              <p className="text-xs text-destructive">{attachmentError}</p>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col gap-1.5">
           <Label>{t('create.dateRange')}</Label>
           <DateRangePickerField
@@ -208,7 +259,8 @@ export function CreateLeaveDialog({ open, onOpenChange, onConfirm, submitting }:
           onClick={() => {
             // canSubmit already guarantees this; the guard is what narrows '' out of the type.
             if (!form.type) return;
-            onConfirm(form.employeeId, form.type, form.startDate, form.endDate, form.reason.trim());
+            onConfirm(
+              form.employeeId, form.type, form.startDate, form.endDate, form.reason.trim(), attachment);
           }}
           disabled={submitting || !canSubmit}
         >
@@ -377,7 +429,54 @@ export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialog
             <dd className="text-right font-medium">{value}</dd>
           </div>
         ))}
+        {request.attachment && (
+          <div className="flex justify-between gap-4">
+            <dt className="shrink-0 text-muted-foreground">{t('details.attachment')}</dt>
+            <dd className="text-right font-medium">
+              <AttachmentLink requestId={request.id} fileName={request.attachment.fileName} />
+            </dd>
+          </div>
+        )}
       </dl>
     </Dialog>
+  );
+}
+
+/**
+ * Downloads the doctor's note. Fetched through the API client rather than linked directly:
+ * the endpoint is authenticated, so a bare href would arrive without the bearer token.
+ */
+function AttachmentLink({ requestId, fileName }: { requestId: string; fileName: string }) {
+  const t = useTranslations('leave');
+  const toast = useToast();
+  const [downloading, setDownloading] = useState(false);
+
+  async function download() {
+    setDownloading(true);
+    try {
+      const blob = await downloadLeaveAttachment(requestId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(t('details.attachmentError'), extractApiError(err).message);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={download}
+      disabled={downloading}
+      className="inline-flex items-center gap-1.5 text-primary hover:underline disabled:opacity-50"
+    >
+      <Download className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{fileName}</span>
+    </button>
   );
 }

@@ -6,6 +6,7 @@ using Erp.Infrastructure.DeviceIngest;
 using Erp.Infrastructure.Identity;
 using Erp.Infrastructure.Persistence;
 using Erp.Infrastructure.Persistence.Hierarchy;
+using Erp.Infrastructure.Storage;
 using Erp.SharedKernel.Identity;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -63,6 +64,14 @@ public static class DependencyInjection
                     "Attendance policy singleton row is missing. Seed it (or re-run migrations) before starting the app.");
             return policy.ToAttendanceDayPolicy();
         });
+
+        services.AddOptions<LeaveAttachmentOptions>()
+            .Bind(configuration.GetSection(LeaveAttachmentOptions.SectionName))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.RootPath),
+                "Leave attachment root path is required.")
+            .ValidateOnStart();
+
+        services.AddSingleton<ILeaveAttachmentStorage, LocalLeaveAttachmentStorage>();
 
         services.AddOptions<IdentitySeedOptions>()
             .Bind(configuration.GetSection(IdentitySeedOptions.SectionName));

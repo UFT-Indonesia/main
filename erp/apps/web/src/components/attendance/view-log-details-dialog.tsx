@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { parseAbsolute, toCalendarDate, today } from '@internationalized/date';
-import { MessageSquare, Pencil, Plus, X } from 'lucide-react';
+import { Download, MessageSquare, Pencil, Plus, X } from 'lucide-react';
 import {
   Dialog,
   DialogDescription,
@@ -31,6 +31,7 @@ import {
 } from '@/hooks/use-attendance';
 import { DateTimePickerField } from '@/components/ui/date-picker';
 import { formatLeaveDate } from '@/components/leave/leave-dialogs';
+import { downloadLeaveAttachment } from '@/lib/api/leave';
 import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
 import { useBlockedLeaveDates } from '@/hooks/use-leave';
 import { useToast } from '@/hooks/use-toast';
@@ -498,6 +499,18 @@ function LeaveSummary({
         />
       </dl>
 
+      {day.leaveRequestId && day.leaveAttachmentFileName && (
+        <div>
+          <p className="text-xs text-muted-foreground">{t('leaveDetails.attachment')}</p>
+          <div className="mt-1">
+            <AttachmentDownloadButton
+              leaveRequestId={day.leaveRequestId}
+              fileName={day.leaveAttachmentFileName}
+            />
+          </div>
+        </div>
+      )}
+
       <div>
         <p className="text-xs text-muted-foreground">{t('leaveDetails.reason')}</p>
         <p className="mt-1 min-h-20 whitespace-pre-wrap rounded-lg border-1 border-border-strong bg-card p-3 text-sm">
@@ -522,5 +535,53 @@ function LeaveSummary({
         />
       </dl>
     </div>
+  );
+}
+
+/**
+ * Fetched through the API client, not linked directly — the endpoint is authenticated, so a
+ * bare href would arrive without the bearer token. Re-checks CanReadDetails on its own, same as
+ * the reason text next to it, so no extra gate is needed here.
+ */
+function AttachmentDownloadButton({
+  leaveRequestId,
+  fileName,
+}: {
+  leaveRequestId: string;
+  fileName: string;
+}) {
+  const t = useTranslations('attendance');
+  const toast = useToast();
+  const [downloading, setDownloading] = useState(false);
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      const blob = await downloadLeaveAttachment(leaveRequestId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(t('leaveDetails.download'), extractApiError(err).message);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={handleDownload}
+      disabled={downloading}
+      className="border-1 border-border-strong"
+    >
+      <Download className="h-3.5 w-3.5" />
+      {t('leaveDetails.download')}
+    </Button>
   );
 }

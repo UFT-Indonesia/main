@@ -52,6 +52,7 @@ export default function LeavePage() {
   const [empSearch, setEmpSearch] = useState('');
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [details, setDetails] = useState<LeaveRequest | null>(null);
   const [decision, setDecision] = useState<{ request: LeaveRequest; action: LeaveDecision } | null>(null);
 
@@ -81,13 +82,24 @@ export default function LeavePage() {
     startDate: string,
     endDate: string,
     reason: string,
+    attachment: File | null,
   ) => {
+    setAttachmentError(null);
     try {
-      await createMutation.mutateAsync({ employeeId: empId, type, startDate, endDate, reason });
+      await createMutation.mutateAsync({
+        employeeId: empId, type, startDate, endDate, reason, attachment,
+      });
       toast.success(t('create.successTitle'), t('create.successDescription'));
       setCreateOpen(false);
     } catch (err) {
-      toast.error(t('create.errorTitle'), extractApiError(err).message);
+      const apiError = extractApiError(err);
+      // A rejected file is shown as a row under the uploader, next to the field it's about,
+      // rather than a toast that names a status code and nothing else.
+      if (apiError.code?.startsWith('leave.attachment')) {
+        setAttachmentError(apiError.message);
+        return;
+      }
+      toast.error(t('create.errorTitle'), apiError.message);
     }
   };
 
@@ -112,7 +124,7 @@ export default function LeavePage() {
               {canDecideSomething ? t('subtitle') : t('subtitleStaff')}
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => { setAttachmentError(null); setCreateOpen(true); }}>
             <Plus className="h-4 w-4" />
             {t('create.button')}
           </Button>
@@ -290,6 +302,8 @@ export default function LeavePage() {
         onOpenChange={setCreateOpen}
         onConfirm={handleCreate}
         submitting={createMutation.isPending}
+        attachmentError={attachmentError}
+        onAttachmentErrorClear={() => setAttachmentError(null)}
       />
 
       <DecideLeaveDialog

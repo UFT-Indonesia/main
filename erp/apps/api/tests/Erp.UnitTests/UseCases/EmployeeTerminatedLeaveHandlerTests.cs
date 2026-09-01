@@ -29,6 +29,7 @@ public class EmployeeTerminatedLeaveHandlerTests
         new LocalDate(2026, 9, 1),
         new LocalDate(2026, 9, 4),
         "cuti",
+        null,
         Guid.NewGuid(),
         Now);
 

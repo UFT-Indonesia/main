@@ -10,7 +10,14 @@
     "back": "Back",
     "previous": "Previous",
     "next": "Next",
-    "close": "Close"
+    "close": "Close",
+    "fileUpload": {
+      "browse": "Click to upload",
+      "orDrag": "or drag and drop",
+      "remove": "Remove file",
+      "wrongType": "That file type is not accepted.",
+      "tooLarge": "The file is larger than {megabytes}MB."
+    }
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -130,11 +137,11 @@
       "default": "Default",
       "setByOwner": "Set by owner",
       "none": "Not applicable",
-      "overrideLabel": "Change probation end date",
+      "overrideLabel": "Change Probation End",
       "overrideHint": "Clearing this restores the three-month default from the hire date.",
       "clearOverride": "Clear",
       "quotaLabel": "Leave quota overrides",
-      "quotaHint": "Days per year. Leave blank for the default; 0 means none of that type.",
+      "quotaHint": "Days per year. Change one to set a different quota; 0 means none.",
       "quotaDefault": "Default",
       "requestExtension": "Request extension",
       "saveSuccessTitle": "Changes saved",
@@ -220,6 +227,8 @@
       "applicationDate": "Application Date",
       "leaveDate": "Leave Date",
       "returnDate": "Return Date",
+      "attachment": "Sick Leave Attachment",
+      "download": "Download",
       "reason": "Leave Reason",
       "lengthInDays": "Leave Length",
       "startsIn": "Starts In",
@@ -314,7 +323,9 @@
       "confirm": "Submit request",
       "successTitle": "Request submitted",
       "successDescription": "Leave request created successfully.",
-      "errorTitle": "Failed to submit request"
+      "errorTitle": "Failed to submit request",
+      "attachment": "Doctor's note",
+      "attachmentHint": "PDF, JPG or PNG · max 10MB"
     },
     "decide": {
       "note": "Note",
@@ -350,7 +361,9 @@
       "decisionNote": "Decision note",
       "cancellationReason": "Cancellation reason",
       "hidden": "Not shown",
-      "quota": "Quota for this type"
+      "quota": "Quota for this type",
+      "attachment": "Doctor's note",
+      "attachmentError": "Could not download the file"
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"

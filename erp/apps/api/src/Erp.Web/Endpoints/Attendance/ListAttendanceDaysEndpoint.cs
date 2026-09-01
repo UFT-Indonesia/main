@@ -61,6 +61,8 @@ public sealed class ListAttendanceDaysEndpoint : Endpoint<ListAttendanceDaysRequ
                     LeaveRequestedAtUtc = i.LeaveRequestedAtUtc,
                     LeaveDecidedByName = i.LeaveDecidedByName,
                     LeaveDecidedAtUtc = i.LeaveDecidedAtUtc,
+                    LeaveRequestId = i.LeaveRequestId,
+                    LeaveAttachmentFileName = i.LeaveAttachmentFileName,
                     CanWrite = i.CanWrite,
                 }).ToList(),
                 Page = s.Value.Page,

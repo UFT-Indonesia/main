@@ -57,22 +57,57 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
 
   const onProbation = balance.data?.onProbation ?? false;
 
-  const saveProbationEnd = async (value: string | null) => {
+  // Each field starts at the number actually in force — the employee's own override if they
+  // have one, otherwise the company default the server computed. An empty box would have meant
+  // "default", which reads as "no quota" to everyone who is not the person who wrote it.
+  const effectiveQuota = (type: LeaveType) =>
+    employee.leaveQuotaOverrides?.[type]
+    ?? balance.data?.quotas.find((q) => q.type === type)?.entitledDays
+    ?? null;
+
+  const [quotas, setQuotas] = useState<Partial<Record<LeaveType, string>>>({});
+  const quotaValue = (type: LeaveType) =>
+    quotas[type] ?? (effectiveQuota(type)?.toString() ?? '');
+
+  const saving = probationMutation.isPending || quotaMutation.isPending;
+
+  /**
+   * One button, several writes: probation end and each changed quota have their own endpoint.
+   * Sequential and only for what actually changed, so an unrelated field cannot be re-sent and
+   * a failure stops rather than half-applying the rest.
+   */
+  const saveAll = async () => {
     try {
-      await probationMutation.mutateAsync({ endsOn: value });
+      const target = employee.probationEndsOnOverride ?? '';
+      if (endsOn !== target) {
+        await probationMutation.mutateAsync({ endsOn: endsOn || null });
+      }
+
+      for (const type of LEAVE_TYPES) {
+        const raw = quotas[type];
+        if (raw === undefined) continue;
+
+        const trimmed = raw.trim();
+        // Empty clears the override, falling back to the company default; 0 is a real setting
+        // meaning "none of this type".
+        const days = trimmed === '' ? null : Number(trimmed);
+        if (days !== null && (!Number.isInteger(days) || days < 0)) continue;
+        if (days === (employee.leaveQuotaOverrides?.[type] ?? null)) continue;
+
+        await quotaMutation.mutateAsync({ type, days });
+      }
+
+      setQuotas({});
       toast.success(t('saveSuccessTitle'));
     } catch (err) {
       toast.error(t('saveErrorTitle'), extractApiError(err).message);
     }
   };
 
-  const saveQuota = async (type: LeaveType, raw: string) => {
-    const trimmed = raw.trim();
-    // Empty clears the override; 0 is a real setting meaning "none of this type".
-    const days = trimmed === '' ? null : Number(trimmed);
-    if (days !== null && (!Number.isInteger(days) || days < 0)) return;
+  const clearOverride = async () => {
+    setEndsOn('');
     try {
-      await quotaMutation.mutateAsync({ type, days });
+      await probationMutation.mutateAsync({ endsOn: null });
       toast.success(t('saveSuccessTitle'));
     } catch (err) {
       toast.error(t('saveErrorTitle'), extractApiError(err).message);
@@ -99,13 +134,16 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
         <CardDescription>{t('hint')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <dl className="space-y-2 text-sm">
-          <Row label={t('hireDate')} value={employee.hireDate ? formatLeaveDate(employee.hireDate) : '–'} />
-          <Row
+        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Field
+            label={t('hireDate')}
+            value={employee.hireDate ? formatLeaveDate(employee.hireDate) : '–'}
+          />
+          <Field
             label={t('probationEndsOn')}
             value={
               employee.probationEndsOn ? (
-                <span className="flex items-center justify-end gap-2">
+                <span className="flex flex-wrap items-center gap-2">
                   {formatLeaveDate(employee.probationEndsOn)}
                   <Badge variant={employee.probationEndsOnOverride ? 'warning' : 'secondary'}>
                     {employee.probationEndsOnOverride ? t('setByOwner') : t('default')}
@@ -116,7 +154,7 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
               )
             }
           />
-          <Row
+          <Field
             label={t('status')}
             value={
               <Badge variant={onProbation ? 'warning' : 'success'}>
@@ -127,56 +165,59 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
         </dl>
 
         {isOwner && (
-          <div className="space-y-2 border-t border-border pt-4">
+          <div>
             <Label>{t('overrideLabel')}</Label>
-            <div className="flex gap-2">
+            <div className="mt-3">
               <DatePickerField value={endsOn} onChange={setEndsOn} />
-              <Button
-                onClick={() => saveProbationEnd(endsOn || null)}
-                disabled={probationMutation.isPending}
-              >
-                {probationMutation.isPending ? tCommon('loading') : tCommon('save')}
-              </Button>
-              {employee.probationEndsOnOverride && (
-                <Button
-                  variant="outline"
-                  onClick={() => { setEndsOn(''); void saveProbationEnd(null); }}
-                  disabled={probationMutation.isPending}
-                >
-                  {t('clearOverride')}
-                </Button>
-              )}
             </div>
-            <p className="text-xs text-muted-foreground">{t('overrideHint')}</p>
-          </div>
-        )}
-
-        {canRequestExtension && onProbation && (
-          <div className="border-t border-border pt-4">
-            <Button variant="outline" onClick={() => setRequestOpen(true)}>
-              {t('requestExtension')}
-            </Button>
+            <p className="mt-2 text-xs text-muted-foreground">{t('overrideHint')}</p>
           </div>
         )}
 
         {isOwner && (
-          <div className="space-y-3 border-t border-border pt-4">
+          <div className="space-y-3">
             <div>
               <Label>{t('quotaLabel')}</Label>
               <p className="text-xs text-muted-foreground">{t('quotaHint')}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3">
               {LEAVE_TYPES.map((type) => (
-                <QuotaField
-                  key={type}
-                  label={tLeave(`type.${type}`)}
-                  placeholder={t('quotaDefault')}
-                  initial={employee.leaveQuotaOverrides?.[type]}
-                  disabled={quotaMutation.isPending}
-                  onCommit={(raw) => saveQuota(type, raw)}
-                />
+                <div key={type} className="flex flex-col gap-1.5">
+                  <Label className="text-xs">{tLeave(`type.${type}`)}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={quotaValue(type)}
+                    disabled={saving}
+                    onChange={(e) => setQuotas((s) => ({ ...s, [type]: e.target.value }))}
+                  />
+                </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Every write in this card commits from here. The other two are not saves — one resets
+            a field to its default, the other opens a request dialog — so they sit alongside it
+            rather than inside it. */}
+        {(isOwner || (canRequestExtension && onProbation)) && (
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {isOwner && (
+              <Button className="w-full sm:flex-1" onClick={saveAll} disabled={saving}>
+                {saving ? tCommon('loading') : tCommon('save')}
+              </Button>
+            )}
+            {isOwner && employee.probationEndsOnOverride && (
+              <Button variant="outline" onClick={clearOverride} disabled={saving}>
+                {t('clearOverride')}
+              </Button>
+            )}
+            {canRequestExtension && onProbation && (
+              <Button variant="outline" onClick={() => setRequestOpen(true)}>
+                {t('requestExtension')}
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
@@ -193,47 +234,12 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
   );
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+/** Label above, value below and bolded — the same shape every read-only pair in the app uses. */
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <dt className="shrink-0 text-muted-foreground">{label}</dt>
-      <dd className="text-right font-medium">{value}</dd>
-    </div>
-  );
-}
-
-/** Commits on blur rather than on every keystroke — one PUT per edit, not per digit. */
-function QuotaField({
-  label,
-  placeholder,
-  initial,
-  disabled,
-  onCommit,
-}: {
-  label: string;
-  placeholder: string;
-  initial: number | undefined;
-  disabled?: boolean;
-  onCommit: (raw: string) => void;
-}) {
-  const [value, setValue] = useState(initial === undefined ? '' : String(initial));
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label className="text-xs">{label}</Label>
-      <Input
-        type="number"
-        min="0"
-        step="1"
-        value={value}
-        placeholder={placeholder}
-        disabled={disabled}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={() => {
-          const current = initial === undefined ? '' : String(initial);
-          if (value !== current) onCommit(value);
-        }}
-      />
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium">{value}</dd>
     </div>
   );
 }

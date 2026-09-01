@@ -21,6 +21,7 @@ public class LeaveRequestTests
             start ?? new LocalDate(2026, 8, 3), // Monday
             end ?? new LocalDate(2026, 8, 7),   // Friday
             "acara keluarga",
+            null,
             Requester,
             Now);
 
@@ -49,6 +50,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3),
             new LocalDate(2026, 8, 7),
             reason!,
+            null,
             Requester,
             Now);
 
@@ -64,6 +66,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3),
             new LocalDate(2026, 8, 3),
             "  demam  ",
+            TestAttachments.DoctorsNote(),
             Requester,
             Now);
 

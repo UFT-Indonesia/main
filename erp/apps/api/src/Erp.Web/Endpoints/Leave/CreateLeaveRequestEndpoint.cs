@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Erp.Core.Aggregates.Leave;
+using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Common;
@@ -19,16 +21,22 @@ namespace Erp.Web.Endpoints.Leave;
 public sealed class CreateLeaveRequestEndpoint : Endpoint<CreateLeaveRequestRequest, LeaveRequestResponse>
 {
     private readonly IMessageBus _bus;
+    private readonly ILeaveAttachmentStorage _attachments;
 
-    public CreateLeaveRequestEndpoint(IMessageBus bus)
+    public CreateLeaveRequestEndpoint(IMessageBus bus, ILeaveAttachmentStorage attachments)
     {
         _bus = bus;
+        _attachments = attachments;
     }
 
     public override void Configure()
     {
         Post("/");
         Group<LeaveGroup>();
+        // Sick leave carries a doctor's note, so this one endpoint takes a file alongside its
+        // fields. The cap is enforced here as well as in the domain: the domain check only runs
+        // after the bytes are already on disk, which is too late to be a limit.
+        AllowFileUploads();
     }
 
     public override async Task HandleAsync(CreateLeaveRequestRequest req, CancellationToken ct)
@@ -39,13 +47,43 @@ public sealed class CreateLeaveRequestEndpoint : Endpoint<CreateLeaveRequestRequ
             return;
         }
 
+        LeaveAttachment? attachment = null;
+        if (req.Attachment is { Length: > 0 } upload)
+        {
+            if (upload.Length > LeaveRequest.AttachmentMaxBytes)
+            {
+                throw new DomainException(
+                    "leave.attachment_too_large",
+                    $"The file exceeds the {LeaveRequest.AttachmentMaxBytes / (1024 * 1024)}MB limit.");
+            }
+
+            if (!LeaveRequest.AllowedAttachmentContentTypes.Contains(upload.ContentType))
+            {
+                throw new DomainException(
+                    "leave.attachment_type", "The file must be a PDF, JPEG, or PNG.");
+            }
+
+            await using var stream = upload.OpenReadStream();
+            var storageKey = await _attachments.SaveAsync(stream, upload.FileName, ct);
+            attachment = LeaveAttachment.Create(
+                storageKey, upload.FileName, upload.ContentType, upload.Length);
+        }
+
         var result = await _bus.InvokeAsync<Result<LeaveRequestResult>>(new CreateLeaveRequestCommand(
             req.EmployeeId,
             req.Type,
             req.StartDate,
             req.EndDate,
             req.Reason,
+            attachment,
             caller), ct);
+
+        // The file is written before the request is validated, so anything short of success
+        // leaves it orphaned on disk with no row pointing at it.
+        if (attachment is not null && result is not Result<LeaveRequestResult>.Success)
+        {
+            await _attachments.DeleteAsync(attachment.StorageKey, ct);
+        }
 
         if (result is Result<LeaveRequestResult>.Success s)
         {

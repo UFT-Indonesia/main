@@ -64,6 +64,8 @@ public static class ListAttendanceDaysHandler
             LeaveRequestedAtUtc = day.LeaveRequest?.RequestedAtUtc.ToDateTimeOffset(),
             LeaveDecidedByName = day.LeaveRequest?.DecidedByName,
             LeaveDecidedAtUtc = day.LeaveRequest?.DecidedAtUtc?.ToDateTimeOffset(),
+            LeaveRequestId = day.LeaveRequest?.Id.Value,
+            LeaveAttachmentFileName = day.LeaveRequest?.Attachment?.FileName,
             CanWrite = day.Employee is not null
                 && AttendanceRules.CanWriteFor(query.Caller, day.Employee),
         }).ToList();

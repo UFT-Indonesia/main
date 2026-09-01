@@ -19,6 +19,13 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     public const int ReasonMaxLength = 500;
     public const int DecisionNoteMaxLength = 500;
 
+    /// <summary>Cap on the doctor's note a Sick request carries. Comfortable for a scan or a phone photo.</summary>
+    public const long AttachmentMaxBytes = 10 * 1024 * 1024;
+
+    /// <summary>What a doctor's note may be: a scanned document, or a photo of one.</summary>
+    public static readonly IReadOnlyCollection<string> AllowedAttachmentContentTypes =
+        ["application/pdf", "image/jpeg", "image/png"];
+
     /// <summary>Stands in for a human decider on decisions the system makes on its own.</summary>
     public const string SystemDecider = "System";
 
@@ -33,6 +40,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         LocalDate endDate,
         int workdayCount,
         string reason,
+        LeaveAttachment? attachment,
         Guid requestedByUserId,
         Instant requestedAtUtc)
         : base(id)
@@ -43,6 +51,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         EndDate = endDate;
         WorkdayCount = workdayCount;
         Reason = reason;
+        Attachment = attachment;
         Status = LeaveRequestStatus.Pending;
         RequestedByUserId = requestedByUserId;
         RequestedAtUtc = requestedAtUtc;
@@ -65,6 +74,12 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     public int WorkdayCount { get; private set; }
 
     public string Reason { get; private set; } = default!;
+
+    /// <summary>
+    /// The supporting document, required on Sick and rejected on every other type — see
+    /// <see cref="Create"/>. Null on requests filed before attachments existed.
+    /// </summary>
+    public LeaveAttachment? Attachment { get; private set; }
 
     public LeaveRequestStatus Status { get; private set; }
 
@@ -94,6 +109,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         LocalDate startDate,
         LocalDate endDate,
         string reason,
+        LeaveAttachment? attachment,
         Guid requestedByUserId,
         Instant requestedAtUtc)
     {
@@ -132,6 +148,20 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
             throw new DomainException("leave.reason_length", $"Reason cannot exceed {ReasonMaxLength} characters.");
         }
 
+        // Sick leave is the only type anyone has to prove; carrying a file on the others would
+        // be storing a document nobody asked for and nobody will read.
+        if (type == LeaveType.Sick && attachment is null)
+        {
+            throw new DomainException(
+                "leave.attachment_required", "Sick leave requires a supporting document.");
+        }
+
+        if (type != LeaveType.Sick && attachment is not null)
+        {
+            throw new DomainException(
+                "leave.attachment_not_allowed", $"{type} leave does not take a supporting document.");
+        }
+
         return new LeaveRequest(
             LeaveRequestId.New(),
             employeeId,
@@ -140,6 +170,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
             endDate,
             workdays,
             trimmedReason,
+            attachment,
             requestedByUserId,
             requestedAtUtc);
     }

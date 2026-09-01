@@ -64,10 +64,12 @@ public class LeaveQuotaTests
         var employee = NewEmployee(hireDate: new LocalDate(2026, 5, 1));
         var duringProbation = new LocalDate(2026, 6, 1);
 
+        // Only Annual is withheld during probation. The others are flat company-wide caps —
+        // a probationer with flu gets the same thirty sick days as anyone else.
         LeaveQuota.Entitled(LeaveType.Annual, employee, 2026, duringProbation).Should().Be(0);
-        LeaveQuota.Entitled(LeaveType.Sick, employee, 2026, duringProbation).Should().BeNull();
-        LeaveQuota.Entitled(LeaveType.Permission, employee, 2026, duringProbation).Should().BeNull();
-        LeaveQuota.Entitled(LeaveType.Unpaid, employee, 2026, duringProbation).Should().BeNull();
+        LeaveQuota.Entitled(LeaveType.Sick, employee, 2026, duringProbation).Should().Be(30);
+        LeaveQuota.Entitled(LeaveType.Permission, employee, 2026, duringProbation).Should().Be(6);
+        LeaveQuota.Entitled(LeaveType.Unpaid, employee, 2026, duringProbation).Should().Be(30);
     }
 
     [Fact]
@@ -118,8 +120,23 @@ public class LeaveQuotaTests
         employee.SetLeaveQuota(LeaveType.Sick, 0);
         LeaveQuota.Entitled(LeaveType.Sick, employee, 2026, today).Should().Be(0);
 
+        // Clearing falls back to the company default, not to "uncapped".
         employee.SetLeaveQuota(LeaveType.Sick, null);
-        LeaveQuota.Entitled(LeaveType.Sick, employee, 2026, today).Should().BeNull();
+        LeaveQuota.Entitled(LeaveType.Sick, employee, 2026, today).Should().Be(LeaveQuota.FullSickDays);
+    }
+
+    [Fact]
+    public void Every_type_has_a_company_default_and_an_override_replaces_it()
+    {
+        var employee = NewEmployee();
+        var today = new LocalDate(2026, 6, 1);
+
+        LeaveQuota.Entitled(LeaveType.Sick, employee, 2026, today).Should().Be(30);
+        LeaveQuota.Entitled(LeaveType.Permission, employee, 2026, today).Should().Be(6);
+        LeaveQuota.Entitled(LeaveType.Unpaid, employee, 2026, today).Should().Be(30);
+
+        employee.SetLeaveQuota(LeaveType.Permission, 15);
+        LeaveQuota.Entitled(LeaveType.Permission, employee, 2026, today).Should().Be(15);
     }
 
     [Fact]
@@ -158,6 +175,7 @@ public class LeaveQuotaTests
             new LocalDate(2026, 12, 28),
             new LocalDate(2027, 1, 8),
             "cuti",
+            null,
             Guid.NewGuid(),
             Instant.FromUtc(2026, 12, 1, 0, 0));
 
@@ -173,11 +191,12 @@ public class LeaveQuotaTests
         var annual = LeaveRequest.Create(
             employeeId, LeaveType.Annual,
             new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 6),
-            "cuti", Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
+            "cuti", null, Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
         var sick = LeaveRequest.Create(
             employeeId, LeaveType.Sick,
             new LocalDate(2026, 4, 6), new LocalDate(2026, 4, 7),
-            "sakit", Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
+            "sakit", TestAttachments.DoctorsNote(), Guid.NewGuid(),
+            Instant.FromUtc(2026, 1, 1, 0, 0));
 
         LeaveRequest[] approved = [annual, sick];
 

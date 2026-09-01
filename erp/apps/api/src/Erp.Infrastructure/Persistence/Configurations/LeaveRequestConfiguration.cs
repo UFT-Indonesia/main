@@ -60,6 +60,30 @@ public sealed class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRe
             .HasMaxLength(LeaveRequest.ReasonMaxLength)
             .IsRequired();
 
+        // Owned rather than a table of its own: an attachment has no life apart from the one
+        // request it belongs to, and is always loaded and deleted with it.
+        builder.OwnsOne(request => request.Attachment, attachment =>
+        {
+            attachment.Property(a => a.StorageKey)
+                .HasColumnName("attachment_storage_key")
+                .HasMaxLength(300)
+                .IsRequired();
+
+            attachment.Property(a => a.FileName)
+                .HasColumnName("attachment_file_name")
+                .HasMaxLength(LeaveAttachment.FileNameMaxLength)
+                .IsRequired();
+
+            attachment.Property(a => a.ContentType)
+                .HasColumnName("attachment_content_type")
+                .HasMaxLength(100)
+                .IsRequired();
+
+            attachment.Property(a => a.SizeBytes)
+                .HasColumnName("attachment_size_bytes")
+                .IsRequired();
+        });
+
         builder.Property(request => request.Status)
             .HasColumnName("status")
             .HasConversion<string>()

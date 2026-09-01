@@ -35,6 +35,16 @@ public sealed class AttendanceDayListItemResult
     public string? LeaveDecidedByName { get; init; }
     public DateTimeOffset? LeaveDecidedAtUtc { get; init; }
 
+    /// <summary>
+    /// The leave request this day belongs to, so the client can fetch its attachment through
+    /// GET /api/leave/{id}/attachment — that endpoint re-checks CanReadDetails on its own, so
+    /// nothing extra is enforced here beyond what already gates the reason above.
+    /// </summary>
+    public Guid? LeaveRequestId { get; init; }
+
+    /// <summary>The doctor's note on a Sick request; null when there is none.</summary>
+    public string? LeaveAttachmentFileName { get; init; }
+
     /// <summary>Server-computed: whether the caller may create or alter this employee's records.</summary>
     public bool CanWrite { get; init; }
 }

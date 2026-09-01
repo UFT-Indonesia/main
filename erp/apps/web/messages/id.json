@@ -10,7 +10,14 @@
     "back": "Kembali",
     "previous": "Sebelumnya",
     "next": "Berikutnya",
-    "close": "Tutup"
+    "close": "Tutup",
+    "fileUpload": {
+      "browse": "Klik untuk unggah",
+      "orDrag": "atau seret dan lepas",
+      "remove": "Hapus berkas",
+      "wrongType": "Jenis berkas tidak didukung.",
+      "tooLarge": "Berkas melebihi {megabytes}MB."
+    }
   },
   "nav": {
     "dashboard": "Dasbor",
@@ -79,7 +86,7 @@
       },
       "hireDate": "Tanggal masuk",
       "hireDateHint": "Masa percobaan berakhir tiga bulan kemudian kecuali diubah pemilik.",
-      "hireDateLegacyHint": "Belum tercatat — karyawan lama, tidak pernah dalam masa percobaan."
+      "hireDateLegacyHint": "Karyawan lama — tidak melewati masa percobaan."
     },
     "create": {
       "title": "Tambah karyawan",
@@ -130,11 +137,11 @@
       "default": "Bawaan",
       "setByOwner": "Diatur pemilik",
       "none": "Tidak berlaku",
-      "overrideLabel": "Ubah tanggal berakhir masa percobaan",
+      "overrideLabel": "Ubah Masa Percobaan",
       "overrideHint": "Mengosongkan ini mengembalikan bawaan tiga bulan dari tanggal masuk.",
       "clearOverride": "Kosongkan",
       "quotaLabel": "Penyesuaian kuota cuti",
-      "quotaHint": "Hari per tahun. Kosongkan untuk bawaan; 0 berarti tidak ada.",
+      "quotaHint": "Hari per tahun. Ubah untuk menetapkan kuota berbeda; 0 berarti tidak ada.",
       "quotaDefault": "Bawaan",
       "requestExtension": "Ajukan perpanjangan",
       "saveSuccessTitle": "Perubahan tersimpan",
@@ -220,6 +227,8 @@
       "applicationDate": "Tanggal Pengajuan",
       "leaveDate": "Tanggal Cuti",
       "returnDate": "Tanggal Kembali",
+      "attachment": "File Upload Keterangan Cuti",
+      "download": "Unduh",
       "reason": "Alasan Cuti",
       "lengthInDays": "Lama Cuti",
       "startsIn": "Mulai Dalam",
@@ -314,7 +323,9 @@
       "confirm": "Ajukan",
       "successTitle": "Permintaan diajukan",
       "successDescription": "Permintaan cuti berhasil dibuat.",
-      "errorTitle": "Gagal mengajukan permintaan"
+      "errorTitle": "Gagal mengajukan permintaan",
+      "attachment": "Surat Dokter",
+      "attachmentHint": "PDF, JPG atau PNG · maks 10MB"
     },
     "decide": {
       "note": "Catatan",
@@ -350,7 +361,9 @@
       "decisionNote": "Catatan keputusan",
       "cancellationReason": "Alasan pembatalan",
       "hidden": "Tidak ditampilkan",
-      "quota": "Kuota jenis ini"
+      "quota": "Kuota jenis ini",
+      "attachment": "Surat Dokter",
+      "attachmentError": "Gagal mengunduh berkas"
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
