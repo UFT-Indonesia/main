@@ -129,6 +129,10 @@ export function AttendanceDayTable({
                     <Button
                       variant="ghost"
                       size="icon"
+                      // A punchless day with no leave behind it has genuinely nothing to show.
+                      // It should not exist (AttendanceDay.Create rejects an empty punch list and
+                      // ReleaseAsync deletes orphaned leave rows), so this is a guard, not a case.
+                      disabled={!item.tapInUtc && !item.leaveType}
                       onClick={() => onViewDetails(item)}
                       aria-label={t('actions.viewLogDetails')}
                       title={t('actions.viewLogDetails')}

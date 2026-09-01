@@ -1,4 +1,5 @@
 import { useTranslations } from 'next-intl';
+import { formatLeaveDate } from '@/components/leave/leave-dialogs';
 import type { EmployeeAuditLogEntry } from '@/lib/api/types';
 
 interface CreatedValue {
@@ -112,13 +113,20 @@ export function AuditLogSummary({ entry }: { entry: EmployeeAuditLogEntry }) {
     case 'employee.terminated': {
       const v = parse<TerminatedValue>(entry.newValueJson);
       if (!v) return null;
-      return <span>{t('terminated', { date: v.terminationDate })}</span>;
+      return <span>{t('terminated', { date: formatLeaveDate(v.terminationDate) })}</span>;
     }
     case 'employee.hire_date_changed': {
       const oldValue = parse<HireDateValue>(entry.oldValueJson);
       const newValue = parse<HireDateValue>(entry.newValueJson);
       if (!oldValue || !newValue) return null;
-      return <span>{t('hireDate', { from: oldValue.hireDate ?? none, to: newValue.hireDate ?? none })}</span>;
+      return (
+        <span>
+          {t('hireDate', {
+            from: oldValue.hireDate ? formatLeaveDate(oldValue.hireDate) : none,
+            to: newValue.hireDate ? formatLeaveDate(newValue.hireDate) : none,
+          })}
+        </span>
+      );
     }
     case 'employee.probation_end_changed': {
       const oldValue = parse<ProbationEndValue>(entry.oldValueJson);
@@ -127,8 +135,8 @@ export function AuditLogSummary({ entry }: { entry: EmployeeAuditLogEntry }) {
       return (
         <span>
           {t('probationEnd', {
-            from: oldValue.probationEndsOn ?? none,
-            to: newValue.probationEndsOn ?? none,
+            from: oldValue.probationEndsOn ? formatLeaveDate(oldValue.probationEndsOn) : none,
+            to: newValue.probationEndsOn ? formatLeaveDate(newValue.probationEndsOn) : none,
           })}
         </span>
       );

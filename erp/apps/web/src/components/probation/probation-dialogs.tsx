@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePickerField } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { EmployeePicker } from '@/components/employees/employee-picker';
@@ -87,10 +88,10 @@ export function CreateProbationExtensionDialog({
 
         <div className="flex flex-col gap-1.5">
           <Label>{t('create.proposedEndsOn')}</Label>
-          <Input
-            type="date"
+          <DatePickerField
             value={form.proposedEndsOn}
-            onChange={(e) => setForm((s) => ({ ...s, proposedEndsOn: e.target.value }))}
+            onChange={(v) => setForm((s) => ({ ...s, proposedEndsOn: v }))}
+            aria-label={t('create.proposedEndsOn')}
           />
           <p className="text-xs text-muted-foreground">{t('create.proposedHint')}</p>
         </div>

@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { DatePickerField } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { LEAVE_TYPES, formatLeaveDate } from '@/components/leave/leave-dialogs';
 import { CreateProbationExtensionDialog } from '@/components/probation/probation-dialogs';
@@ -129,7 +130,7 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
           <div className="space-y-2 border-t border-border pt-4">
             <Label>{t('overrideLabel')}</Label>
             <div className="flex gap-2">
-              <Input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} />
+              <DatePickerField value={endsOn} onChange={setEndsOn} />
               <Button
                 onClick={() => saveProbationEnd(endsOn || null)}
                 disabled={probationMutation.isPending}

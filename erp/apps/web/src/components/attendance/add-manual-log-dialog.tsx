@@ -13,22 +13,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { DateTimePickerField } from '@/components/ui/date-picker';
 import { EmployeePicker } from '@/components/employees/employee-picker';
+import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
+import { useBlockedLeaveDates } from '@/hooks/use-leave';
+import { APP_TIME_ZONE } from '@/lib/constants';
 import type { PunchType } from '@/lib/api/types';
 
 interface ManualLogFormState {
   employeeId: string;
-  punchedAt: string;
+  /** UTC ISO instant. The picker owns the zone conversion; nothing here parses a bare string. */
+  punchedAtUtc: string;
   punchType: PunchType;
   note: string;
 }
 
 function defaultState(): ManualLogFormState {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 16);
-  return { employeeId: '', punchedAt: local, punchType: 'In', note: '' };
+  return {
+    employeeId: '',
+    punchedAtUtc: new Date().toISOString(),
+    punchType: 'In',
+    note: '',
+  };
 }
 
 interface AddManualLogDialogProps {
@@ -54,12 +60,20 @@ export function AddManualLogDialog({
 
   const [form, setForm] = useState<ManualLogFormState>(defaultState);
 
-  const canSubmit = !!form.employeeId && !!form.punchedAt;
+  // Wall-clock time is entered in the policy's zone, which is also the zone the server buckets
+  // calendar days by. Falling back to the company zone rather than the browser's is the point.
+  const { data: policy } = useAttendancePolicy();
+  const timeZone = policy?.timeZoneId ?? APP_TIME_ZONE;
+
+  // Approved leave for the selected employee, greyed out in the calendar. The device still
+  // records punches on those days; this only stops one being invented by hand.
+  const blocked = useBlockedLeaveDates(form.employeeId || null);
+
+  const canSubmit = !!form.employeeId && !!form.punchedAtUtc;
 
   function handleConfirm() {
     if (!canSubmit) return;
-    const utc = new Date(form.punchedAt).toISOString();
-    onConfirm(form.employeeId, utc, form.punchType, form.note || null);
+    onConfirm(form.employeeId, form.punchedAtUtc, form.punchType, form.note || null);
   }
 
   function handleOpenChange(o: boolean) {
@@ -86,10 +100,11 @@ export function AddManualLogDialog({
 
         <div className="flex flex-col gap-1.5">
           <Label>{t('manualLog.punchedAt')}</Label>
-          <Input
-            type="datetime-local"
-            value={form.punchedAt}
-            onChange={(e) => setForm((s) => ({ ...s, punchedAt: e.target.value }))}
+          <DateTimePickerField
+            value={form.punchedAtUtc}
+            onChange={(v) => setForm((s) => ({ ...s, punchedAtUtc: v }))}
+            timeZone={timeZone}
+            blocked={blocked.data?.ranges}
           />
         </div>
 

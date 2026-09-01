@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { APP_TIME_ZONE } from '@/lib/constants';
 import type { AttendanceLogListItem, AttendanceSource } from '@/lib/api/types';
 
 interface AttendanceTableProps {
@@ -24,7 +25,7 @@ const SOURCE_VARIANT: Record<AttendanceSource, 'outline' | 'secondary'> = {
 const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
   dateStyle: 'medium',
   timeStyle: 'short',
-  timeZone: 'Asia/Jakarta',
+  timeZone: APP_TIME_ZONE,
 });
 
 function formatDateTime(iso: string): string {
