@@ -3,6 +3,10 @@ using Erp.UseCases.Leave.GetLeaveBalance;
 
 namespace Erp.Web.Endpoints.Leave;
 
+/// <summary>
+/// Multipart, not JSON, because Sick leave carries a doctor's note. <see cref="Attachment"/> is
+/// required for Sick and must be absent otherwise — enforced by the domain, not here.
+/// </summary>
 public sealed class CreateLeaveRequestRequest
 {
     public Guid EmployeeId { get; init; }
@@ -10,6 +14,19 @@ public sealed class CreateLeaveRequestRequest
     public DateOnly StartDate { get; init; }
     public DateOnly EndDate { get; init; }
     public string Reason { get; init; } = default!;
+    public IFormFile? Attachment { get; init; }
+}
+
+public sealed class GetLeaveAttachmentRequest
+{
+    public Guid Id { get; init; }
+}
+
+public sealed class LeaveAttachmentResponse
+{
+    public string FileName { get; init; } = default!;
+    public string ContentType { get; init; } = default!;
+    public long SizeBytes { get; init; }
 }
 
 public sealed class ListLeaveRequestsRequest
@@ -105,6 +122,9 @@ public sealed class LeaveRequestResponse
     public DateOnly EndDate { get; init; }
     public int WorkdayCount { get; init; }
     public string? Reason { get; init; }
+
+    /// <summary>The doctor's note on a Sick request; null when there is none, or is not readable.</summary>
+    public LeaveAttachmentResponse? Attachment { get; init; }
     public string Status { get; init; } = default!;
     public DateTimeOffset RequestedAtUtc { get; init; }
     public string? DecidedByName { get; init; }
@@ -135,6 +155,14 @@ public sealed class LeaveRequestResponse
         EndDate = result.EndDate,
         WorkdayCount = result.WorkdayCount,
         Reason = result.Reason,
+        Attachment = result.Attachment is { } file
+            ? new LeaveAttachmentResponse
+            {
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                SizeBytes = file.SizeBytes,
+            }
+            : null,
         Status = result.Status,
         RequestedAtUtc = result.RequestedAtUtc,
         DecidedByName = result.DecidedByName,
