@@ -26,8 +26,7 @@ public class ExportAttendanceDaysEndpointTests
             {
                 EmployeeFullName = "=cmd|'/c calc'!A1",
                 Date = "2026-01-01",
-                TapIn = "08:00",
-                TapOut = "17:00",
+                Punches = "[]",
                 Status = "Complete",
             },
         };

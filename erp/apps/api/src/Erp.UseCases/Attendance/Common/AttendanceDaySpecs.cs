@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
 using Erp.SharedKernel.Identity;
@@ -17,6 +18,42 @@ internal sealed class AttendanceLogsForEmployeeDaySpec : Specification<Attendanc
         Query.Include(log => log.Notes);
         Query.OrderBy(log => log.PunchedAtUtc);
         Query.AsNoTracking();
+    }
+}
+
+/// <summary>
+/// All punches for exactly the selected (employee, calendar-day) pairs — one OR-clause per
+/// pair's UTC instant window, same "exact pairs, not a date-range scan" reasoning as
+/// <see cref="Erp.UseCases.Attendance.ExportAttendanceDays"/>'s day spec.
+/// </summary>
+internal sealed class AttendanceLogsForKeysSpec : Specification<AttendanceLog>
+{
+    public AttendanceLogsForKeysSpec(IReadOnlyCollection<(EmployeeId EmployeeId, Instant Start, Instant End)> windows)
+    {
+        Query.Where(BuildPredicate(windows));
+        Query.Include(log => log.Notes);
+        Query.OrderBy(log => log.PunchedAtUtc);
+        Query.AsNoTracking();
+    }
+
+    private static Expression<Func<AttendanceLog, bool>> BuildPredicate(
+        IReadOnlyCollection<(EmployeeId EmployeeId, Instant Start, Instant End)> windows)
+    {
+        var log = Expression.Parameter(typeof(AttendanceLog), "log");
+        var employeeIdProperty = Expression.Property(log, nameof(AttendanceLog.EmployeeId));
+        var punchedAtProperty = Expression.Property(log, nameof(AttendanceLog.PunchedAtUtc));
+
+        var clauses = windows
+            .Select(window =>
+            {
+                var employeeMatch = Expression.Equal(employeeIdProperty, Expression.Constant(window.EmployeeId));
+                var startMatch = Expression.GreaterThanOrEqual(punchedAtProperty, Expression.Constant(window.Start));
+                var endMatch = Expression.LessThan(punchedAtProperty, Expression.Constant(window.End));
+                return (Expression)Expression.AndAlso(employeeMatch, Expression.AndAlso(startMatch, endMatch));
+            })
+            .Aggregate(Expression.OrElse);
+
+        return Expression.Lambda<Func<AttendanceLog, bool>>(clauses, log);
     }
 }
 

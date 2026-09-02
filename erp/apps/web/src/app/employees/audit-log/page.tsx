@@ -22,7 +22,7 @@ import { useEmployeeAuditLog } from '@/hooks/use-employee-audit-log';
 import { useToast } from '@/hooks/use-toast';
 import { exportEmployeeAuditLog } from '@/lib/api/employee-audit-log';
 import { extractApiError } from '@/lib/api/client';
-import { downloadBlob } from '@/lib/csv';
+import { datedFilename, downloadBlob } from '@/lib/csv';
 import { useHasRole } from '@/lib/auth/store';
 
 const PAGE_SIZE = 20;
@@ -58,7 +58,7 @@ export default function EmployeeAuditLogPage() {
     setExporting(true);
     try {
       const blob = await exportEmployeeAuditLog({ employeeId, dateFrom, dateTo, eventType });
-      downloadBlob(blob, 'employee-audit-log.csv');
+      downloadBlob(blob, datedFilename('employee-audit-log', 'csv'));
     } catch (err) {
       toast.error(t('export.errorTitle'), extractApiError(err).message);
     } finally {

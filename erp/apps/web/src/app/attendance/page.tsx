@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { exportAttendanceDays } from '@/lib/api/attendance';
 import { useHasRole } from '@/lib/auth/store';
-import { downloadBlob } from '@/lib/csv';
+import { datedFilename, downloadBlob } from '@/lib/csv';
 import type { AttendanceDayListItem, AttendanceDayStatus, PunchType } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
@@ -109,7 +109,7 @@ export default function AttendancePage() {
         };
       });
       const blob = await exportAttendanceDays(dayKeys);
-      downloadBlob(blob, 'attendance-days.csv');
+      downloadBlob(blob, datedFilename('attendance-days', 'csv'));
       setSelected(new Set());
     } catch (err) {
       toast.error(t('export.errorTitle'), extractApiError(err).message);
