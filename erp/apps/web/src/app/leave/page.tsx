@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, ChevronLeft, ChevronRight, Check, X, Ban, Eye } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Check, X, Ban, Eye, Pencil } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,12 +25,24 @@ import {
   formatLeaveDate,
   type LeaveDecision,
 } from '@/components/leave/leave-dialogs';
-import { useLeaveRequests, useCreateLeaveRequest, useDecideLeaveRequest } from '@/hooks/use-leave';
+import {
+  useLeaveRequests,
+  useCreateLeaveRequest,
+  useDecideLeaveRequest,
+  useEditLeaveRequest,
+} from '@/hooks/use-leave';
+import { EditLeaveDialog } from '@/components/leave/edit-leave-dialog';
 import { useEmployees } from '@/hooks/use-employees';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
-import type { HalfDayPeriod, LeaveRequest, LeaveStatusFilter, LeaveType } from '@/lib/api/types';
+import type {
+  EditLeaveRequestBody,
+  HalfDayPeriod,
+  LeaveRequest,
+  LeaveStatusFilter,
+  LeaveType,
+} from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 const STATUSES: LeaveStatusFilter[] = ['Open', 'Pending', 'Approved', 'Denied', 'Cancelled'];
@@ -54,6 +66,7 @@ export default function LeavePage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [details, setDetails] = useState<LeaveRequest | null>(null);
+  const [editing, setEditing] = useState<LeaveRequest | null>(null);
   const [decision, setDecision] = useState<{ request: LeaveRequest; action: LeaveDecision } | null>(null);
 
   const { data, isLoading, isFetching, error } = useLeaveRequests({
@@ -64,6 +77,7 @@ export default function LeavePage() {
   });
   const createMutation = useCreateLeaveRequest();
   const decideMutation = useDecideLeaveRequest();
+  const editMutation = useEditLeaveRequest();
 
   // The directory is open to every employee (names only for staff), so anyone browsing the
   // calendar can narrow it to one person.
@@ -105,6 +119,17 @@ export default function LeavePage() {
         return;
       }
       toast.error(t('create.errorTitle'), apiError.message);
+    }
+  };
+
+  const handleEdit = async (body: EditLeaveRequestBody) => {
+    if (!editing) return;
+    try {
+      await editMutation.mutateAsync({ id: editing.id, body });
+      toast.success(t('edit.successTitle'), t('edit.successDescription'));
+      setEditing(null);
+    } catch (err) {
+      toast.error(t('edit.errorTitle'), extractApiError(err).message);
     }
   };
 
@@ -248,6 +273,17 @@ export default function LeavePage() {
                             <Ban className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         )}
+                        {item.canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditing(item)}
+                            aria-label={t('edit.title')}
+                            title={t('edit.title')}
+                          >
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -309,6 +345,13 @@ export default function LeavePage() {
         submitting={createMutation.isPending}
         attachmentError={attachmentError}
         onAttachmentErrorClear={() => setAttachmentError(null)}
+      />
+
+      <EditLeaveDialog
+        request={editing}
+        onOpenChange={(o: boolean) => { if (!o) setEditing(null); }}
+        onConfirm={handleEdit}
+        submitting={editMutation.isPending}
       />
 
       <DecideLeaveDialog

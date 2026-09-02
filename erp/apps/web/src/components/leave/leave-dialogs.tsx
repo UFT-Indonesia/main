@@ -55,7 +55,7 @@ export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 // stay on one side of it. Update both together if the lunch hour ever moves.
 export const HOURLY_BOUNDARIES = [9, 10, 11, 13, 14, 15, 16, 17, 18] as const;
 
-function formatHour(hour: number): string {
+export function formatHour(hour: number): string {
   return `${String(hour).padStart(2, '0')}:00`;
 }
 
@@ -606,6 +606,19 @@ export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialog
       request.decidedAtUtc ? dateTimeFormatter.format(new Date(request.decidedAtUtc)) : '–',
     ],
     [t('details.decisionNote'), detailsHidden ? withheld : request.decisionNote || '–'],
+    // Not gated behind detailsHidden — "who moved my leave, and from when" is the employee's
+    // own business, and the dates themselves are already visible to every colleague.
+    ...(request.editedAtUtc && request.previousStartDate && request.previousEndDate
+      ? ([[
+          t('details.editedBy'),
+          t('details.editedValue', {
+            name: request.editedByName ?? '–',
+            at: dateTimeFormatter.format(new Date(request.editedAtUtc)),
+            from: formatLeaveDate(request.previousStartDate),
+            to: formatLeaveDate(request.previousEndDate),
+          }),
+        ]] as [string, string][])
+      : []),
     // Not gated behind detailsHidden — no more sensitive than the Cancelled status itself.
     ...(request.status === 'Cancelled' && request.cancellationReason
       ? ([[t('details.cancellationReason'), t(`cancellationReason.${request.cancellationReason}`)]] as [string, string][])
