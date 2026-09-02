@@ -161,7 +161,7 @@ internal static class DecideLeaveRequestService
         await leaveRequests.UpdateAsync(request, ct);
         await LeaveRequestEventPublisher.PublishAsync(request, bus);
 
-        var (canDecide, canCancel) = LeaveRequestResult.PermissionsFor(caller, request, subject);
+        var (canDecide, canCancel, canEdit) = LeaveRequestResult.PermissionsFor(caller, request, subject);
         return new Result<LeaveRequestResult>.Success(
             LeaveRequestResult.From(
                 request,
@@ -171,6 +171,7 @@ internal static class DecideLeaveRequestService
                 employeeFullName: subject.FullName,
                 canDecide: canDecide,
                 canCancel: canCancel,
+                canEdit: canEdit,
                 // Only reachable once authority to decide or cancel has been established.
                 canReadDetails: true));
     }

@@ -158,7 +158,7 @@ public static class CreateLeaveRequestHandler
         // is the only place its approval can reach attendance from.
         await LeaveRequestEventPublisher.PublishAsync(request, bus);
 
-        var (canDecide, canCancel) = LeaveRequestResult.PermissionsFor(command.Caller, request, employee);
+        var (canDecide, canCancel, canEdit) = LeaveRequestResult.PermissionsFor(command.Caller, request, employee);
         return new Result<LeaveRequestResult>.Success(
             LeaveRequestResult.From(
                 request,
@@ -168,6 +168,7 @@ public static class CreateLeaveRequestHandler
                 employeeFullName: employee.FullName,
                 canDecide: canDecide,
                 canCancel: canCancel,
+                canEdit: canEdit,
                 // CanFileFor already passed, which implies the filer may read what they wrote.
                 canReadDetails: true));
     }

@@ -73,6 +73,22 @@ public sealed class LeaveRequestResult
     public bool CanCancel { get; init; }
 
     /// <summary>
+    /// Whether the caller may move this request's dates. Same standing as deciding it
+    /// (LeaveRules.CanDecideFor), and only while it is still Pending or Approved.
+    /// </summary>
+    public bool CanEdit { get; init; }
+
+    /// <summary>
+    /// Set together by an edit, null on a request nobody has moved. Not gated behind
+    /// canReadDetails — "who moved my leave, and from when" is the employee's own business, and
+    /// the dates themselves are already visible to every colleague.
+    /// </summary>
+    public string? EditedByName { get; init; }
+    public DateTimeOffset? EditedAtUtc { get; init; }
+    public DateOnly? PreviousStartDate { get; init; }
+    public DateOnly? PreviousEndDate { get; init; }
+
+    /// <summary>
     /// The doctor's note on a Sick request, or null when there is none — or when the caller may
     /// not read the details. Gated with Reason, not separately: the file is the same health
     /// data the reason is, and a second rule is a second thing to get wrong.
@@ -86,6 +102,7 @@ public sealed class LeaveRequestResult
         string? employeeFullName = null,
         bool canDecide = false,
         bool canCancel = false,
+        bool canEdit = false,
         bool canReadDetails = false,
         LeaveQuotaResult? quota = null) => new()
     {
@@ -121,17 +138,22 @@ public sealed class LeaveRequestResult
         Quota = quota,
         CanDecide = canDecide,
         CanCancel = canCancel,
+        CanEdit = canEdit,
+        EditedByName = request.EditedByName,
+        EditedAtUtc = request.EditedAtUtc?.ToDateTimeOffset(),
+        PreviousStartDate = request.PreviousStartDate?.ToDateOnly(),
+        PreviousEndDate = request.PreviousEndDate?.ToDateOnly(),
     };
 
     /// <summary>Permission flags for one request, given who is asking and who it is about.</summary>
-    public static (bool CanDecide, bool CanCancel) PermissionsFor(
+    public static (bool CanDecide, bool CanCancel, bool CanEdit) PermissionsFor(
         Caller caller,
         LeaveRequest request,
         Employee? subject)
     {
         if (subject is null)
         {
-            return (false, false);
+            return (false, false, false);
         }
 
         var pending = request.Status == LeaveRequestStatus.Pending;
@@ -140,7 +162,10 @@ public sealed class LeaveRequestResult
         return (
             pending && LeaveRules.CanDecideFor(caller, subject)
                 && !LeaveRules.IsRequester(caller, request.RequestedByUserId),
-            open && LeaveRules.CanCancel(caller, subject));
+            open && LeaveRules.CanCancel(caller, subject),
+            // Deliberately without the IsRequester bar that gates deciding: fixing a date you
+            // typed yourself is exactly the mistake this exists for.
+            open && LeaveRules.CanDecideFor(caller, subject));
     }
 }
 
