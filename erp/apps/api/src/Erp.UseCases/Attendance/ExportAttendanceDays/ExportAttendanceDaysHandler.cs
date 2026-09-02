@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Text.Json;
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Interfaces;
@@ -62,6 +63,7 @@ public static class ExportAttendanceDaysHandler
     public static async Task<Result<ExportAttendanceDaysResult>> Handle(
         ExportAttendanceDaysQuery query,
         IReadRepository<AttendanceDay> attendanceDays,
+        IReadRepository<AttendanceLog> attendanceLogs,
         AttendanceDayPolicy policy,
         CancellationToken ct)
     {
@@ -92,13 +94,25 @@ public static class ExportAttendanceDaysHandler
 
         var days = await attendanceDays.ListAsync(new AttendanceDayExportSpec(keys), ct);
 
+        var windows = keys
+            .Select(key => (
+                key.EmployeeId,
+                Start: key.Date.AtStartOfDayInZone(policy.TimeZone).ToInstant(),
+                End: key.Date.PlusDays(1).AtStartOfDayInZone(policy.TimeZone).ToInstant()))
+            .ToList();
+        var punches = await attendanceLogs.ListAsync(new AttendanceLogsForKeysSpec(windows), ct);
+        var punchesByKey = punches
+            .GroupBy(log => (log.EmployeeId, Date: log.PunchedAtUtc.InZone(policy.TimeZone).Date))
+            .ToDictionary(group => group.Key, group => group.ToList());
+
         var rows = days
             .Select(day => new ExportAttendanceDayRowResult
             {
                 EmployeeFullName = day.Employee?.FullName ?? "—",
                 Date = day.CalendarDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
-                TapIn = FormatLocal(day.TapInUtc, policy.TimeZone),
-                TapOut = FormatLocal(day.TapOutUtc, policy.TimeZone),
+                Punches = BuildPunchesJson(
+                    punchesByKey.GetValueOrDefault((day.EmployeeId, day.CalendarDate)) ?? [],
+                    policy.TimeZone),
                 Status = day.Status.ToString(),
                 LeaveType = day.LeaveRequest?.Type.ToString() ?? string.Empty,
             })
@@ -108,8 +122,24 @@ public static class ExportAttendanceDaysHandler
             new ExportAttendanceDaysResult { Rows = rows });
     }
 
-    private static string FormatLocal(Instant? instant, DateTimeZone zone) =>
-        instant.HasValue
-            ? LocalTimeStampPattern.Format(instant.Value.InZone(zone).LocalDateTime)
-            : string.Empty;
+    private static string BuildPunchesJson(IReadOnlyList<AttendanceLog> punches, DateTimeZone zone)
+    {
+        var payload = punches
+            .OrderBy(log => log.PunchedAtUtc)
+            .Select(log => new
+            {
+                time = LocalTimeStampPattern.Format(log.PunchedAtUtc.InZone(zone).LocalDateTime),
+                type = log.PunchType.ToString(),
+                notes = log.Notes
+                    .OrderBy(note => note.CreatedAtUtc)
+                    .Select(note => new
+                    {
+                        text = note.Text,
+                        author = note.CreatedByName,
+                        createdAt = LocalTimeStampPattern.Format(note.CreatedAtUtc.InZone(zone).LocalDateTime),
+                    }),
+            });
+
+        return JsonSerializer.Serialize(payload);
+    }
 }

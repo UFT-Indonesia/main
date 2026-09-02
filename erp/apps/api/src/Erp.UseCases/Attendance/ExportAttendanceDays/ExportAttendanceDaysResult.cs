@@ -4,8 +4,10 @@ public sealed class ExportAttendanceDayRowResult
 {
     public string EmployeeFullName { get; init; } = default!;
     public string Date { get; init; } = default!;
-    public string TapIn { get; init; } = default!;
-    public string TapOut { get; init; } = default!;
+
+    /// <summary>JSON array of the day's punches, each with its own notes (JSON-in-JSON).</summary>
+    public string Punches { get; init; } = "[]";
+
     public string Status { get; init; } = default!;
 
     /// <summary>
