@@ -114,6 +114,22 @@ public sealed class LeaveBalanceResponse
     };
 }
 
+/// <summary>
+/// Full replacement of the request's date range and half-day/hourly shape. Type, reason and
+/// attachment are absent on purpose — see EditLeaveRequestCommand.
+/// </summary>
+public sealed class EditLeaveRequestRequest
+{
+    public Guid Id { get; init; }
+    public DateOnly StartDate { get; init; }
+    public DateOnly EndDate { get; init; }
+    public bool HalfDay { get; init; }
+    /// <summary>"Morning" or "Afternoon". Required when <see cref="HalfDay"/> is true.</summary>
+    public string? HalfDayPeriod { get; init; }
+    public int? StartHour { get; init; }
+    public int? EndHour { get; init; }
+}
+
 public sealed class DecideLeaveRequestRequest
 {
     public Guid Id { get; init; }
@@ -169,6 +185,13 @@ public sealed class LeaveRequestResponse
     /// <summary>What the calling user may do with this request — drives which controls the UI renders.</summary>
     public bool CanDecide { get; init; }
     public bool CanCancel { get; init; }
+    public bool CanEdit { get; init; }
+
+    /// <summary>Set together by an edit; null on a request nobody has moved.</summary>
+    public string? EditedByName { get; init; }
+    public DateTimeOffset? EditedAtUtc { get; init; }
+    public DateOnly? PreviousStartDate { get; init; }
+    public DateOnly? PreviousEndDate { get; init; }
 
     public static LeaveRequestResponse From(LeaveRequestResult result) => new()
     {
@@ -203,6 +226,11 @@ public sealed class LeaveRequestResponse
         Quota = result.Quota is null ? null : LeaveQuotaResponse.From(result.Quota),
         CanDecide = result.CanDecide,
         CanCancel = result.CanCancel,
+        CanEdit = result.CanEdit,
+        EditedByName = result.EditedByName,
+        EditedAtUtc = result.EditedAtUtc,
+        PreviousStartDate = result.PreviousStartDate,
+        PreviousEndDate = result.PreviousEndDate,
     };
 }
 
