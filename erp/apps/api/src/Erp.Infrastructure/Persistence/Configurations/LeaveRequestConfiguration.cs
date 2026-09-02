@@ -136,6 +136,28 @@ public sealed class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRe
             .HasConversion<string>()
             .HasMaxLength(32);
 
+        builder.Property(request => request.EditedByUserId)
+            .HasColumnName("edited_by_user_id");
+
+        builder.Property(request => request.EditedByName)
+            .HasColumnName("edited_by_name")
+            .HasMaxLength(200);
+
+        builder.Property(request => request.EditedAtUtc)
+            .HasColumnName("edited_at_utc")
+            .HasConversion(InstantConverter)
+            .HasColumnType("timestamp with time zone");
+
+        builder.Property(request => request.PreviousStartDate)
+            .HasColumnName("previous_start_date")
+            .HasConversion(LocalDateConverter)
+            .HasColumnType("date");
+
+        builder.Property(request => request.PreviousEndDate)
+            .HasColumnName("previous_end_date")
+            .HasConversion(LocalDateConverter)
+            .HasColumnType("date");
+
         builder.HasIndex(request => new { request.EmployeeId, request.Status });
 
         builder.HasOne(request => request.Employee)
