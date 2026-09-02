@@ -23,15 +23,29 @@ internal sealed class PendingLeaveFiledBetweenSpec : Specification<LeaveRequest>
     }
 }
 
-/// <summary>Approved requests for the employee overlapping the given inclusive range.</summary>
+/// <summary>
+/// Approved requests for the employee overlapping the given inclusive range.
+/// <paramref name="excludeRequestId"/> drops one request from the result — an edit re-checks its
+/// own new dates, and an already-approved request would otherwise be found conflicting with itself.
+/// </summary>
 internal sealed class ApprovedLeaveOverlappingSpec : Specification<LeaveRequest>
 {
-    public ApprovedLeaveOverlappingSpec(EmployeeId employeeId, LocalDate startDate, LocalDate endDate)
+    public ApprovedLeaveOverlappingSpec(
+        EmployeeId employeeId,
+        LocalDate startDate,
+        LocalDate endDate,
+        LeaveRequestId? excludeRequestId = null)
     {
         Query.Where(request => request.EmployeeId == employeeId
                                && request.Status == LeaveRequestStatus.Approved
                                && request.StartDate <= endDate
                                && startDate <= request.EndDate);
+
+        if (excludeRequestId is { } excluded)
+        {
+            Query.Where(request => request.Id != excluded);
+        }
+
         Query.AsNoTracking();
     }
 }
@@ -78,7 +92,16 @@ internal sealed class ApprovedLeaveForYearSpec : Specification<LeaveRequest>
     {
     }
 
-    public ApprovedLeaveForYearSpec(IReadOnlyCollection<EmployeeId> employeeIds, int fromYear, int toYear)
+    /// <summary>
+    /// <paramref name="excludeRequestId"/> drops one request from the rollup — an edit prices its
+    /// own new dates against the quota, and counting the request's existing charge as "already
+    /// used" would have it compete with itself for the same days.
+    /// </summary>
+    public ApprovedLeaveForYearSpec(
+        IReadOnlyCollection<EmployeeId> employeeIds,
+        int fromYear,
+        int toYear,
+        LeaveRequestId? excludeRequestId = null)
     {
         var spanStart = new LocalDate(fromYear, 1, 1);
         var spanEnd = new LocalDate(toYear, 12, 31);
@@ -86,6 +109,12 @@ internal sealed class ApprovedLeaveForYearSpec : Specification<LeaveRequest>
                                && request.Status == LeaveRequestStatus.Approved
                                && request.StartDate <= spanEnd
                                && spanStart <= request.EndDate);
+
+        if (excludeRequestId is { } excluded)
+        {
+            Query.Where(request => request.Id != excluded);
+        }
+
         Query.AsNoTracking();
     }
 }
