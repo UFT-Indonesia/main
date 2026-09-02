@@ -137,6 +137,21 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     /// </summary>
     public LeaveCancellationReason? CancellationReason { get; private set; }
 
+    /// <summary>
+    /// Set by <see cref="Edit"/>, all five together. Only the most recent edit is kept — the
+    /// question worth answering is "who moved this, and from what dates", not the full history.
+    /// Null on a request nobody has edited.
+    /// </summary>
+    public Guid? EditedByUserId { get; private set; }
+
+    public string? EditedByName { get; private set; }
+
+    public Instant? EditedAtUtc { get; private set; }
+
+    public LocalDate? PreviousStartDate { get; private set; }
+
+    public LocalDate? PreviousEndDate { get; private set; }
+
     public static LeaveRequest Create(
         EmployeeId employeeId,
         LeaveType type,
@@ -161,16 +176,8 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
             throw new DomainException("leave.requested_by", "Leave requests require an authenticated requester.");
         }
 
-        if (startDate > endDate)
-        {
-            throw new DomainException("leave.date_range", "Start date must be on or before end date.");
-        }
-
-        var workdays = CountWorkdays(startDate, endDate);
-        if (workdays == 0)
-        {
-            throw new DomainException("leave.no_workdays", "Leave range contains no working days (Mon–Fri).");
-        }
+        var workdays = EnsureShapeValid(
+            type, startDate, endDate, halfDay, halfDayPeriod, startHour, endHour);
 
         // Required since 2026-08: an absence with no stated reason is not reviewable. Mirrors
         // ProbationExtensionRequest.Create, which has always demanded one.
@@ -198,6 +205,48 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         {
             throw new DomainException(
                 "leave.attachment_not_allowed", $"{type} leave does not take a supporting document.");
+        }
+
+        return new LeaveRequest(
+            LeaveRequestId.New(),
+            employeeId,
+            type,
+            startDate,
+            endDate,
+            workdays,
+            trimmedReason,
+            attachment,
+            halfDay,
+            halfDayPeriod,
+            startHour,
+            endHour,
+            requestedByUserId,
+            requestedAtUtc);
+    }
+
+    /// <summary>
+    /// Everything that makes a date range and a half-day/hourly shape legal, shared by
+    /// <see cref="Create"/> and <see cref="Edit"/> so the two can never drift apart — an edit
+    /// has to clear exactly the bar a new request does. Returns the workday count.
+    /// </summary>
+    private static int EnsureShapeValid(
+        LeaveType type,
+        LocalDate startDate,
+        LocalDate endDate,
+        bool halfDay,
+        HalfDayPeriod? halfDayPeriod,
+        int? startHour,
+        int? endHour)
+    {
+        if (startDate > endDate)
+        {
+            throw new DomainException("leave.date_range", "Start date must be on or before end date.");
+        }
+
+        var workdays = CountWorkdays(startDate, endDate);
+        if (workdays == 0)
+        {
+            throw new DomainException("leave.no_workdays", "Leave range contains no working days (Mon–Fri).");
         }
 
         // Half-day is Annual's own toggle; every other type must leave both fields alone.
@@ -254,21 +303,66 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
             }
         }
 
-        return new LeaveRequest(
-            LeaveRequestId.New(),
-            employeeId,
-            type,
-            startDate,
-            endDate,
-            workdays,
-            trimmedReason,
-            attachment,
-            halfDay,
-            halfDayPeriod,
-            hourly ? startHour : null,
-            hourly ? endHour : null,
-            requestedByUserId,
-            requestedAtUtc);
+        return workdays;
+    }
+
+    /// <summary>
+    /// Moves an existing request's dates and half-day/hourly shape. Type, reason and attachment
+    /// are deliberately not editable — changing those makes it a different absence, which is
+    /// what cancel-and-refile is for.
+    /// <para>
+    /// Only the shape changes here. Whether the edit also decides a Pending request is the
+    /// caller's call (see EditLeaveRequestHandler) — the domain has no view on who outranks whom.
+    /// Downstream attendance rows are the caller's job too: the dates this was materialized
+    /// against have just moved.
+    /// </para>
+    /// </summary>
+    public void Edit(
+        LocalDate startDate,
+        LocalDate endDate,
+        bool halfDay,
+        HalfDayPeriod? halfDayPeriod,
+        int? startHour,
+        int? endHour,
+        Guid editedByUserId,
+        string editedByName,
+        Instant nowUtc)
+    {
+        if (Status is not (LeaveRequestStatus.Pending or LeaveRequestStatus.Approved))
+        {
+            throw new DomainException(
+                "leave.not_editable", $"Only pending or approved requests can be edited (status: {Status}).");
+        }
+
+        if (editedByUserId == Guid.Empty)
+        {
+            throw new DomainException("leave.edited_by", "Edits require an authenticated user.");
+        }
+
+        if (string.IsNullOrWhiteSpace(editedByName))
+        {
+            throw new DomainException("leave.edited_by_name", "Edits require the editor's display name.");
+        }
+
+        var workdays = EnsureShapeValid(
+            Type, startDate, endDate, halfDay, halfDayPeriod, startHour, endHour);
+
+        // Only the most recent edit is kept — enough to answer "who moved my leave, and from
+        // when?", which is the question this exists for.
+        PreviousStartDate = StartDate;
+        PreviousEndDate = EndDate;
+
+        StartDate = startDate;
+        EndDate = endDate;
+        WorkdayCount = workdays;
+        HalfDay = halfDay;
+        Period = halfDayPeriod;
+        StartHour = startHour;
+        EndHour = endHour;
+
+        EditedByUserId = editedByUserId;
+        EditedByName = editedByName.Trim();
+        EditedAtUtc = nowUtc;
     }
 
     public void Approve(Guid decidedByUserId, string decidedByName, Instant nowUtc)

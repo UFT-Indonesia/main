@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import type {
   BlockedLeaveDatesParams,
+  EditLeaveRequestBody,
   BlockedLeaveDatesResponse,
   CreateLeaveRequestBody,
   LeaveBalance,
@@ -64,6 +65,15 @@ export async function downloadLeaveAttachment(id: string): Promise<Blob> {
   const { data } = await apiClient.get<Blob>(`/api/leave/${id}/attachment`, {
     responseType: 'blob',
   });
+  return data;
+}
+
+/** Moves an existing request's dates. Authority is the server's call — same as approving it. */
+export async function editLeaveRequest(
+  id: string,
+  body: EditLeaveRequestBody,
+): Promise<LeaveRequest> {
+  const { data } = await apiClient.post<LeaveRequest>(`/api/leave/${id}/edit`, body);
   return data;
 }
 

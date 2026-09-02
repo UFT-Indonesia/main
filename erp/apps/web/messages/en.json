@@ -373,7 +373,9 @@
       "quota": "Quota for this type",
       "attachment": "Doctor's note",
       "attachmentError": "Could not download the file",
-      "chargedDays": "Type Detail"
+      "chargedDays": "Type Detail",
+      "editedBy": "Edited By",
+      "editedValue": "{name} on {at} — previously {from} – {to}"
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
@@ -382,6 +384,14 @@
     "quota": {
       "uncapped": "No limit on this type.",
       "remaining": "{remaining} of {entitled} days left ({used} used)."
+    },
+    "edit": {
+      "title": "Edit Leave Dates",
+      "description": "Change {employee}'s leave dates, currently {from} – {to}.",
+      "confirm": "Save Changes",
+      "successTitle": "Leave updated",
+      "successDescription": "The leave dates were updated.",
+      "errorTitle": "Could not update leave"
     }
   },
   "changePassword": {

@@ -74,7 +74,7 @@ public static class ListLeaveRequestsHandler
                 .Select(request =>
                 {
                     var subject = request.Employee;
-                    var (canDecide, canCancel) =
+                    var (canDecide, canCancel, canEdit) =
                         LeaveRequestResult.PermissionsFor(query.Caller, request, subject);
 
                     // No subject means no way to judge authority, so nothing sensitive is shown.
@@ -91,6 +91,7 @@ public static class ListLeaveRequestsHandler
                         canReadBalance ? LeaveQuota.UsedDaysAllTypes(approved, year, policy) : null,
                         canDecide: canDecide,
                         canCancel: canCancel,
+                        canEdit: canEdit,
                         canReadDetails: canReadDetails,
                         // Gated on details too, not just the balance: the block names the leave
                         // type, which is redacted from anyone without standing to read it.

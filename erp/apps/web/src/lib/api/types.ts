@@ -369,6 +369,13 @@ export interface LeaveRequest {
   /** Server-computed: the rules depend on the subject's role and reporting line, which the client cannot see. */
   canDecide: boolean;
   canCancel: boolean;
+  /** Whether the caller may move this request's dates — same standing as deciding it. */
+  canEdit: boolean;
+  /** Set together by an edit; null on a request nobody has moved. */
+  editedByName: string | null;
+  editedAtUtc: string | null;
+  previousStartDate: string | null;
+  previousEndDate: string | null;
 }
 
 export interface ListLeaveRequestsResponse {
@@ -459,6 +466,19 @@ export interface CreateLeaveRequestBody {
   halfDay?: boolean;
   halfDayPeriod?: HalfDayPeriod | null;
   /** Izin's own toggle. Both required together, whole hours, 12:00 excluded. */
+  startHour?: number | null;
+  endHour?: number | null;
+}
+
+/**
+ * Full replacement of a request's date range and half-day/hourly shape. Type, reason and
+ * attachment are absent on purpose — changing those makes it a different absence.
+ */
+export interface EditLeaveRequestBody {
+  startDate: string;
+  endDate: string;
+  halfDay: boolean;
+  halfDayPeriod?: HalfDayPeriod | null;
   startHour?: number | null;
   endHour?: number | null;
 }
