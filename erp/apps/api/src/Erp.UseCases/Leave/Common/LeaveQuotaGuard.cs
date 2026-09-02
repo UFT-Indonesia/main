@@ -2,6 +2,7 @@ using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Interfaces;
+using Erp.SharedKernel.Identity;
 using NodaTime;
 
 namespace Erp.UseCases.Leave.Common;
@@ -25,7 +26,8 @@ internal static class LeaveQuotaGuard
         AttendanceDayPolicy policy,
         IRepository<LeaveRequest> leaveRequests,
         LocalDate today,
-        CancellationToken ct)
+        CancellationToken ct,
+        LeaveRequestId? excludeRequestId = null)
     {
         if (employee.Role == EmployeeRole.Owner)
         {
@@ -58,7 +60,9 @@ internal static class LeaveQuotaGuard
         }
 
         var approved = await leaveRequests.ListAsync(
-            new ApprovedLeaveForYearSpec([employee.Id], capped.Min(e => e.Year), capped.Max(e => e.Year)), ct);
+            new ApprovedLeaveForYearSpec(
+                [employee.Id], capped.Min(e => e.Year), capped.Max(e => e.Year), excludeRequestId),
+            ct);
 
         foreach (var (year, entitled) in capped)
         {
