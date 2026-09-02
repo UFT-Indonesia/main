@@ -373,7 +373,9 @@
       "quota": "Kuota jenis ini",
       "attachment": "Surat Dokter",
       "attachmentError": "Gagal mengunduh berkas",
-      "chargedDays": "Rincian Jenis"
+      "chargedDays": "Rincian Jenis",
+      "editedBy": "Diubah Oleh",
+      "editedValue": "{name} pada {at} — sebelumnya {from} – {to}"
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
@@ -382,6 +384,14 @@
     "quota": {
       "uncapped": "Jenis ini tidak dibatasi.",
       "remaining": "Sisa {remaining} dari {entitled} hari ({used} terpakai)."
+    },
+    "edit": {
+      "title": "Ubah Tanggal Cuti",
+      "description": "Ubah tanggal cuti {employee}, saat ini {from} – {to}.",
+      "confirm": "Simpan Perubahan",
+      "successTitle": "Cuti diubah",
+      "successDescription": "Tanggal cuti berhasil diperbarui.",
+      "errorTitle": "Gagal mengubah cuti"
     }
   },
   "changePassword": {

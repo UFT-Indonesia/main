@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createLeaveRequest,
   decideLeaveRequest,
+  editLeaveRequest,
   getBlockedLeaveDates,
   getLeaveBalance,
   listLeaveRequests,
@@ -11,6 +12,7 @@ import {
 import type {
   BlockedLeaveDatesParams,
   CreateLeaveRequestBody,
+  EditLeaveRequestBody,
   ListLeaveRequestsParams,
 } from '@/lib/api/types';
 
@@ -59,6 +61,19 @@ export function useCreateLeaveRequest() {
     mutationFn: (body: CreateLeaveRequestBody) => createLeaveRequest(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: leaveKeys.all });
+    },
+  });
+}
+
+export function useEditLeaveRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: EditLeaveRequestBody }) =>
+      editLeaveRequest(id, body),
+    onSuccess: () => {
+      // Dates moving re-materializes attendance, so the attendance keys go too.
+      qc.invalidateQueries({ queryKey: leaveKeys.all });
+      qc.invalidateQueries({ queryKey: ['attendance'] });
     },
   });
 }
