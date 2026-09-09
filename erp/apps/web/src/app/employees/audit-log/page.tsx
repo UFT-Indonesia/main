@@ -15,7 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { AuditLogFilters } from '@/components/employees/audit-log-filters';
 import { isKnownEventType } from '@/components/employees/audit-log-event-types';
 import { AuditLogSummary } from '@/components/employees/audit-log-summary';
 import { useEmployeeAuditLog } from '@/hooks/use-employee-audit-log';
@@ -24,6 +23,10 @@ import { exportEmployeeAuditLog } from '@/lib/api/employee-audit-log';
 import { extractApiError } from '@/lib/api/client';
 import { datedFilename, downloadBlob } from '@/lib/csv';
 import { useHasRole } from '@/lib/auth/store';
+import { FilterBuilder } from '@/components/ui/filter-builder';
+import { useFilters } from '@/hooks/use-filters';
+import { AUDIT_LOG_FILTER_FIELDS } from '@/lib/filters/fields';
+import { useVisibleFilterFields } from '@/lib/filters/use-visible-fields';
 
 const PAGE_SIZE = 20;
 
@@ -42,14 +45,12 @@ export default function EmployeeAuditLogPage() {
   // A change history exposes every salary/reporting-line change ever made — Owner-only.
   const isOwner = useHasRole('Owner');
 
-  const [employeeId, setEmployeeId] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [eventType, setEventType] = useState('');
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
+  const filterFields = useVisibleFilterFields(AUDIT_LOG_FILTER_FIELDS);
+  const filters = useFilters(filterFields, () => setPage(1));
 
-  const params = { page, pageSize: PAGE_SIZE, employeeId, dateFrom, dateTo, eventType };
+  const params = { page, pageSize: PAGE_SIZE, filter: filters.filter };
   const { data, isLoading, isFetching, error } = useEmployeeAuditLog(params, isOwner);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.totalCount / data.pageSize)) : 1;
@@ -57,7 +58,8 @@ export default function EmployeeAuditLogPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const blob = await exportEmployeeAuditLog({ employeeId, dateFrom, dateTo, eventType });
+      // Same rows the list is showing, so the CSV matches what is on screen.
+      const blob = await exportEmployeeAuditLog({ filter: filters.filter });
       downloadBlob(blob, datedFilename('employee-audit-log', 'csv'));
     } catch (err) {
       toast.error(t('export.errorTitle'), extractApiError(err).message);
@@ -90,15 +92,16 @@ export default function EmployeeAuditLogPage() {
           </Button>
         </header>
 
-        <AuditLogFilters
-          employeeId={employeeId}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          eventType={eventType}
-          onEmployeeIdChange={(v) => { setEmployeeId(v); setPage(1); }}
-          onDateFromChange={(v) => { setDateFrom(v); setPage(1); }}
-          onDateToChange={(v) => { setDateTo(v); setPage(1); }}
-          onEventTypeChange={(v) => { setEventType(v); setPage(1); }}
+        <FilterBuilder
+          fields={filterFields}
+          rows={filters.rows}
+          activeCount={filters.activeCount}
+          onAddRow={filters.addRow}
+          onRemoveRow={filters.removeRow}
+          onClear={filters.clear}
+          onFieldChange={filters.setField}
+          onOpChange={filters.setOp}
+          onValueChange={filters.setValue}
         />
 
         {error ? (

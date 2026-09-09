@@ -6,7 +6,10 @@ import { Plus, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AttendanceDayFilters } from '@/components/attendance/attendance-day-filters';
+import { FilterBuilder } from '@/components/ui/filter-builder';
+import { useFilters } from '@/hooks/use-filters';
+import { ATTENDANCE_DAY_FILTER_FIELDS } from '@/lib/filters/fields';
+import { useVisibleFilterFields } from '@/lib/filters/use-visible-fields';
 import { AttendanceDayTable } from '@/components/attendance/attendance-day-table';
 import { AddManualLogDialog } from '@/components/attendance/add-manual-log-dialog';
 import { ViewLogDetailsDialog } from '@/components/attendance/view-log-details-dialog';
@@ -16,7 +19,7 @@ import { extractApiError } from '@/lib/api/client';
 import { exportAttendanceDays } from '@/lib/api/attendance';
 import { useHasRole } from '@/lib/auth/store';
 import { datedFilename, downloadBlob } from '@/lib/csv';
-import type { AttendanceDayListItem, AttendanceDayStatus, PunchType } from '@/lib/api/types';
+import type { AttendanceDayListItem, PunchType } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 
@@ -29,24 +32,15 @@ export default function AttendancePage() {
   // *particular* employee is decided per row by the server's canWrite flag.
   const canWriteSomething = useHasRole('Owner', 'Manager');
 
-  const [employeeSearch, setEmployeeSearch] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [status, setStatus] = useState<AttendanceDayStatus | ''>('');
   const [page, setPage] = useState(1);
+  const filterFields = useVisibleFilterFields(ATTENDANCE_DAY_FILTER_FIELDS);
+  const filters = useFilters(filterFields, () => setPage(1));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detailsDay, setDetailsDay] = useState<AttendanceDayListItem | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const params = {
-    page,
-    pageSize: PAGE_SIZE,
-    employeeSearch: employeeSearch || undefined,
-    dateFrom: dateFrom || undefined,
-    dateTo: dateTo || undefined,
-    status: status || undefined,
-  };
+  const params = { page, pageSize: PAGE_SIZE, filter: filters.filter };
 
   const { data, isLoading, isFetching, error } = useAttendanceDays(params);
   const recordMutation = useRecordManualLog();
@@ -68,8 +62,6 @@ export default function AttendancePage() {
       toast.error(t('manualLog.errorTitle'), apiErr.message);
     }
   };
-
-  const resetPage = () => setPage(1);
 
   const toggleSelected = (key: string) => {
     setSelected((prev) => {
@@ -134,15 +126,16 @@ export default function AttendancePage() {
           )}
         </header>
 
-        <AttendanceDayFilters
-          employeeSearch={employeeSearch}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          status={status}
-          onEmployeeSearchChange={(v) => { setEmployeeSearch(v); resetPage(); }}
-          onDateFromChange={(v) => { setDateFrom(v); resetPage(); }}
-          onDateToChange={(v) => { setDateTo(v); resetPage(); }}
-          onStatusChange={(v) => { setStatus(v); resetPage(); }}
+        <FilterBuilder
+          fields={filterFields}
+          rows={filters.rows}
+          activeCount={filters.activeCount}
+          onAddRow={filters.addRow}
+          onRemoveRow={filters.removeRow}
+          onClear={filters.clear}
+          onFieldChange={filters.setField}
+          onOpChange={filters.setOp}
+          onValueChange={filters.setValue}
         />
 
         {selected.size > 0 && (

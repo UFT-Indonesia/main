@@ -6,7 +6,6 @@ import { Plus, ChevronLeft, ChevronRight, Check, X, Ban, Eye } from 'lucide-reac
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -16,7 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { EmployeePicker } from '@/components/employees/employee-picker';
 import { formatLeaveDate } from '@/components/leave/leave-dialogs';
 import {
   CreateProbationExtensionDialog,
@@ -33,10 +31,13 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { useHasRole } from '@/lib/auth/store';
-import type { ProbationExtension, ProbationExtensionStatus } from '@/lib/api/types';
+import { FilterBuilder } from '@/components/ui/filter-builder';
+import { useFilters } from '@/hooks/use-filters';
+import { PROBATION_FILTER_FIELDS } from '@/lib/filters/fields';
+import { useVisibleFilterFields } from '@/lib/filters/use-visible-fields';
+import type { ProbationExtension } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
-const STATUSES: ProbationExtensionStatus[] = ['Pending', 'Approved', 'Denied', 'Cancelled'];
 
 export default function ProbationPage() {
   const t = useTranslations('probation');
@@ -46,10 +47,13 @@ export default function ProbationPage() {
   // Only a manager files: an owner already holds the direct edit on the employee record.
   const canFile = useHasRole('Manager');
 
-  // Everyone lands on what still needs a decision; the rest is history.
-  const [status, setStatus] = useState<ProbationExtensionStatus | ''>('Pending');
-  const [employeeId, setEmployeeId] = useState('');
   const [page, setPage] = useState(1);
+
+  // Everyone lands on what still needs a decision; the rest is history.
+  const filterFields = useVisibleFilterFields(PROBATION_FILTER_FIELDS);
+  const filters = useFilters(filterFields, () => setPage(1), () => [
+    { field: 'status', op: 'in', value: ['Pending'] },
+  ]);
   const [createOpen, setCreateOpen] = useState(false);
   const [details, setDetails] = useState<ProbationExtension | null>(null);
   const [decision, setDecision] = useState<
@@ -59,8 +63,7 @@ export default function ProbationPage() {
   const { data, isLoading, isFetching, error } = useProbationExtensions({
     page,
     pageSize: PAGE_SIZE,
-    status,
-    employeeId: employeeId || undefined,
+    filter: filters.filter,
   });
   const createMutation = useCreateProbationExtension();
   const decideMutation = useDecideProbationExtension();
@@ -106,29 +109,17 @@ export default function ProbationPage() {
           )}
         </header>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="w-full md:w-64">
-            <EmployeePicker
-              value={employeeId}
-              onChange={(v) => { setEmployeeId(v); setPage(1); }}
-              placeholder={t('filters.allEmployees')}
-            />
-          </div>
-          <div className="w-full md:w-40">
-            <Select
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value as ProbationExtensionStatus | '');
-                setPage(1);
-              }}
-            >
-              <option value="">{t('filters.allStatuses')}</option>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>{t(`status.${s}`)}</option>
-              ))}
-            </Select>
-          </div>
-        </div>
+        <FilterBuilder
+          fields={filterFields}
+          rows={filters.rows}
+          activeCount={filters.activeCount}
+          onAddRow={filters.addRow}
+          onRemoveRow={filters.removeRow}
+          onClear={filters.clear}
+          onFieldChange={filters.setField}
+          onOpChange={filters.setOp}
+          onValueChange={filters.setValue}
+        />
 
         {error ? (
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
