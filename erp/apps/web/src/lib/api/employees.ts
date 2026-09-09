@@ -15,9 +15,7 @@ export async function listEmployees(params: ListEmployeesParams): Promise<ListEm
     params: {
       page: params.page,
       pageSize: params.pageSize,
-      search: params.search || undefined,
-      role: params.role || undefined,
-      status: params.status || undefined,
+      filter: params.filter || undefined,
     },
   });
   return data;

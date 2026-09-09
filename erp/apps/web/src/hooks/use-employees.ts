@@ -18,6 +18,7 @@ import type {
   SetProbationEndBody,
   UpdateEmployeeBody,
 } from '@/lib/api/types';
+import { employeeLookupFilter } from '@/lib/filters/quick';
 
 const employeeKeys = {
   all: ['employees'] as const,
@@ -105,14 +106,14 @@ export function useDeleteEmployee() {
 export function useParentCandidates(search: string, enabled = true) {
   const ownerQuery = useQuery({
     queryKey: [...employeeKeys.all, 'parent-candidates', 'Owner', search] as const,
-    queryFn: () => listEmployees({ role: 'Owner', status: 'Active', search, pageSize: 50 }),
+    queryFn: () => listEmployees({ filter: employeeLookupFilter(search, true, 'Owner'), pageSize: 50 }),
     placeholderData: (prev) => prev,
     enabled,
   });
 
   const managerQuery = useQuery({
     queryKey: [...employeeKeys.all, 'parent-candidates', 'Manager', search] as const,
-    queryFn: () => listEmployees({ role: 'Manager', status: 'Active', search, pageSize: 50 }),
+    queryFn: () => listEmployees({ filter: employeeLookupFilter(search, true, 'Manager'), pageSize: 50 }),
     placeholderData: (prev) => prev,
     enabled,
   });

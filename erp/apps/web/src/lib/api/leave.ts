@@ -17,8 +17,7 @@ export async function listLeaveRequests(
     params: {
       page: params.page,
       pageSize: params.pageSize,
-      status: params.status || undefined,
-      employeeId: params.employeeId || undefined,
+      filter: params.filter || undefined,
     },
   });
   return data;
