@@ -90,7 +90,8 @@ public class EmployeeAuditLogAuthorizationTests : IntegrationTestBase
         await SeedAuditRowAsync(manager.Id);
 
         var client = await CreateClientForAsync(owner);
-        var response = await client.GetAsync($"/api/employees/audit-log?employeeId={manager.Id.Value}");
+        var filter = FilterQuery.Rows($$"""[{"field":"employeeId","op":"in","value":["{{manager.Id.Value}}"]}]""");
+        var response = await client.GetAsync($"/api/employees/audit-log?{filter}");
 
         var list = await response.Content.ReadFromJsonAsync<AuditLogList>();
         list!.TotalCount.Should().Be(1);
