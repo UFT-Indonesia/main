@@ -1,6 +1,7 @@
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Common.Filtering;
 using Erp.UseCases.Employees.Common;
 
 namespace Erp.UseCases.Employees.ExportEmployeeAuditLog;
@@ -15,8 +16,12 @@ public static class ExportEmployeeAuditLogHandler
         IReadRepository<Employee> employees,
         CancellationToken ct)
     {
-        var totalCount = await auditLogs.CountAsync(
-            new EmployeeAuditLogCountSpec(query.EmployeeId, query.DateFrom, query.DateTo, query.EventType), ct);
+        if (!FilterApplier.TryCompile(EmployeeAuditLogFilterFields.Fields, query.Filters, query.Caller, out var filters, out var failure))
+        {
+            return new Result<ExportEmployeeAuditLogResult>.Error(failure.Code, failure.Message);
+        }
+
+        var totalCount = await auditLogs.CountAsync(new EmployeeAuditLogCountSpec(filters), ct);
 
         if (totalCount > MaxRows)
         {
@@ -26,7 +31,7 @@ public static class ExportEmployeeAuditLogHandler
         }
 
         var items = await auditLogs.ListAsync(
-            new EmployeeAuditLogExportSpec(query.EmployeeId, query.DateFrom, query.DateTo, query.EventType), ct);
+            new EmployeeAuditLogExportSpec(filters), ct);
 
         var nameById = await EmployeeAuditLogNameResolver.ResolveAsync(
             employees, items.Select(log => log.EmployeeId), ct);

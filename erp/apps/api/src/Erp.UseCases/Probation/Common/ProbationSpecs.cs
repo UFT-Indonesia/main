@@ -1,6 +1,8 @@
+using System.Linq.Expressions;
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Probation;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Common.Filtering;
 
 namespace Erp.UseCases.Probation.Common;
 
@@ -27,9 +29,12 @@ internal sealed class ProbationExtensionByIdSpec : SingleResultSpecification<Pro
 internal sealed class ProbationExtensionListSpec : Specification<ProbationExtensionRequest>
 {
     public ProbationExtensionListSpec(
-        int page, int pageSize, ProbationExtensionStatus? status, IReadOnlyCollection<EmployeeId>? employeeIds)
+        int page,
+        int pageSize,
+        IReadOnlyList<Expression<Func<ProbationExtensionRequest, bool>>> filters,
+        IReadOnlyCollection<EmployeeId>? employeeIds)
     {
-        ProbationExtensionFilters.Apply(Query, status, employeeIds);
+        ProbationExtensionFilters.Apply(Query, filters, employeeIds);
         Query.Include(request => request.Employee);
         Query.OrderByDescending(request => request.RequestedAtUtc);
         Query.AsNoTracking();
@@ -39,9 +44,11 @@ internal sealed class ProbationExtensionListSpec : Specification<ProbationExtens
 
 internal sealed class ProbationExtensionCountSpec : Specification<ProbationExtensionRequest>
 {
-    public ProbationExtensionCountSpec(ProbationExtensionStatus? status, IReadOnlyCollection<EmployeeId>? employeeIds)
+    public ProbationExtensionCountSpec(
+        IReadOnlyList<Expression<Func<ProbationExtensionRequest, bool>>> filters,
+        IReadOnlyCollection<EmployeeId>? employeeIds)
     {
-        ProbationExtensionFilters.Apply(Query, status, employeeIds);
+        ProbationExtensionFilters.Apply(Query, filters, employeeIds);
         Query.AsNoTracking();
     }
 }
@@ -50,19 +57,19 @@ internal static class ProbationExtensionFilters
 {
     internal static void Apply(
         ISpecificationBuilder<ProbationExtensionRequest> query,
-        ProbationExtensionStatus? status,
+        IReadOnlyList<Expression<Func<ProbationExtensionRequest, bool>>> filters,
         IReadOnlyCollection<EmployeeId>? employeeIds)
     {
-        if (status.HasValue)
-        {
-            query.Where(request => request.Status == status.Value);
-        }
-
+        // Scope first, filters second: a filter row narrows the caller's own scope and can never
+        // reach outside it.
+        //
         // Null means unrestricted; an empty set means nothing matches, which is the correct
         // answer for a caller with no standing rather than an unfiltered query.
         if (employeeIds is not null)
         {
             query.Where(request => employeeIds.Contains(request.EmployeeId));
         }
+
+        FilterApplier.ApplyTo(query, filters);
     }
 }

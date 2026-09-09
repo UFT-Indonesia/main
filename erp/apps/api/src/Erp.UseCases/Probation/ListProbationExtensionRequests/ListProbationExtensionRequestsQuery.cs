@@ -1,4 +1,5 @@
 using Erp.UseCases.Common;
+using Erp.UseCases.Common.Filtering;
 using Erp.UseCases.Probation.Common;
 
 namespace Erp.UseCases.Probation.ListProbationExtensionRequests;
@@ -6,8 +7,7 @@ namespace Erp.UseCases.Probation.ListProbationExtensionRequests;
 public sealed record ListProbationExtensionRequestsQuery(
     int Page,
     int PageSize,
-    string? Status,
-    Guid? EmployeeId,
+    IReadOnlyList<FilterRow> Filters,
     Caller Caller);
 
 public sealed class ListProbationExtensionRequestsResult

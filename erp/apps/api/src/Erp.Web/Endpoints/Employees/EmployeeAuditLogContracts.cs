@@ -4,10 +4,9 @@ public sealed class ListEmployeeAuditLogRequest
 {
     public int Page { get; init; } = 1;
     public int PageSize { get; init; } = 20;
-    public Guid? EmployeeId { get; init; }
-    public DateOnly? DateFrom { get; init; }
-    public DateOnly? DateTo { get; init; }
-    public string? EventType { get; init; }
+
+    /// <summary>Filter builder rows as a JSON array; see FilterApplier.Parse.</summary>
+    public string? Filter { get; init; }
 }
 
 public sealed class EmployeeAuditLogEntryResponse
@@ -33,8 +32,6 @@ public sealed class ListEmployeeAuditLogResponse
 
 public sealed class ExportEmployeeAuditLogRequest
 {
-    public Guid? EmployeeId { get; init; }
-    public DateOnly? DateFrom { get; init; }
-    public DateOnly? DateTo { get; init; }
-    public string? EventType { get; init; }
+    /// <summary>The same rows the list endpoint took, so an export matches what is on screen.</summary>
+    public string? Filter { get; init; }
 }

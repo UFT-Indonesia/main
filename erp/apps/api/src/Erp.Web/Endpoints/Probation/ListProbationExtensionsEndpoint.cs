@@ -1,6 +1,7 @@
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Probation.ListProbationExtensionRequests;
+using Erp.UseCases.Common.Filtering;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
 using Wolverine;
@@ -37,7 +38,8 @@ public sealed class ListProbationExtensionsEndpoint
         }
 
         var result = await _bus.InvokeAsync<Result<ListProbationExtensionRequestsResult>>(
-            new ListProbationExtensionRequestsQuery(req.Page, req.PageSize, req.Status, req.EmployeeId, caller), ct);
+            new ListProbationExtensionRequestsQuery(
+                req.Page, req.PageSize, FilterBinding.ParseOrThrow(req.Filter), caller), ct);
 
         if (result is Result<ListProbationExtensionRequestsResult>.Success s)
         {
@@ -59,6 +61,12 @@ public sealed class ListProbationExtensionsEndpoint
 
         if (result is Result<ListProbationExtensionRequestsResult>.Error e)
         {
+            if (e.Code == FilterErrors.FieldForbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 

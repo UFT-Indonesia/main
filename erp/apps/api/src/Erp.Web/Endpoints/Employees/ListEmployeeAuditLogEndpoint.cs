@@ -2,6 +2,7 @@ using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Employees.Common;
 using Erp.UseCases.Employees.ListEmployeeAuditLog;
+using Erp.UseCases.Common.Filtering;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
 using Wolverine;
@@ -26,13 +27,17 @@ public sealed class ListEmployeeAuditLogEndpoint : Endpoint<ListEmployeeAuditLog
 
     public override async Task HandleAsync(ListEmployeeAuditLogRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<ListEmployeeAuditLogResult>>(new ListEmployeeAuditLogQuery(
             req.Page,
             req.PageSize,
-            req.EmployeeId,
-            req.DateFrom,
-            req.DateTo,
-            req.EventType), ct);
+            FilterBinding.ParseOrThrow(req.Filter),
+            caller), ct);
 
         if (result is Result<ListEmployeeAuditLogResult>.Success s)
         {
@@ -48,6 +53,12 @@ public sealed class ListEmployeeAuditLogEndpoint : Endpoint<ListEmployeeAuditLog
 
         if (result is Result<ListEmployeeAuditLogResult>.Error e)
         {
+            if (e.Code == FilterErrors.FieldForbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 

@@ -3,6 +3,7 @@ using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Employees.ExportEmployeeAuditLog;
 using Erp.Web.Endpoints.Attendance;
+using Erp.UseCases.Common.Filtering;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
 using Wolverine;
@@ -27,11 +28,15 @@ public sealed class ExportEmployeeAuditLogEndpoint : Endpoint<ExportEmployeeAudi
 
     public override async Task HandleAsync(ExportEmployeeAuditLogRequest req, CancellationToken ct)
     {
+        if (CallerFactory.From(User) is not { } caller)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
         var result = await _bus.InvokeAsync<Result<ExportEmployeeAuditLogResult>>(new ExportEmployeeAuditLogQuery(
-            req.EmployeeId,
-            req.DateFrom,
-            req.DateTo,
-            req.EventType), ct);
+            FilterBinding.ParseOrThrow(req.Filter),
+            caller), ct);
 
         if (result is Result<ExportEmployeeAuditLogResult>.Success s)
         {
@@ -43,6 +48,12 @@ public sealed class ExportEmployeeAuditLogEndpoint : Endpoint<ExportEmployeeAudi
 
         if (result is Result<ExportEmployeeAuditLogResult>.Error e)
         {
+            if (e.Code == FilterErrors.FieldForbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 

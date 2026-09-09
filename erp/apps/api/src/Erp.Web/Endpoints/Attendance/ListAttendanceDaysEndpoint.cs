@@ -1,6 +1,7 @@
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Attendance.ListAttendanceDays;
+using Erp.UseCases.Common.Filtering;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
 using Wolverine;
@@ -35,10 +36,7 @@ public sealed class ListAttendanceDaysEndpoint : Endpoint<ListAttendanceDaysRequ
         var result = await _bus.InvokeAsync<Result<ListAttendanceDaysResult>>(new ListAttendanceDaysQuery(
             req.Page,
             req.PageSize,
-            req.EmployeeSearch,
-            req.DateFrom,
-            req.DateTo,
-            req.Status,
+            FilterBinding.ParseOrThrow(req.Filter),
             caller), ct);
 
         if (result is Result<ListAttendanceDaysResult>.Success s)
@@ -74,6 +72,12 @@ public sealed class ListAttendanceDaysEndpoint : Endpoint<ListAttendanceDaysRequ
 
         if (result is Result<ListAttendanceDaysResult>.Error e)
         {
+            if (e.Code == FilterErrors.FieldForbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 

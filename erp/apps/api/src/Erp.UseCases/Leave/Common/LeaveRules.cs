@@ -62,6 +62,14 @@ public static class LeaveRules
         caller.Role == EmployeeRole.Owner || IsSelf(caller, subject) || CanDecideFor(caller, subject);
 
     /// <summary>
+    /// Who may <em>filter</em> by a detail field — type, reason, decision note. Coarser than
+    /// <see cref="CanReadDetails"/> on purpose: that rule is per-subject, but a predicate applies
+    /// to every row at once and the surviving row set answers the question by itself. Letting a
+    /// colleague filter on reason would hand them the text the projection nulls out.
+    /// </summary>
+    public static bool CanFilterDetails(Caller caller) => caller.Role == EmployeeRole.Owner;
+
+    /// <summary>
     /// Who may read someone's running leave balance for the year. Wider than the reason — a
     /// Manager sees the whole staff's so they can plan cover, not just their own reports — but
     /// an Owner's balance is not something the people below them get to tally.

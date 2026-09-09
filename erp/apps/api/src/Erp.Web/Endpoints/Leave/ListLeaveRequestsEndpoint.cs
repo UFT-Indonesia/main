@@ -1,6 +1,7 @@
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Leave.ListLeaveRequests;
+using Erp.UseCases.Common.Filtering;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
 using Wolverine;
@@ -41,8 +42,7 @@ public sealed class ListLeaveRequestsEndpoint : Endpoint<ListLeaveRequestsReques
         var result = await _bus.InvokeAsync<Result<ListLeaveRequestsResult>>(new ListLeaveRequestsQuery(
             req.Page,
             req.PageSize,
-            req.Status,
-            req.EmployeeId,
+            FilterBinding.ParseOrThrow(req.Filter),
             caller), ct);
 
         if (result is Result<ListLeaveRequestsResult>.Success s)
@@ -59,6 +59,12 @@ public sealed class ListLeaveRequestsEndpoint : Endpoint<ListLeaveRequestsReques
 
         if (result is Result<ListLeaveRequestsResult>.Error e)
         {
+            if (e.Code == FilterErrors.FieldForbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 

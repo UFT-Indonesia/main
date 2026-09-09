@@ -1,12 +1,12 @@
 using Erp.UseCases.Common;
+using Erp.UseCases.Common.Filtering;
 
 namespace Erp.UseCases.Leave.ListLeaveRequests;
 
 public sealed record ListLeaveRequestsQuery(
     int Page,
     int PageSize,
-    string? Status,
-    Guid? EmployeeId,
+    IReadOnlyList<FilterRow> Filters,
     Caller Caller);
 
 public sealed class ListLeaveRequestsResult

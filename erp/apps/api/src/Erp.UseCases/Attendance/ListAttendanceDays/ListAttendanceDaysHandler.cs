@@ -1,6 +1,7 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Interfaces;
 using Erp.UseCases.Attendance.Common;
+using Erp.UseCases.Common.Filtering;
 using Erp.SharedKernel.Domain.Results;
 using NodaTime;
 
@@ -21,31 +22,17 @@ public static class ListAttendanceDaysHandler
             ? DefaultPageSize
             : Math.Min(query.PageSize, MaxPageSize);
 
-        AttendanceDayStatus? statusFilter = null;
-        if (!string.IsNullOrWhiteSpace(query.Status))
+        if (!FilterApplier.TryCompile(AttendanceDayFilterFields.Fields, query.Filters, query.Caller, out var filters, out var failure))
         {
-            if (!Enum.TryParse<AttendanceDayStatus>(query.Status, ignoreCase: true, out var parsed))
-            {
-                return new Result<ListAttendanceDaysResult>.Error(
-                    "attendance.day_status_invalid", "Status must be Complete, Incomplete, or OnLeave.");
-            }
-
-            statusFilter = parsed;
+            return new Result<ListAttendanceDaysResult>.Error(failure.Code, failure.Message);
         }
 
-        LocalDate? dateFrom = query.DateFrom.HasValue
-            ? LocalDate.FromDateOnly(query.DateFrom.Value)
-            : null;
-        LocalDate? dateTo = query.DateTo.HasValue
-            ? LocalDate.FromDateOnly(query.DateTo.Value)
-            : null;
-
         var totalCount = await attendanceDays.CountAsync(
-            new AttendanceDayListCountSpec(query.EmployeeSearch, dateFrom, dateTo, statusFilter, query.Caller),
+            new AttendanceDayListCountSpec(filters, query.Caller),
             ct);
 
         var items = await attendanceDays.ListAsync(
-            new AttendanceDayListSpec(page, pageSize, query.EmployeeSearch, dateFrom, dateTo, statusFilter, query.Caller),
+            new AttendanceDayListSpec(page, pageSize, filters, query.Caller),
             ct);
 
         var resultItems = items.Select(day => new AttendanceDayListItemResult
