@@ -38,4 +38,13 @@ public static class EmployeeVisibility
 
     /// <summary>Pay stays Owner-only, unchanged by the directory opening up.</summary>
     public static bool CanReadWage(Caller caller) => caller.Role == EmployeeRole.Owner;
+
+    /// <summary>
+    /// Who may <em>filter</em> by a redacted field. Deliberately coarser than
+    /// <see cref="CanReadDetails"/>: that rule is per-subject, but a filter predicate applies to
+    /// the whole set, and a row count is itself an answer. Letting a Manager filter every NIK in
+    /// the directory would hand them the values the mapper withholds — bisect a range and the
+    /// redacted number falls out — so anything redacted for anyone is Owner-only to filter.
+    /// </summary>
+    public static bool CanFilterRedacted(Caller caller) => caller.Role == EmployeeRole.Owner;
 }

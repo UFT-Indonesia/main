@@ -1,54 +1,17 @@
+using System.Linq.Expressions;
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Employees;
 using Erp.SharedKernel.Identity;
-using Erp.UseCases.Common;
-using NodaTime;
+using Erp.UseCases.Common.Filtering;
 
 namespace Erp.UseCases.Employees.Common;
-
-internal static class EmployeeAuditLogFilters
-{
-    internal static void Apply(
-        ISpecificationBuilder<EmployeeAuditLog> query,
-        Guid? employeeId,
-        DateOnly? dateFrom,
-        DateOnly? dateTo,
-        string? eventType)
-    {
-        if (employeeId is { } id)
-        {
-            query.Where(log => log.EmployeeId == new EmployeeId(id));
-        }
-
-        if (dateFrom is { } from)
-        {
-            var start = StartOfDay(from);
-            query.Where(log => log.OccurredAtUtc >= start);
-        }
-
-        if (dateTo is { } to)
-        {
-            // Exclusive upper bound: start of the *next* Jakarta day.
-            var end = StartOfDay(to.AddDays(1));
-            query.Where(log => log.OccurredAtUtc < end);
-        }
-
-        if (!string.IsNullOrWhiteSpace(eventType))
-        {
-            query.Where(log => log.EventType == eventType);
-        }
-    }
-
-    private static Instant StartOfDay(DateOnly date) =>
-        LocalDate.FromDateOnly(date).AtStartOfDayInZone(DisplayZone.Jakarta).ToInstant();
-}
 
 internal sealed class EmployeeAuditLogListSpec : Specification<EmployeeAuditLog>
 {
     public EmployeeAuditLogListSpec(
-        int page, int pageSize, Guid? employeeId, DateOnly? dateFrom, DateOnly? dateTo, string? eventType)
+        int page, int pageSize, IReadOnlyList<Expression<Func<EmployeeAuditLog, bool>>> filters)
     {
-        EmployeeAuditLogFilters.Apply(Query, employeeId, dateFrom, dateTo, eventType);
+        FilterApplier.ApplyTo(Query, filters);
         Query.OrderByDescending(log => log.OccurredAtUtc);
         Query.AsNoTracking();
         Query.Skip((page - 1) * pageSize).Take(pageSize);
@@ -57,9 +20,9 @@ internal sealed class EmployeeAuditLogListSpec : Specification<EmployeeAuditLog>
 
 internal sealed class EmployeeAuditLogCountSpec : Specification<EmployeeAuditLog>
 {
-    public EmployeeAuditLogCountSpec(Guid? employeeId, DateOnly? dateFrom, DateOnly? dateTo, string? eventType)
+    public EmployeeAuditLogCountSpec(IReadOnlyList<Expression<Func<EmployeeAuditLog, bool>>> filters)
     {
-        EmployeeAuditLogFilters.Apply(Query, employeeId, dateFrom, dateTo, eventType);
+        FilterApplier.ApplyTo(Query, filters);
         Query.AsNoTracking();
     }
 }
@@ -67,9 +30,9 @@ internal sealed class EmployeeAuditLogCountSpec : Specification<EmployeeAuditLog
 /// <summary>All matching rows, unpaginated — caller must cap via a prior CountAsync check.</summary>
 internal sealed class EmployeeAuditLogExportSpec : Specification<EmployeeAuditLog>
 {
-    public EmployeeAuditLogExportSpec(Guid? employeeId, DateOnly? dateFrom, DateOnly? dateTo, string? eventType)
+    public EmployeeAuditLogExportSpec(IReadOnlyList<Expression<Func<EmployeeAuditLog, bool>>> filters)
     {
-        EmployeeAuditLogFilters.Apply(Query, employeeId, dateFrom, dateTo, eventType);
+        FilterApplier.ApplyTo(Query, filters);
         Query.OrderByDescending(log => log.OccurredAtUtc);
         Query.AsNoTracking();
     }

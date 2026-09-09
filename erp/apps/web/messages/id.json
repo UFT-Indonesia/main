@@ -59,8 +59,17 @@
     "empty": "Belum ada data karyawan.",
     "searchPlaceholder": "Cari nama atau NIK...",
     "filters": {
-      "allRoles": "Semua peran",
-      "allStatuses": "Semua status"
+      "fields": {
+        "fullName": "Nama",
+        "role": "Peran",
+        "status": "Status",
+        "hireDate": "Tanggal Masuk",
+        "nik": "NIK",
+        "npwp": "NPWP",
+        "monthlyWage": "Gaji Bulanan",
+        "effectiveSalaryFrom": "Gaji Berlaku Sejak",
+        "terminationDate": "Tanggal Berhenti"
+      }
     },
     "form": {
       "fullName": "Nama lengkap",
@@ -159,11 +168,15 @@
     "searchPlaceholder": "Cari nama karyawan...",
     "filters": {
       "dateFrom": "Dari tanggal",
-      "dateRange": "Rentang tanggal",
       "dateTo": "Sampai tanggal",
-      "allPunchTypes": "Semua tipe",
-      "allSources": "Semua sumber",
-      "allStatuses": "Semua status"
+      "fields": {
+        "employeeName": "Nama Karyawan",
+        "employee": "Karyawan",
+        "date": "Tanggal",
+        "status": "Status",
+        "tapIn": "Jam Masuk",
+        "tapOut": "Jam Keluar"
+      }
     },
     "columns": {
       "employee": "Karyawan",
@@ -280,8 +293,22 @@
     "subtitle": "Ajukan dan setujui permintaan cuti karyawan.",
     "empty": "Tidak ada permintaan cuti.",
     "filters": {
-      "allStatuses": "Semua status",
-      "allEmployees": "Semua karyawan"
+      "allEmployees": "Semua karyawan",
+      "fields": {
+        "employee": "Karyawan",
+        "employeeName": "Nama Karyawan",
+        "status": "Status",
+        "startDate": "Tanggal Mulai",
+        "endDate": "Tanggal Selesai",
+        "workdayCount": "Hari Kerja",
+        "requestedAt": "Waktu Pengajuan",
+        "decidedByName": "Diputuskan Oleh",
+        "decidedAt": "Waktu Keputusan",
+        "type": "Jenis Cuti",
+        "reason": "Alasan",
+        "decisionNote": "Catatan Keputusan",
+        "halfDay": "Setengah Hari"
+      }
     },
     "columns": {
       "employee": "Karyawan",
@@ -512,9 +539,13 @@
     "filters": {
       "employeePlaceholder": "Saring berdasarkan karyawan...",
       "dateFrom": "Dari tanggal",
-      "dateRange": "Rentang tanggal",
       "dateTo": "Sampai tanggal",
-      "allEventTypes": "Semua jenis peristiwa"
+      "fields": {
+        "employee": "Karyawan",
+        "eventType": "Jenis Peristiwa",
+        "occurredAt": "Waktu",
+        "actorName": "Pelaku"
+      }
     },
     "table": {
       "occurredAt": "Waktu kejadian",
@@ -562,8 +593,18 @@
     "subtitleManager": "Ajukan tambahan waktu masa percobaan staf Anda kepada pemilik.",
     "empty": "Tidak ada pengajuan perpanjangan.",
     "filters": {
-      "allStatuses": "Semua status",
-      "allEmployees": "Semua karyawan"
+      "allEmployees": "Semua karyawan",
+      "fields": {
+        "employee": "Karyawan",
+        "employeeName": "Nama Karyawan",
+        "status": "Status",
+        "currentEndsOn": "Tanggal Berakhir Saat Ini",
+        "proposedEndsOn": "Usulan Tanggal Berakhir",
+        "reason": "Alasan",
+        "requestedAt": "Waktu Pengajuan",
+        "decidedByName": "Diputuskan Oleh",
+        "decidedAt": "Waktu Keputusan"
+      }
     },
     "columns": {
       "employee": "Karyawan",
@@ -627,6 +668,41 @@
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
+    }
+  },
+  "filters": {
+    "button": "Filter",
+    "empty": "Belum ada filter.",
+    "where": "Jika",
+    "and": "Dan",
+    "field": "Kolom",
+    "operator": "Operator",
+    "value": "Nilai",
+    "addRow": "Tambah filter",
+    "clearAll": "Hapus semua",
+    "removeRow": "Hapus filter",
+    "selectValues": "Pilih…",
+    "exactValue": "Nilai persis",
+    "dateRange": "Rentang tanggal",
+    "from": "Dari",
+    "to": "sampai",
+    "yes": "Ya",
+    "no": "Tidak",
+    "ops": {
+      "contains": "mengandung",
+      "ncontains": "tidak mengandung",
+      "startswith": "diawali dengan",
+      "is": "sama dengan",
+      "isnot": "tidak sama dengan",
+      "empty": "kosong",
+      "nempty": "tidak kosong",
+      "in": "salah satu dari",
+      "nin": "bukan salah satu dari",
+      "before": "sebelum",
+      "after": "sesudah",
+      "between": "antara",
+      "gt": "lebih dari",
+      "lt": "kurang dari"
     }
   }
 }

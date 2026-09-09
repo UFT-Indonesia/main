@@ -9,6 +9,7 @@ import { useEmployees } from '@/hooks/use-employees';
 import { useAttendanceLogs } from '@/hooks/use-attendance';
 import { today } from '@internationalized/date';
 import { useHasRole } from '@/lib/auth/store';
+import { activeHeadcountFilter } from '@/lib/filters/quick';
 import { APP_TIME_ZONE } from '@/lib/constants';
 
 /** Today in the company zone as a UTC instant pair. Never the browser's zone, never UTC dates. */
@@ -28,10 +29,10 @@ export default function HomePage() {
   // Headcount comes from the employees endpoint, which is Owner,Manager — Staff would just
   // collect four 403s on their landing page, so they don't ask.
   const canSeeHeadcount = useHasRole('Owner', 'Manager');
-  const activeQuery = useEmployees({ status: 'Active', pageSize: 1 }, canSeeHeadcount);
-  const ownerQuery = useEmployees({ status: 'Active', role: 'Owner', pageSize: 1 }, canSeeHeadcount);
-  const managerQuery = useEmployees({ status: 'Active', role: 'Manager', pageSize: 1 }, canSeeHeadcount);
-  const staffQuery = useEmployees({ status: 'Active', role: 'Staff', pageSize: 1 }, canSeeHeadcount);
+  const activeQuery = useEmployees({ filter: activeHeadcountFilter(), pageSize: 1 }, canSeeHeadcount);
+  const ownerQuery = useEmployees({ filter: activeHeadcountFilter('Owner'), pageSize: 1 }, canSeeHeadcount);
+  const managerQuery = useEmployees({ filter: activeHeadcountFilter('Manager'), pageSize: 1 }, canSeeHeadcount);
+  const staffQuery = useEmployees({ filter: activeHeadcountFilter('Staff'), pageSize: 1 }, canSeeHeadcount);
   const todayLogsQuery = useAttendanceLogs({ dateFrom, dateTo, pageSize: 1 });
 
   return (

@@ -12,10 +12,7 @@ export async function listEmployeeAuditLog(
     params: {
       page: params.page,
       pageSize: params.pageSize,
-      employeeId: params.employeeId || undefined,
-      dateFrom: params.dateFrom || undefined,
-      dateTo: params.dateTo || undefined,
-      eventType: params.eventType || undefined,
+      filter: params.filter || undefined,
     },
   });
   return data;
@@ -24,10 +21,7 @@ export async function listEmployeeAuditLog(
 export async function exportEmployeeAuditLog(params: ExportEmployeeAuditLogParams): Promise<Blob> {
   const { data } = await apiClient.get<Blob>('/api/employees/audit-log/export', {
     params: {
-      employeeId: params.employeeId || undefined,
-      dateFrom: params.dateFrom || undefined,
-      dateTo: params.dateTo || undefined,
-      eventType: params.eventType || undefined,
+      filter: params.filter || undefined,
     },
     responseType: 'blob',
   });

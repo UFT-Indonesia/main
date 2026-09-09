@@ -1,8 +1,9 @@
+using System.Linq.Expressions;
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
 using Erp.UseCases.Attendance.Common;
 using Erp.UseCases.Common;
-using NodaTime;
+using Erp.UseCases.Common.Filtering;
 
 namespace Erp.UseCases.Attendance.ListAttendanceDays;
 
@@ -11,13 +12,10 @@ internal sealed class AttendanceDayListSpec : Specification<AttendanceDay>
     public AttendanceDayListSpec(
         int page,
         int pageSize,
-        string? employeeSearch,
-        LocalDate? dateFrom,
-        LocalDate? dateTo,
-        AttendanceDayStatus? status,
+        IReadOnlyList<Expression<Func<AttendanceDay, bool>>> filters,
         Caller caller)
     {
-        ApplyFilters(Query, employeeSearch, dateFrom, dateTo, status, caller);
+        ApplyFilters(Query, filters, caller);
         Query.Include(day => day.Employee);
         Query.Include(day => day.LeaveRequest);
         Query.OrderByDescending(day => day.CalendarDate)
@@ -28,34 +26,13 @@ internal sealed class AttendanceDayListSpec : Specification<AttendanceDay>
 
     internal static void ApplyFilters(
         ISpecificationBuilder<AttendanceDay> query,
-        string? employeeSearch,
-        LocalDate? dateFrom,
-        LocalDate? dateTo,
-        AttendanceDayStatus? status,
+        IReadOnlyList<Expression<Func<AttendanceDay, bool>>> filters,
         Caller caller)
     {
+        // Caller scope first, always: a filter row narrows what this caller may already see and
+        // must never be able to widen it.
         ApplyCallerScope(query, caller);
-
-        if (!string.IsNullOrWhiteSpace(employeeSearch))
-        {
-            var needle = employeeSearch.Trim().ToLowerInvariant();
-            query.Where(day => day.Employee!.FullName.ToLower().Contains(needle));
-        }
-
-        if (dateFrom.HasValue)
-        {
-            query.Where(day => day.CalendarDate >= dateFrom.Value);
-        }
-
-        if (dateTo.HasValue)
-        {
-            query.Where(day => day.CalendarDate <= dateTo.Value);
-        }
-
-        if (status.HasValue)
-        {
-            query.Where(day => day.Status == status.Value);
-        }
+        FilterApplier.ApplyTo(query, filters);
     }
 
     /// <summary>Staff never see anyone else's days; Owner and Manager see the whole company.</summary>
@@ -79,13 +56,10 @@ internal sealed class AttendanceDayListSpec : Specification<AttendanceDay>
 internal sealed class AttendanceDayListCountSpec : Specification<AttendanceDay>
 {
     public AttendanceDayListCountSpec(
-        string? employeeSearch,
-        LocalDate? dateFrom,
-        LocalDate? dateTo,
-        AttendanceDayStatus? status,
+        IReadOnlyList<Expression<Func<AttendanceDay, bool>>> filters,
         Caller caller)
     {
-        AttendanceDayListSpec.ApplyFilters(Query, employeeSearch, dateFrom, dateTo, status, caller);
+        AttendanceDayListSpec.ApplyFilters(Query, filters, caller);
         Query.AsNoTracking();
     }
 }

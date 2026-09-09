@@ -1,3 +1,4 @@
+using Erp.UseCases.Common;
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees;
@@ -9,10 +10,15 @@ using FluentAssertions;
 using NodaTime;
 using NSubstitute;
 
+using static Erp.UnitTests.UseCases.FilterRows;
+
 namespace Erp.UnitTests.UseCases;
 
 public class ListEmployeeAuditLogHandlerTests
 {
+    private static readonly Caller Owner =
+        new(Guid.NewGuid(), EmployeeRole.Owner, new EmployeeId(Guid.NewGuid()), "Owner");
+
     private readonly IReadRepository<EmployeeAuditLog> _auditLogs = Substitute.For<IReadRepository<EmployeeAuditLog>>();
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
 
@@ -34,7 +40,7 @@ public class ListEmployeeAuditLogHandlerTests
             .Returns(new List<Employee> { employee });
 
         var result = await ListEmployeeAuditLogHandler.Handle(
-            new ListEmployeeAuditLogQuery(1, 20, null, null, null, null),
+            new ListEmployeeAuditLogQuery(1, 20, None, Owner),
             _auditLogs,
             _employees,
             CancellationToken.None);
@@ -57,7 +63,7 @@ public class ListEmployeeAuditLogHandlerTests
             .Returns(new List<Employee>());
 
         var result = await ListEmployeeAuditLogHandler.Handle(
-            new ListEmployeeAuditLogQuery(0, 1000, null, null, null, null),
+            new ListEmployeeAuditLogQuery(0, 1000, None, Owner),
             _auditLogs,
             _employees,
             CancellationToken.None);
@@ -82,7 +88,7 @@ public class ListEmployeeAuditLogHandlerTests
             .Returns(new List<Employee>());
 
         var result = await ListEmployeeAuditLogHandler.Handle(
-            new ListEmployeeAuditLogQuery(1, 20, null, null, null, null),
+            new ListEmployeeAuditLogQuery(1, 20, None, Owner),
             _auditLogs,
             _employees,
             CancellationToken.None);

@@ -73,10 +73,9 @@ public sealed class ListAttendanceDaysRequest
 {
     public int Page { get; init; } = 1;
     public int PageSize { get; init; } = 20;
-    public string? EmployeeSearch { get; init; }
-    public DateOnly? DateFrom { get; init; }
-    public DateOnly? DateTo { get; init; }
-    public string? Status { get; init; }
+
+    /// <summary>Filter builder rows as a JSON array; see FilterApplier.Parse.</summary>
+    public string? Filter { get; init; }
 }
 
 public sealed class AttendanceDayListItemResponse

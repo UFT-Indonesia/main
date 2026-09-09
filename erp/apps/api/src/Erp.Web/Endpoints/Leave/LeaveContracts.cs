@@ -42,8 +42,9 @@ public sealed class ListLeaveRequestsRequest
 {
     public int Page { get; init; } = 1;
     public int PageSize { get; init; } = 20;
-    public string? Status { get; init; }
-    public Guid? EmployeeId { get; init; }
+
+    /// <summary>Filter builder rows as a JSON array; see FilterApplier.Parse.</summary>
+    public string? Filter { get; init; }
 }
 
 public sealed class GetLeaveBalanceRequest

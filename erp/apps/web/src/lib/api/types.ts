@@ -55,12 +55,15 @@ export interface ListEmployeesResponse {
   totalCount: number;
 }
 
+/**
+ * `filter` is the filter builder's rows, already serialized as a JSON array by
+ * serializeFilters. It is one opaque string on purpose: the row shape depends on the operator,
+ * and the server validates it against that resource's field registry.
+ */
 export interface ListEmployeesParams {
   page?: number;
   pageSize?: number;
-  search?: string;
-  role?: EmployeeRole | '';
-  status?: EmployeeStatus | '';
+  filter?: string;
 }
 
 export interface CreateEmployeeBody {
@@ -137,17 +140,11 @@ export interface ListEmployeeAuditLogResponse {
 export interface ListEmployeeAuditLogParams {
   page?: number;
   pageSize?: number;
-  employeeId?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  eventType?: string;
+  filter?: string;
 }
 
 export interface ExportEmployeeAuditLogParams {
-  employeeId?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  eventType?: string;
+  filter?: string;
 }
 
 export interface CreateAccountBody {
@@ -255,12 +252,7 @@ export interface ListAttendanceDaysResponse {
 export interface ListAttendanceDaysParams {
   page?: number;
   pageSize?: number;
-  employeeSearch?: string;
-  /** "YYYY-MM-DD" calendar date (inclusive). */
-  dateFrom?: string;
-  /** "YYYY-MM-DD" calendar date (inclusive). */
-  dateTo?: string;
-  status?: AttendanceDayStatus | '';
+  filter?: string;
 }
 
 export interface GetAttendanceDayLogsResponse {
@@ -323,7 +315,8 @@ export interface RegisterAttendanceDeviceResponse {
 export type LeaveType = 'Annual' | 'Sick' | 'Permission' | 'Unpaid';
 export type LeaveRequestStatus = 'Pending' | 'Approved' | 'Denied' | 'Cancelled';
 /** Server-side pseudo-status: Pending or Approved, i.e. everything still standing. */
-export type LeaveStatusFilter = LeaveRequestStatus | 'Open';
+/** @deprecated The Open pseudo-status is gone: filter status is-any-of Pending, Approved. */
+export type LeaveStatusFilter = LeaveRequestStatus;
 export type LeaveCancellationReason = 'WithdrawnByEmployee' | 'RecalledForWork';
 export type HalfDayPeriod = 'Morning' | 'Afternoon';
 
@@ -388,8 +381,7 @@ export interface ListLeaveRequestsResponse {
 export interface ListLeaveRequestsParams {
   page?: number;
   pageSize?: number;
-  status?: LeaveStatusFilter | '';
-  employeeId?: string;
+  filter?: string;
 }
 
 /**
@@ -444,8 +436,7 @@ export interface ListProbationExtensionsResponse {
 export interface ListProbationExtensionsParams {
   page?: number;
   pageSize?: number;
-  status?: ProbationExtensionStatus | '';
-  employeeId?: string;
+  filter?: string;
 }
 
 export interface CreateProbationExtensionBody {

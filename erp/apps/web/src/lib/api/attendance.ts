@@ -41,10 +41,7 @@ export async function listAttendanceDays(
     params: {
       page: params.page,
       pageSize: params.pageSize,
-      employeeSearch: params.employeeSearch || undefined,
-      dateFrom: params.dateFrom || undefined,
-      dateTo: params.dateTo || undefined,
-      status: params.status || undefined,
+      filter: params.filter || undefined,
     },
   });
   return data;

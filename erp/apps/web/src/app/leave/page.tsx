@@ -6,8 +6,6 @@ import { Plus, ChevronLeft, ChevronRight, Check, X, Ban, Eye, Pencil } from 'luc
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select } from '@/components/ui/select';
-import { Combobox } from '@/components/ui/combobox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -32,20 +30,21 @@ import {
   useEditLeaveRequest,
 } from '@/hooks/use-leave';
 import { EditLeaveDialog } from '@/components/leave/edit-leave-dialog';
-import { useEmployees } from '@/hooks/use-employees';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
+import { FilterBuilder } from '@/components/ui/filter-builder';
+import { useFilters } from '@/hooks/use-filters';
+import { LEAVE_FILTER_FIELDS } from '@/lib/filters/fields';
+import { useVisibleFilterFields } from '@/lib/filters/use-visible-fields';
 import type {
   EditLeaveRequestBody,
   HalfDayPeriod,
   LeaveRequest,
-  LeaveStatusFilter,
   LeaveType,
 } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
-const STATUSES: LeaveStatusFilter[] = ['Open', 'Pending', 'Approved', 'Denied', 'Cancelled'];
 
 export default function LeavePage() {
   const t = useTranslations('leave');
@@ -59,10 +58,15 @@ export default function LeavePage() {
   // still be widened or narrowed with the filters below; this only sets where each role starts.
   const canDecideSomething = useHasRole('Owner', 'Manager');
   const self = useAuthStore((s) => s.user);
-  const [status, setStatus] = useState<LeaveStatusFilter | ''>(canDecideSomething ? 'Open' : '');
-  const [employeeId, setEmployeeId] = useState(canDecideSomething ? '' : (self?.employeeId ?? ''));
-  const [empSearch, setEmpSearch] = useState('');
   const [page, setPage] = useState(1);
+  const filterFields = useVisibleFilterFields(LEAVE_FILTER_FIELDS);
+  const filters = useFilters(filterFields, () => setPage(1), () =>
+    canDecideSomething
+      ? [{ field: 'status', op: 'in', value: ['Pending', 'Approved'] }]
+      : self?.employeeId
+        ? [{ field: 'employeeId', op: 'in', value: [self.employeeId] }]
+        : [],
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [details, setDetails] = useState<LeaveRequest | null>(null);
@@ -72,21 +76,11 @@ export default function LeavePage() {
   const { data, isLoading, isFetching, error } = useLeaveRequests({
     page,
     pageSize: PAGE_SIZE,
-    status,
-    employeeId: employeeId || undefined,
+    filter: filters.filter,
   });
   const createMutation = useCreateLeaveRequest();
   const decideMutation = useDecideLeaveRequest();
   const editMutation = useEditLeaveRequest();
-
-  // The directory is open to every employee (names only for staff), so anyone browsing the
-  // calendar can narrow it to one person.
-  const employeesQuery = useEmployees({ status: 'Active', search: empSearch, pageSize: 50 });
-  const empOptions = (employeesQuery.data?.items ?? []).map((e) => ({
-    value: e.id,
-    label: e.fullName,
-    meta: e.role,
-  }));
 
   const totalPages = data ? Math.max(1, Math.ceil(data.totalCount / data.pageSize)) : 1;
 
@@ -160,31 +154,17 @@ export default function LeavePage() {
           </Button>
         </header>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="w-full md:w-64">
-            <Combobox
-              value={employeeId}
-              onChange={(v) => { setEmployeeId(v); setPage(1); }}
-              options={empOptions}
-              placeholder={t('filters.allEmployees')}
-              searchPlaceholder={tCommon('search')}
-              onSearchChange={setEmpSearch}
-              loading={employeesQuery.isLoading}
-              clearable
-            />
-          </div>
-          <div className="w-full md:w-40">
-            <Select
-              value={status}
-              onChange={(e) => { setStatus(e.target.value as LeaveStatusFilter | ''); setPage(1); }}
-            >
-              <option value="">{t('filters.allStatuses')}</option>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>{t(`status.${s}`)}</option>
-              ))}
-            </Select>
-          </div>
-        </div>
+        <FilterBuilder
+          fields={filterFields}
+          rows={filters.rows}
+          activeCount={filters.activeCount}
+          onAddRow={filters.addRow}
+          onRemoveRow={filters.removeRow}
+          onClear={filters.clear}
+          onFieldChange={filters.setField}
+          onOpChange={filters.setOp}
+          onValueChange={filters.setValue}
+        />
 
         {error ? (
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">

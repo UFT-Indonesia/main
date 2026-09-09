@@ -9,13 +9,16 @@ import { AppShell } from '@/components/layout/app-shell';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmployeeTable } from '@/components/employees/employee-table';
-import { EmployeeFilters } from '@/components/employees/employee-filters';
+import { FilterBuilder } from '@/components/ui/filter-builder';
+import { useFilters } from '@/hooks/use-filters';
+import { EMPLOYEE_FILTER_FIELDS } from '@/lib/filters/fields';
+import { useVisibleFilterFields } from '@/lib/filters/use-visible-fields';
 import { DeleteEmployeeDialog } from '@/components/employees/delete-employee-dialog';
 import { useDeleteEmployee, useEmployees } from '@/hooks/use-employees';
 import { extractApiError } from '@/lib/api/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { Employee, EmployeeRole, EmployeeStatus } from '@/lib/api/types';
+import type { Employee } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 
@@ -24,13 +27,12 @@ export default function EmployeesPage() {
   const tCommon = useTranslations('common');
   const toast = useToast();
 
-  const [search, setSearch] = useState('');
-  const [role, setRole] = useState<EmployeeRole | ''>('');
-  const [status, setStatus] = useState<EmployeeStatus | ''>('');
   const [page, setPage] = useState(1);
   const [target, setTarget] = useState<Employee | null>(null);
+  const filterFields = useVisibleFilterFields(EMPLOYEE_FILTER_FIELDS);
+  const filters = useFilters(filterFields, () => setPage(1));
 
-  const params = { page, pageSize: PAGE_SIZE, search, role, status };
+  const params = { page, pageSize: PAGE_SIZE, filter: filters.filter };
   const { data, isLoading, isFetching, error } = useEmployees(params);
   const deleteMutation = useDeleteEmployee();
 
@@ -68,22 +70,16 @@ export default function EmployeesPage() {
           </Link>
         </header>
 
-        <EmployeeFilters
-          search={search}
-          role={role}
-          status={status}
-          onSearchChange={(value) => {
-            setSearch(value);
-            setPage(1);
-          }}
-          onRoleChange={(value) => {
-            setRole(value);
-            setPage(1);
-          }}
-          onStatusChange={(value) => {
-            setStatus(value);
-            setPage(1);
-          }}
+        <FilterBuilder
+          fields={filterFields}
+          rows={filters.rows}
+          activeCount={filters.activeCount}
+          onAddRow={filters.addRow}
+          onRemoveRow={filters.removeRow}
+          onClear={filters.clear}
+          onFieldChange={filters.setField}
+          onOpChange={filters.setOp}
+          onValueChange={filters.setValue}
         />
 
         {error ? (

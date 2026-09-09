@@ -308,3 +308,182 @@ export function Combobox({
     </div>
   );
 }
+
+
+interface MultiComboboxProps {
+  values: string[];
+  onChange: (values: string[]) => void;
+  options: ComboboxOption[];
+  placeholder?: string;
+  searchPlaceholder?: string;
+  onSearchChange?: (search: string) => void;
+  loading?: boolean;
+  disabled?: boolean;
+  'aria-label'?: string;
+}
+
+/**
+ * The same combobox in multi-select form, for the filter builder's "is any of". Selections show
+ * as removable chips in the control and the panel stays open between picks, since choosing three
+ * people is the normal case rather than the exception.
+ */
+export function MultiCombobox({
+  values,
+  onChange,
+  options,
+  placeholder = 'Select…',
+  searchPlaceholder = 'Search…',
+  onSearchChange,
+  loading,
+  disabled,
+  'aria-label': ariaLabel,
+}: MultiComboboxProps) {
+  const listboxId = useId();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 500);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    onSearchChange?.(debouncedSearch);
+  }, [debouncedSearch, onSearchChange]);
+
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  // A chip has to keep its name after the user types a new search, which drops its option from
+  // the list. The label is known at the moment it is picked, so remember it then rather than
+  // trying to reconstruct it later.
+  const [pickedLabels, setPickedLabels] = useState<Record<string, string>>({});
+  const labelFor = (value: string) =>
+    options.find((option) => option.value === value)?.label ?? pickedLabels[value] ?? value;
+
+  function toggle(value: string, label?: string) {
+    onChange(values.includes(value) ? values.filter((v) => v !== value) : [...values, value]);
+    if (label) {
+      setPickedLabels((prev) => (prev[value] === label ? prev : { ...prev, [value]: label }));
+    }
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={open ? listboxId : undefined}
+        aria-haspopup="listbox"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => {
+          setOpen((wasOpen) => !wasOpen);
+          if (!open) setTimeout(() => inputRef.current?.focus(), 0);
+        }}
+        className={cn(
+          'flex min-h-9 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-left text-sm',
+          'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+        )}
+      >
+        {values.length === 0 ? (
+          <span className="px-1 text-muted-foreground">{placeholder}</span>
+        ) : (
+          values.map((value) => (
+            <span
+              key={value}
+              className="flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-xs text-accent-foreground"
+            >
+              {labelFor(value)}
+              <X
+                role="button"
+                aria-label={`Remove ${labelFor(value)}`}
+                tabIndex={0}
+                className="h-3 w-3 hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggle(value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggle(value);
+                  }
+                }}
+              />
+            </span>
+          ))
+        )}
+        <ChevronDown className={cn('ml-auto h-4 w-4 shrink-0 text-muted-foreground', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-background text-foreground shadow-md">
+          <div className="border-b border-border p-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setOpen(false);
+                  setSearch('');
+                }
+              }}
+              placeholder={searchPlaceholder}
+              role="searchbox"
+              aria-controls={listboxId}
+              autoComplete="off"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+          <ul id={listboxId} role="listbox" aria-multiselectable className="max-h-56 overflow-y-auto py-1">
+            {loading ? (
+              <li className="px-3 py-2 text-sm text-muted-foreground">Loading…</li>
+            ) : options.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-muted-foreground">No results.</li>
+            ) : (
+              options.map((opt) => {
+                const isSelected = values.includes(opt.value);
+                return (
+                  <li
+                    key={opt.value}
+                    role="option"
+                    aria-selected={isSelected}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => toggle(opt.value, opt.label)}
+                    className={cn(
+                      'flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-accent',
+                      isSelected && 'bg-accent/50',
+                    )}
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      {opt.label}
+                      {opt.meta && (
+                        <span className="rounded border border-border px-1 py-px text-xs text-muted-foreground">
+                          {opt.meta}
+                        </span>
+                      )}
+                    </span>
+                    {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}

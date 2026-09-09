@@ -1,5 +1,6 @@
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Common.Filtering;
 using Erp.UseCases.Employees.ListEmployees;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
@@ -39,9 +40,8 @@ public sealed class ListEmployeesEndpoint : Endpoint<ListEmployeesRequest, ListE
         var result = await _bus.InvokeAsync<Result<ListEmployeesResult>>(new ListEmployeesQuery(
             req.Page,
             req.PageSize,
-            req.Search,
-            req.Role,
-            req.Status), ct);
+            FilterBinding.ParseOrThrow(req.Filter),
+            caller), ct);
 
         if (result is Result<ListEmployeesResult>.Success s)
         {
@@ -57,6 +57,12 @@ public sealed class ListEmployeesEndpoint : Endpoint<ListEmployeesRequest, ListE
 
         if (result is Result<ListEmployeesResult>.Error e)
         {
+            if (e.Code == FilterErrors.FieldForbidden)
+            {
+                await SendForbiddenAsync(ct);
+                return;
+            }
+
             throw new DomainException(e.Code, e.Message);
         }
 

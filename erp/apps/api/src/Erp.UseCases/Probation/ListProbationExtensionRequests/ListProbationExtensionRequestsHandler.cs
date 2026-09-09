@@ -3,6 +3,7 @@ using Erp.Core.Aggregates.Probation;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Common.Filtering;
 using Erp.UseCases.Employees.Common;
 using Erp.UseCases.Probation.Common;
 
@@ -28,25 +29,17 @@ public static class ListProbationExtensionRequestsHandler
         var page = query.Page <= 0 ? 1 : query.Page;
         var pageSize = query.PageSize <= 0 ? DefaultPageSize : Math.Min(query.PageSize, MaxPageSize);
 
-        ProbationExtensionStatus? statusFilter = null;
-        if (!string.IsNullOrWhiteSpace(query.Status))
+        if (!FilterApplier.TryCompile(ProbationExtensionFilterFields.Fields, query.Filters, query.Caller, out var filters, out var failure))
         {
-            if (!Enum.TryParse<ProbationExtensionStatus>(query.Status, ignoreCase: true, out var parsed))
-            {
-                return new Result<ListProbationExtensionRequestsResult>.Error(
-                    "probation.status_invalid",
-                    "Status must be Pending, Approved, Denied, or Cancelled.");
-            }
-
-            statusFilter = parsed;
+            return new Result<ListProbationExtensionRequestsResult>.Error(failure.Code, failure.Message);
         }
 
         var scope = await ResolveScopeAsync(query, employees, ct);
 
         var totalCount = await requests.CountAsync(
-            new ProbationExtensionCountSpec(statusFilter, scope), ct);
+            new ProbationExtensionCountSpec(filters, scope), ct);
         var items = await requests.ListAsync(
-            new ProbationExtensionListSpec(page, pageSize, statusFilter, scope), ct);
+            new ProbationExtensionListSpec(page, pageSize, filters, scope), ct);
 
         return new Result<ListProbationExtensionRequestsResult>.Success(
             new ListProbationExtensionRequestsResult
@@ -59,21 +52,18 @@ public static class ListProbationExtensionRequestsHandler
     }
 
     /// <summary>
-    /// The employees whose requests this caller may see, intersected with any employee filter
-    /// they asked for. Null means no restriction (an Owner); an empty set means nothing at all.
+    /// The employees whose requests this caller may see. Null means no restriction (an Owner);
+    /// an empty set means nothing at all. Any employee the user actually asked for arrives as an
+    /// ordinary filter row and is ANDed on top, so scope stays purely about authority.
     /// </summary>
     private static async Task<IReadOnlyCollection<EmployeeId>?> ResolveScopeAsync(
         ListProbationExtensionRequestsQuery query,
         IReadRepository<Employee> employees,
         CancellationToken ct)
     {
-        var requested = query.EmployeeId.HasValue
-            ? new EmployeeId(query.EmployeeId.Value)
-            : (EmployeeId?)null;
-
         if (query.Caller.Role == EmployeeRole.Owner)
         {
-            return requested.HasValue ? [requested.Value] : null;
+            return null;
         }
 
         if (query.Caller.Role != EmployeeRole.Manager || query.Caller.EmployeeId is not { } managerId)
@@ -82,13 +72,6 @@ public static class ListProbationExtensionRequestsHandler
         }
 
         var reports = await employees.ListAsync(new ActiveDirectReportsSpec(managerId), ct);
-        var reportIds = reports.Select(employee => employee.Id).ToList();
-
-        if (requested is not { } filter)
-        {
-            return reportIds;
-        }
-
-        return reportIds.Contains(filter) ? [filter] : [];
+        return reports.Select(employee => employee.Id).ToList();
     }
 }

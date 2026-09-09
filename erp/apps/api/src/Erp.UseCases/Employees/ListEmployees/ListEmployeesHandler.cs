@@ -1,6 +1,7 @@
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
+using Erp.UseCases.Common.Filtering;
 using Erp.UseCases.Employees.Common;
 
 namespace Erp.UseCases.Employees.ListEmployees;
@@ -20,45 +21,17 @@ public static class ListEmployeesHandler
             ? DefaultPageSize
             : Math.Min(query.PageSize, MaxPageSize);
 
-        EmployeeRole? roleFilter = null;
-        if (!string.IsNullOrWhiteSpace(query.Role))
+        if (!FilterApplier.TryCompile(EmployeeFilterFields.Fields, query.Filters, query.Caller, out var filters, out var failure))
         {
-            if (!Enum.TryParse<EmployeeRole>(query.Role, ignoreCase: true, out var parsedRole))
-            {
-                return new Result<ListEmployeesResult>.Error(
-                    "employee.role_invalid",
-                    "Role must be Owner, Manager, or Staff.");
-            }
-
-            roleFilter = parsedRole;
+            return new Result<ListEmployeesResult>.Error(failure.Code, failure.Message);
         }
 
-        EmployeeStatus? statusFilter = null;
-        if (!string.IsNullOrWhiteSpace(query.Status))
-        {
-            if (!Enum.TryParse<EmployeeStatus>(query.Status, ignoreCase: true, out var parsedStatus))
-            {
-                return new Result<ListEmployeesResult>.Error(
-                    "employee.status_invalid",
-                    "Status must be Active, OnLeave, or Terminated.");
-            }
-
-            statusFilter = parsedStatus;
-        }
-
-        var totalCount = await employees.CountAsync(
-            new EmployeeListCountSpec(query.Search, roleFilter, statusFilter),
-            ct);
-
-        var items = await employees.ListAsync(
-            new EmployeeListSpec(page, pageSize, query.Search, roleFilter, statusFilter),
-            ct);
-
-        var resultItems = items.Select(EmployeeMapper.ToResult).ToList();
+        var totalCount = await employees.CountAsync(new EmployeeListCountSpec(filters), ct);
+        var items = await employees.ListAsync(new EmployeeListSpec(page, pageSize, filters), ct);
 
         return new Result<ListEmployeesResult>.Success(new ListEmployeesResult
         {
-            Items = resultItems,
+            Items = items.Select(EmployeeMapper.ToResult).ToList(),
             Page = page,
             PageSize = pageSize,
             TotalCount = totalCount,

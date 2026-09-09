@@ -58,9 +58,13 @@ public sealed class ListEmployeesRequest
 {
     public int Page { get; init; } = 1;
     public int PageSize { get; init; } = 20;
-    public string? Search { get; init; }
-    public string? Role { get; init; }
-    public string? Status { get; init; }
+
+    /// <summary>
+    /// The filter builder's rows, as a JSON array: <c>[{"field":"role","op":"nin","value":["Staff"]}]</c>.
+    /// Kept as a single opaque string because the row shape is operator-dependent and model
+    /// binding cannot express that; <see cref="FilterApplier.Parse"/> does the work.
+    /// </summary>
+    public string? Filter { get; init; }
 }
 
 /// <summary>

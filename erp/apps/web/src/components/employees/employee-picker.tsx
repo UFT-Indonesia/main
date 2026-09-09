@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Combobox } from '@/components/ui/combobox';
 import { useEmployees } from '@/hooks/use-employees';
+import { employeeLookupFilter } from '@/lib/filters/quick';
 
 interface EmployeePickerProps {
   value: string;
@@ -18,7 +19,7 @@ export function EmployeePicker({ value, onChange, enabled = true, placeholder, c
   const tCommon = useTranslations('common');
   const [search, setSearch] = useState('');
 
-  const employeesQuery = useEmployees({ status: 'Active', search, pageSize: 50 }, enabled);
+  const employeesQuery = useEmployees({ filter: employeeLookupFilter(search), pageSize: 50 }, enabled);
   const options = (employeesQuery.data?.items ?? []).map((e) => ({
     value: e.id,
     label: e.fullName,
