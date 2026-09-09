@@ -59,8 +59,17 @@
     "empty": "No employees yet.",
     "searchPlaceholder": "Search by name or NIK...",
     "filters": {
-      "allRoles": "All roles",
-      "allStatuses": "All statuses"
+      "fields": {
+        "fullName": "Name",
+        "role": "Role",
+        "status": "Status",
+        "hireDate": "Hire Date",
+        "nik": "NIK",
+        "npwp": "NPWP",
+        "monthlyWage": "Monthly Wage",
+        "effectiveSalaryFrom": "Salary Effective From",
+        "terminationDate": "Termination Date"
+      }
     },
     "form": {
       "fullName": "Full name",
@@ -159,11 +168,15 @@
     "searchPlaceholder": "Search by employee name...",
     "filters": {
       "dateFrom": "From date",
-      "dateRange": "Date range",
       "dateTo": "To date",
-      "allPunchTypes": "All types",
-      "allSources": "All sources",
-      "allStatuses": "All statuses"
+      "fields": {
+        "employeeName": "Employee Name",
+        "employee": "Employee",
+        "date": "Date",
+        "status": "Status",
+        "tapIn": "Tap In",
+        "tapOut": "Tap Out"
+      }
     },
     "columns": {
       "employee": "Employee",
@@ -280,8 +293,22 @@
     "subtitle": "Submit and approve employee leave requests.",
     "empty": "No leave requests found.",
     "filters": {
-      "allStatuses": "All statuses",
-      "allEmployees": "All employees"
+      "allEmployees": "All employees",
+      "fields": {
+        "employee": "Employee",
+        "employeeName": "Employee Name",
+        "status": "Status",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "workdayCount": "Workdays",
+        "requestedAt": "Requested At",
+        "decidedByName": "Decided By",
+        "decidedAt": "Decided At",
+        "type": "Leave Type",
+        "reason": "Reason",
+        "decisionNote": "Decision Note",
+        "halfDay": "Half Day"
+      }
     },
     "columns": {
       "employee": "Employee",
@@ -512,9 +539,13 @@
     "filters": {
       "employeePlaceholder": "Filter by employee...",
       "dateFrom": "From date",
-      "dateRange": "Date range",
       "dateTo": "To date",
-      "allEventTypes": "All event types"
+      "fields": {
+        "employee": "Employee",
+        "eventType": "Event Type",
+        "occurredAt": "Occurred At",
+        "actorName": "Actor"
+      }
     },
     "table": {
       "occurredAt": "Occurred at",
@@ -562,8 +593,18 @@
     "subtitleManager": "Ask an owner for more probation time for your staff.",
     "empty": "No extension requests found.",
     "filters": {
-      "allStatuses": "All statuses",
-      "allEmployees": "All employees"
+      "allEmployees": "All employees",
+      "fields": {
+        "employee": "Employee",
+        "employeeName": "Employee Name",
+        "status": "Status",
+        "currentEndsOn": "Current End Date",
+        "proposedEndsOn": "Proposed End Date",
+        "reason": "Reason",
+        "requestedAt": "Requested At",
+        "decidedByName": "Decided By",
+        "decidedAt": "Decided At"
+      }
     },
     "columns": {
       "employee": "Employee",
@@ -627,6 +668,41 @@
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
+    }
+  },
+  "filters": {
+    "button": "Filter",
+    "empty": "No filters yet.",
+    "where": "Where",
+    "and": "And",
+    "field": "Field",
+    "operator": "Operator",
+    "value": "Value",
+    "addRow": "Add filter",
+    "clearAll": "Clear all",
+    "removeRow": "Remove filter",
+    "selectValues": "Select…",
+    "exactValue": "Exact value",
+    "dateRange": "Date range",
+    "from": "From",
+    "to": "to",
+    "yes": "Yes",
+    "no": "No",
+    "ops": {
+      "contains": "contains",
+      "ncontains": "does not contain",
+      "startswith": "starts with",
+      "is": "is",
+      "isnot": "is not",
+      "empty": "is empty",
+      "nempty": "is not empty",
+      "in": "is any of",
+      "nin": "is none of",
+      "before": "is before",
+      "after": "is after",
+      "between": "is between",
+      "gt": "is greater than",
+      "lt": "is less than"
     }
   }
 }
