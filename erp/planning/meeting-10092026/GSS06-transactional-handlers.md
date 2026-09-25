@@ -1,6 +1,22 @@
 # GSS06 — Transactional Handlers App-Wide
 
-Follow-up split out of the GSS05 PR review (grilling session, 2026-09-25). **Not started.**
+Follow-up split out of the GSS05 PR review (grilling session, 2026-09-25). **Implemented on
+`refactor/transactional-handlers`; integration run pending.**
+
+## Outcome (grilling session 2, 2026-09-25)
+
+- Global `AutoApplyTransactions()` on; the 3 GSS05 `[Transactional]` attributes removed, their
+  reasons kept in the handler comments.
+- Step 3 audit: no `[NonTransactional]` needed. The only external call in a DB handler is
+  `GetLeaveAttachmentHandler` opening a local file; the stream is read after the handler returns.
+- Hangfire jobs: no explicit transaction. Each item is a single write, so a partial run is valid
+  and the next run finishes it.
+- Nightly `RecomputeAttendanceDaysJob` added at 02:00 Asia/Jakarta (answers the first open
+  question). Safe because days derive only from punches and approved leave.
+- Tests: `LeaveProbationTransactionTests` (leave sync, probation decision) and two device punch
+  tests in `DeviceIngestTests`. Background work is awaited with Wolverine `TrackActivity`.
+- Leave approval is two transactions, not one. The approval commits first, then the day sync
+  runs as its own all-or-nothing step.
 
 **Blocked on:** the GSS05 PR merging with its four rollback tests green
 (`AttendanceTransactionTests.cs`). Those tests are the pilot — they prove Wolverine finds the
