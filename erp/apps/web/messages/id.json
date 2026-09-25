@@ -27,7 +27,7 @@
     "leave": "Cuti",
     "accounts": "Akun",
     "attendanceDevices": "Perangkat presensi",
-    "employeeAuditLog": "Log audit karyawan",
+    "employeeAuditLog": "Log Aktivitas",
     "probation": "Probation"
   },
   "home": {
@@ -162,20 +162,14 @@
   },
   "attendance": {
     "title": "Kehadiran",
-    "subtitle": "Lihat dan kelola catatan kehadiran.",
-    "addManual": "Tambah log manual",
-    "empty": "Tidak ada catatan kehadiran.",
-    "searchPlaceholder": "Cari nama karyawan...",
+    "subtitle": "Setiap tanggal dalam periode, dan siapa saja yang dihitung di dalamnya.",
+    "addManual": "Tambah",
+    "empty": "Tidak ada tanggal pada periode ini.",
     "filters": {
-      "dateFrom": "Dari tanggal",
-      "dateTo": "Sampai tanggal",
+      "problemsOnly": "Hanya Tanggal Bermasalah",
       "fields": {
         "employeeName": "Nama Karyawan",
-        "employee": "Karyawan",
-        "date": "Tanggal",
-        "status": "Status",
-        "tapIn": "Jam Masuk",
-        "tapOut": "Jam Keluar"
+        "employee": "Karyawan"
       }
     },
     "columns": {
@@ -188,7 +182,13 @@
       "tapIn": "Tap Masuk",
       "tapOut": "Tap Keluar",
       "status": "Status",
-      "action": "Aksi"
+      "action": "Aksi",
+      "scheduleTime": "Jam Kerja",
+      "headcount": "Jumlah Karyawan",
+      "present": "Hadir",
+      "absent": "Tidak Hadir",
+      "incomplete": "Tidak Lengkap",
+      "onLeave": "Cuti"
     },
     "punchType": {
       "In": "Masuk",
@@ -199,8 +199,8 @@
       "Manual": "Manual"
     },
     "manualLog": {
-      "title": "Tambah log manual",
-      "description": "Catat presensi atas nama karyawan.",
+      "title": "Tambah Log Manual",
+      "description": "Catat presensi harian karyawan.",
       "employee": "Karyawan",
       "employeePlaceholder": "Pilih karyawan...",
       "punchedAt": "Tanggal & waktu",
@@ -210,27 +210,27 @@
       "successDescription": "Catatan kehadiran berhasil disimpan.",
       "errorTitle": "Gagal menyimpan log"
     },
-    "pagination": {
-      "summary": "Menampilkan {from}-{to} dari {total}"
-    },
     "status": {
       "Complete": "Lengkap",
-      "Incomplete": "Tidak lengkap",
-      "OnLeave": "Cuti"
+      "Incomplete": "Tidak Lengkap",
+      "OnLeave": "Cuti",
+      "Absent": "Tidak Hadir",
+      "ClockedIn": "Sudah Masuk",
+      "NotInYet": "Belum Masuk",
+      "Upcoming": "Belum Berlangsung"
     },
     "actions": {
       "viewLogDetails": "Lihat detail log",
       "edit": "Ubah",
-      "exportSelected": "Ekspor terpilih"
-    },
-    "selection": {
-      "nSelected": "{count} dipilih",
-      "selectAll": "Pilih semua di halaman ini",
-      "selectRow": "Pilih baris"
+      "exportPeriod": "Ekspor",
+      "expandDate": "Tampilkan karyawan pada tanggal ini"
     },
     "details": {
-      "title": "Detail log presensi",
-      "description": "Daftar kronologis semua presensi pada hari ini."
+      "title": "Detail Log Presensi",
+      "description": "Daftar kronologis semua presensi pada hari ini.",
+      "noPunches": "Belum ada catatan presensi.",
+      "addPunch": "",
+      "addAttendance": "Absensi"
     },
     "leaveDetails": {
       "title": "Detail Cuti",
@@ -249,8 +249,6 @@
       "dayCount": "{count, plural, =0 {0 hari} other {# hari}}"
     },
     "edit": {
-      "title": "Ubah log presensi",
-      "description": "Perbaiki presensi individual pada hari ini.",
       "successTitle": "Perubahan tersimpan",
       "successDescription": "Log presensi berhasil diperbarui.",
       "errorTitle": "Gagal memperbarui log"
@@ -267,6 +265,15 @@
     },
     "export": {
       "errorTitle": "Gagal mengekspor"
+    },
+    "period": {
+      "label": "Periode"
+    },
+    "summary": {
+      "clockedIn": "{count} sudah masuk",
+      "notInYet": "{count} belum masuk",
+      "inProgress": "Sedang berlangsung",
+      "nothingYet": "—"
     }
   },
   "attendanceSettings": {
@@ -528,12 +535,12 @@
     }
   },
   "employeeAuditLog": {
-    "title": "Log audit karyawan",
+    "title": "Log Audit Karyawan",
     "subtitle": "Riwayat pembuatan, info, gaji, peran, garis pelaporan, dan pemberhentian karyawan.",
     "empty": "Belum ada riwayat audit.",
     "ownerOnly": "Hanya Pemilik yang dapat melihat log audit.",
     "export": {
-      "button": "Ekspor CSV",
+      "button": "Ekspor",
       "errorTitle": "Gagal mengekspor log audit"
     },
     "filters": {

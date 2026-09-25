@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { parseZonedDateTime } from '@internationalized/date';
 import {
   Dialog,
   DialogDescription,
@@ -37,6 +38,31 @@ function defaultState(): ManualLogFormState {
   };
 }
 
+/**
+ * The employee and date are known when this is opened from an Absent row, so the form starts
+ * on that day's shift start rather than on right-now — which would be the wrong date entirely.
+ */
+function prefilledState(
+  prefill: ManualLogPrefill,
+  timeZone: string,
+  shiftStart: string,
+): ManualLogFormState {
+  return {
+    employeeId: prefill.employeeId,
+    punchedAtUtc: parseZonedDateTime(`${prefill.date}T${shiftStart}[${timeZone}]`)
+      .toDate()
+      .toISOString(),
+    punchType: 'In',
+    note: '',
+  };
+}
+
+export interface ManualLogPrefill {
+  employeeId: string;
+  /** "YYYY-MM-DD" calendar date in the policy's zone. */
+  date: string;
+}
+
 interface AddManualLogDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -47,6 +73,8 @@ interface AddManualLogDialogProps {
     note: string | null,
   ) => void | Promise<void>;
   submitting?: boolean;
+  /** Set when opened from a specific employee-date, e.g. an Absent row. */
+  prefill?: ManualLogPrefill | null;
 }
 
 export function AddManualLogDialog({
@@ -54,16 +82,21 @@ export function AddManualLogDialog({
   onOpenChange,
   onConfirm,
   submitting,
+  prefill,
 }: AddManualLogDialogProps) {
   const t = useTranslations('attendance');
   const tCommon = useTranslations('common');
-
-  const [form, setForm] = useState<ManualLogFormState>(defaultState);
 
   // Wall-clock time is entered in the policy's zone, which is also the zone the server buckets
   // calendar days by. Falling back to the company zone rather than the browser's is the point.
   const { data: policy } = useAttendancePolicy();
   const timeZone = policy?.timeZoneId ?? APP_TIME_ZONE;
+
+  // Seeded once per mount. The parent bumps this dialog's key on every open, so each open
+  // (blank or from an Absent row) remounts it rather than needing an effect to re-seed the form.
+  const [form, setForm] = useState<ManualLogFormState>(() =>
+    // The "Add punch" buttons stay disabled until the policy loads, so a prefill always has one.
+    prefill && policy ? prefilledState(prefill, policy.timeZoneId, policy.shiftStart) : defaultState());
 
   // Approved leave for the selected employee, greyed out in the calendar. The device still
   // records punches on those days; this only stops one being invented by hand.
@@ -76,13 +109,8 @@ export function AddManualLogDialog({
     onConfirm(form.employeeId, form.punchedAtUtc, form.punchType, form.note || null);
   }
 
-  function handleOpenChange(o: boolean) {
-    if (!o) setForm(defaultState());
-    onOpenChange(o);
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogHeader>
         <DialogTitle>{t('manualLog.title')}</DialogTitle>
         <DialogDescription>{t('manualLog.description')}</DialogDescription>
@@ -130,7 +158,7 @@ export function AddManualLogDialog({
       </div>
 
       <DialogFooter>
-        <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={submitting}>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
           {tCommon('cancel')}
         </Button>
         <Button onClick={handleConfirm} disabled={submitting || !canSubmit}>

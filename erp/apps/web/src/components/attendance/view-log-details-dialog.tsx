@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { parseAbsolute, toCalendarDate, today } from '@internationalized/date';
-import { Download, MessageSquare, Pencil, Plus, X } from 'lucide-react';
+import { Check, Download, MessageSquare, Pencil, Plus, X } from 'lucide-react';
 import {
   Dialog,
   DialogDescription,
@@ -13,7 +13,6 @@ import {
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -37,7 +36,6 @@ import { useBlockedLeaveDates } from '@/hooks/use-leave';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { APP_TIME_ZONE } from '@/lib/constants';
-import { cn } from '@/lib/utils';
 import type {
   AttendanceDayListItem,
   AttendanceLogListItem,
@@ -70,6 +68,8 @@ interface ViewLogDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   day: AttendanceDayListItem | null;
   canEdit: boolean;
+  /** Opens the manual log form for this employee-date. Absent days have nothing else to offer. */
+  onAddPunch: (day: AttendanceDayListItem) => void;
 }
 
 export function ViewLogDetailsDialog({
@@ -77,6 +77,7 @@ export function ViewLogDetailsDialog({
   onOpenChange,
   day,
   canEdit,
+  onAddPunch,
 }: ViewLogDetailsDialogProps) {
   const t = useTranslations('attendance');
   const tCommon = useTranslations('common');
@@ -87,10 +88,11 @@ export function ViewLogDetailsDialog({
   const [form, setForm] = useState<FormState>({ punchedAtUtc: '', punchType: 'In' });
   const [noteText, setNoteText] = useState('');
 
+  // A day with no tap-in has no punches to fetch — Absent and punchless leave both skip it.
   const { data, isLoading, error } = useAttendanceDayLogs(
     day?.employeeId ?? '',
     day?.date ?? '',
-    open,
+    open && !!day?.tapInUtc,
   );
   const updateMutation = useUpdateAttendanceLog();
   const addNoteMutation = useAddAttendanceLogNote();
@@ -162,7 +164,6 @@ export function ViewLogDetailsDialog({
     }
   }
 
-  const editing = editingId !== null;
   const viewingNotes = notesLog !== null;
 
   // No punches means the logs table would render empty. A day only ever lacks punches because
@@ -170,28 +171,39 @@ export function ViewLogDetailsDialog({
   // what the day actually is instead of nothing.
   const isLeaveOnly = !!day && !day.tapInUtc && !!day.leaveType;
 
+  // Nobody punched and no leave covers it: there is no attendance row behind this at all, so
+  // the only thing the dialog can usefully do is start one.
+  const isAbsent = !!day && !day.tapInUtc && !day.leaveType;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} className="sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>
-          {editing
-            ? t('edit.title')
-            : viewingNotes
-              ? t('notes.title')
-              : isLeaveOnly
-                ? t('leaveDetails.title')
-                : t('details.title')}
+          {viewingNotes
+            ? t('notes.title')
+            : isLeaveOnly
+              ? t('leaveDetails.title')
+              : t('details.title')}
         </DialogTitle>
         {/* A leave day names the employee and both dates in the panel itself — repeating them
             under the title is noise, so that branch runs without a subtitle. */}
         {!isLeaveOnly && (
-          <DialogDescription>
-            {viewingNotes && day
-              ? `${day.employeeFullName} — ${formatPunchedAt(notesLog.punchedAtUtc, policy?.timeZoneId)} (${t(`punchType.${notesLog.punchType}`)})`
-              : day
-                ? `${day.employeeFullName} — ${formatLeaveDate(day.date)}`
-                : t('details.description')}
-          </DialogDescription>
+          <div className="flex items-center justify-between gap-3">
+            <DialogDescription>
+              {viewingNotes && day
+                ? `${day.employeeFullName} — ${formatPunchedAt(notesLog.punchedAtUtc, policy?.timeZoneId)} (${t(`punchType.${notesLog.punchType}`)})`
+                : day
+                  ? `${day.employeeFullName} — ${formatLeaveDate(day.date)}`
+                  : t('details.description')}
+            </DialogDescription>
+            {/* Absent days carry their own add button in the empty state. */}
+            {canEdit && day && !viewingNotes && !isAbsent && (
+              <Button size="sm" className="shrink-0" onClick={() => onAddPunch(day)} disabled={!policy}>
+                <Plus className="h-4 w-4" />
+                {t('details.addAttendance')}
+              </Button>
+            )}
+          </div>
         )}
       </DialogHeader>
 
@@ -267,120 +279,193 @@ export function ViewLogDetailsDialog({
               )}
             </div>
           </div>
-        ) : editing ? (
-          <div className="space-y-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>{t('manualLog.punchedAt')}</Label>
-              <DateTimePickerField
-                value={form.punchedAtUtc}
-                onChange={(v) => setForm((s) => ({ ...s, punchedAtUtc: v }))}
-                timeZone={timeZone}
-                blockedDates={blocked.data?.blockedDates}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>{t('columns.punchType')}</Label>
-              <div className="flex gap-2">
-                {(['In', 'Out'] as const).map((pt) => (
-                  <Button
-                    key={pt}
-                    type="button"
-                    variant={form.punchType === pt ? 'default' : 'outline'}
-                    className={cn('flex-1', form.punchType !== pt && 'text-muted-foreground')}
-                    onClick={() => setForm((s) => ({ ...s, punchType: pt }))}
-                  >
-                    {t(`punchType.${pt}`)}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setEditingId(null)}
-                disabled={updateMutation.isPending}
-              >
-                {tCommon('cancel')}
-              </Button>
-              <Button onClick={handleSave} disabled={updateMutation.isPending || !form.punchedAtUtc}>
-                {updateMutation.isPending ? tCommon('loading') : tCommon('save')}
-              </Button>
-            </div>
-          </div>
         ) : isLeaveOnly ? (
           <LeaveSummary day={day} timeZoneId={policy?.timeZoneId} />
+        ) : isAbsent ? (
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border p-8 text-center">
+            <p className="text-sm text-muted-foreground">{t('details.noPunches')}</p>
+            {canEdit && (
+              <Button onClick={() => onAddPunch(day)} disabled={!policy}>
+                <Plus className="h-4 w-4" />
+                {t('details.addPunch')}
+              </Button>
+            )}
+          </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('columns.punchedAt')}</TableHead>
-                <TableHead>{t('columns.punchType')}</TableHead>
-                <TableHead>{t('columns.source')}</TableHead>
-                <TableHead>{t('columns.note')}</TableHead>
-                {canEdit && <TableHead className="w-10 text-right">{t('columns.action')}</TableHead>}
+                <TableHead className="text-center">{t('columns.punchedAt')}</TableHead>
+                <TableHead className="text-center">{t('columns.punchType')}</TableHead>
+                <TableHead className="text-center">{t('columns.source')}</TableHead>
+                <TableHead className="text-center">{t('columns.note')}</TableHead>
+                {canEdit && <TableHead className="w-10 text-center">{t('columns.action')}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(data?.items ?? []).map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell className="tabular-nums">
-                    {formatPunchedAt(log.punchedAtUtc, policy?.timeZoneId)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={log.punchType === 'In' ? 'success' : 'destructive'}>
-                      {t(`punchType.${log.punchType}`)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={SOURCE_VARIANT[log.source]}>{t(`source.${log.source}`)}</Badge>
-                  </TableCell>
-                  <TableCell className="max-w-48">
-                    {log.notes.length > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => openNotes(log)}
-                        className="flex w-full items-center gap-1.5 text-left text-sm text-muted-foreground hover:text-foreground"
-                        title={t('notes.viewLabel')}
-                      >
-                        <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                        <span className="shrink-0 tabular-nums">{log.notes.length}</span>
-                        <span className="truncate">
-                          · {log.notes[log.notes.length - 1]?.text}
-                        </span>
-                      </button>
-                    ) : canEdit ? (
-                      <button
-                        type="button"
-                        onClick={() => openNotes(log)}
-                        className="flex items-center justify-center rounded-lg border border-border px-4 py-[5px] text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                        title={t('notes.addLabel')}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  {canEdit && (
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => startEditing(log)}
-                        aria-label={t('actions.edit')}
-                        title={t('actions.edit')}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+              {(data?.items ?? []).map((log) => {
+                if (log.id === editingId) {
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-center">
+                        <DateTimePickerField
+                          value={form.punchedAtUtc}
+                          onChange={(v) => setForm((s) => ({ ...s, punchedAtUtc: v }))}
+                          timeZone={timeZone}
+                          blockedDates={blocked.data?.blockedDates}
+                          aria-label={t('manualLog.punchedAt')}
+                          hideTrigger
+                        />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <PunchTypeToggle
+                          punchType={form.punchType}
+                          onToggle={() => setForm((s) => ({ ...s, punchType: s.punchType === 'In' ? 'Out' : 'In' }))}
+                        />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={SOURCE_VARIANT[log.source]}>{t(`source.${log.source}`)}</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-48 text-center">
+                        <NoteCell log={log} canEdit={canEdit} onOpenNotes={openNotes} />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingId(null)}
+                            disabled={updateMutation.isPending}
+                            aria-label={tCommon('cancel')}
+                            title={tCommon('cancel')}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleSave}
+                            disabled={updateMutation.isPending || !form.punchedAtUtc}
+                            aria-label={tCommon('save')}
+                            title={tCommon('save')}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+
+                return (
+                  <TableRow key={log.id}>
+                    <TableCell className="text-center tabular-nums">
+                      {formatPunchedAt(log.punchedAtUtc, policy?.timeZoneId)}
                     </TableCell>
-                  )}
-                </TableRow>
-              ))}
+                    <TableCell className="text-center">
+                      <Badge variant={log.punchType === 'In' ? 'success' : 'destructive'}>
+                        {t(`punchType.${log.punchType}`)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={SOURCE_VARIANT[log.source]}>{t(`source.${log.source}`)}</Badge>
+                    </TableCell>
+                    <TableCell className="max-w-48 text-center">
+                      <NoteCell log={log} canEdit={canEdit} onOpenNotes={openNotes} />
+                    </TableCell>
+                    {canEdit && (
+                      <TableCell className="text-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => startEditing(log)}
+                          aria-label={t('actions.edit')}
+                          title={t('actions.edit')}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
       </div>
     </Dialog>
+  );
+}
+
+/** Notes are orthogonal to punchedAt/punchType, so this stays clickable whether or not the row is being edited. */
+function NoteCell({
+  log,
+  canEdit,
+  onOpenNotes,
+}: {
+  log: AttendanceLogListItem;
+  canEdit: boolean;
+  onOpenNotes: (log: AttendanceLogListItem) => void;
+}) {
+  const t = useTranslations('attendance');
+
+  if (log.notes.length > 0) {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpenNotes(log)}
+        className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        title={t('notes.viewLabel')}
+      >
+        <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+        <span className="shrink-0 tabular-nums">{log.notes.length}</span>
+        <span className="truncate">· {log.notes[log.notes.length - 1]?.text}</span>
+      </button>
+    );
+  }
+
+  if (canEdit) {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpenNotes(log)}
+        className="mx-auto flex items-center justify-center rounded-lg border border-border px-4 py-[5px] text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        title={t('notes.addLabel')}
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    );
+  }
+
+  return <span className="text-muted-foreground">—</span>;
+}
+
+/** One badge, click flips In↔Out. Replaces the two-button toggle in the row's edit state. */
+function PunchTypeToggle({
+  punchType,
+  onToggle,
+}: {
+  punchType: PunchType;
+  onToggle: () => void;
+}) {
+  const t = useTranslations('attendance');
+
+  return (
+    <Badge
+      variant={punchType === 'In' ? 'success' : 'destructive'}
+      role="button"
+      tabIndex={0}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      className="cursor-pointer select-none hover:opacity-80"
+    >
+      {t(`punchType.${punchType}`)}
+    </Badge>
   );
 }
 

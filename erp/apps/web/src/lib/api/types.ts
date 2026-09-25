@@ -215,7 +215,23 @@ export interface ListAttendanceLogsParams {
   source?: AttendanceSource | '';
 }
 
-export type AttendanceDayStatus = 'Complete' | 'Incomplete' | 'OnLeave';
+/**
+ * What the calendar reports per employee-date. A superset of the domain's three values: the
+ * rest describe states no attendance row can hold. `Absent` in particular is found by
+ * comparing a date's rows against who was employed — no row is ever written for it.
+ */
+export type AttendanceDayStatus =
+  | 'Complete'
+  | 'Incomplete'
+  | 'OnLeave'
+  /** Employed that workday, no punch, no leave. */
+  | 'Absent'
+  /** Today, before the shift closed: has punched at least once. */
+  | 'ClockedIn'
+  /** Today, before the shift closed: no punch yet. Not a failure — the day is unfinished. */
+  | 'NotInYet'
+  /** A date after today. Nothing has happened, so nothing is claimed. */
+  | 'Upcoming';
 
 export interface AttendanceDayListItem {
   employeeId: string;
@@ -242,17 +258,36 @@ export interface AttendanceDayListItem {
   canWrite: boolean;
 }
 
+export interface AttendanceCalendarDate {
+  /** "YYYY-MM-DD" in the attendance policy time zone. */
+  date: string;
+  /** False for Saturday and Sunday. No absence is reported on a non-working day. */
+  isWorkday: boolean;
+  /** A date after today: employees are listed, but nothing is claimed about them. */
+  isFuture: boolean;
+  /** Today, before the shift closed. Employees read ClockedIn or NotInYet. */
+  isInProgress: boolean;
+  /** Already sorted problems-first, then by name. */
+  employees: AttendanceDayListItem[];
+}
+
 export interface ListAttendanceDaysResponse {
-  items: AttendanceDayListItem[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
+  /** Newest date first. */
+  dates: AttendanceCalendarDate[];
 }
 
 export interface ListAttendanceDaysParams {
-  page?: number;
-  pageSize?: number;
+  /** Inclusive "YYYY-MM-DD" bounds. The period caps at 92 days server-side. */
+  from: string;
+  to: string;
   filter?: string;
+}
+
+export interface ExportAttendanceDaysBody {
+  from: string;
+  to: string;
+  filter?: string;
+  problemsOnly?: boolean;
 }
 
 export interface GetAttendanceDayLogsResponse {
@@ -262,12 +297,6 @@ export interface GetAttendanceDayLogsResponse {
 export interface UpdateAttendanceLogBody {
   punchedAtUtc: string;
   punchType: PunchType;
-}
-
-export interface AttendanceDayKey {
-  employeeId: string;
-  /** "YYYY-MM-DD" calendar date. */
-  date: string;
 }
 
 export interface RecordManualLogBody {

@@ -6,11 +6,13 @@ using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
 using NodaTime;
 using Wolverine;
+using Wolverine.Attributes;
 
 namespace Erp.UseCases.Attendance.UpdateAttendancePolicy;
 
 public static class UpdateAttendancePolicyHandler
 {
+    [Transactional]
     public static async Task<Result<AttendancePolicyResult>> Handle(
         UpdateAttendancePolicyCommand command,
         IRepository<AttendancePolicy> policies,
@@ -58,9 +60,10 @@ public static class UpdateAttendancePolicyHandler
             command.ChangedByUserId,
             now);
 
-        // Validation passed — now persist both. Wolverine wraps the handler in a single
-        // EF Core transaction (see UseEntityFrameworkCoreTransactions in Program.cs), so
-        // these two writes commit or roll back together.
+        // Validation passed — now persist both. [Transactional] wraps the handler in a single
+        // EF Core transaction, so these two writes (and the outboxed event below) commit or
+        // roll back together. The attribute is required: UseEntityFrameworkCoreTransactions in
+        // Program.cs only registers the middleware, it does not apply it to any handler.
         await policyHistories.AddAsync(history, ct);
         await policies.UpdateAsync(policy, ct);
 

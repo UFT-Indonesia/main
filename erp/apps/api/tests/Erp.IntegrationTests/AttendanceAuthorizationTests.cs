@@ -175,40 +175,42 @@ public class AttendanceAuthorizationTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Staff_cannot_export_someone_elses_attendance()
+    public async Task Staff_export_covers_only_themselves()
     {
         var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
         var manager = await CreateEmployeeAsync(EmployeeRole.Manager, "Manager Satu", owner.Id);
         var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", manager.Id);
-        var colleague = await CreateEmployeeAsync(EmployeeRole.Staff, "Rekan Kerja", manager.Id);
+        await CreateEmployeeAsync(EmployeeRole.Staff, "Rekan Kerja", manager.Id);
 
+        // The export takes a period rather than a list of keys, so a Staff caller can no longer
+        // name someone else's row to be refused — the calendar's employee scope simply never
+        // puts a colleague in the file.
         var client = await CreateClientForAsync(staff);
         var response = await client.PostAsJsonAsync("/api/attendance/days/export", new
         {
-            items = new[]
-            {
-                new { employeeId = staff.Id.Value, date = "2026-08-05" },
-                new { employeeId = colleague.Id.Value, date = "2026-08-05" },
-            },
+            from = "2026-08-03",
+            to = "2026-08-07",
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var csv = await response.Content.ReadAsStringAsync();
+        csv.Should().Contain("Staff Biasa");
+        csv.Should().NotContain("Rekan Kerja");
     }
 
     [Fact]
-    public async Task The_export_refuses_more_keys_than_it_will_process()
+    public async Task The_export_refuses_a_period_longer_than_it_will_process()
     {
         var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
 
         var client = await CreateClientForAsync(owner);
         var response = await client.PostAsJsonAsync("/api/attendance/days/export", new
         {
-            items = Enumerable.Range(0, 501)
-                .Select(i => new { employeeId = owner.Id.Value, date = $"2026-01-{(i % 28) + 1:D2}" })
-                .ToArray(),
+            from = "2026-01-01",
+            to = "2026-12-31",
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("attendance.export_too_many");
+        (await response.Content.ReadAsStringAsync()).Should().Contain("attendance.period_too_long");
     }
 }

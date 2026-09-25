@@ -34,8 +34,8 @@ public sealed class ListAttendanceDaysEndpoint : Endpoint<ListAttendanceDaysRequ
         }
 
         var result = await _bus.InvokeAsync<Result<ListAttendanceDaysResult>>(new ListAttendanceDaysQuery(
-            req.Page,
-            req.PageSize,
+            req.From,
+            req.To,
             FilterBinding.ParseOrThrow(req.Filter),
             caller), ct);
 
@@ -43,29 +43,33 @@ public sealed class ListAttendanceDaysEndpoint : Endpoint<ListAttendanceDaysRequ
         {
             await SendOkAsync(new ListAttendanceDaysResponse
             {
-                Items = s.Value.Items.Select(i => new AttendanceDayListItemResponse
+                Dates = s.Value.Dates.Select(d => new AttendanceCalendarDateResponse
                 {
-                    EmployeeId = i.EmployeeId,
-                    EmployeeFullName = i.EmployeeFullName,
-                    Date = i.Date,
-                    TapInUtc = i.TapInUtc,
-                    TapOutUtc = i.TapOutUtc,
-                    Status = i.Status,
-                    LeaveType = i.LeaveType,
-                    LeaveStartDate = i.LeaveStartDate,
-                    LeaveEndDate = i.LeaveEndDate,
-                    LeaveWorkdayCount = i.LeaveWorkdayCount,
-                    LeaveReason = i.LeaveReason,
-                    LeaveRequestedAtUtc = i.LeaveRequestedAtUtc,
-                    LeaveDecidedByName = i.LeaveDecidedByName,
-                    LeaveDecidedAtUtc = i.LeaveDecidedAtUtc,
-                    LeaveRequestId = i.LeaveRequestId,
-                    LeaveAttachmentFileName = i.LeaveAttachmentFileName,
-                    CanWrite = i.CanWrite,
+                    Date = d.Date,
+                    IsWorkday = d.IsWorkday,
+                    IsFuture = d.IsFuture,
+                    IsInProgress = d.IsInProgress,
+                    Employees = d.Employees.Select(i => new AttendanceDayListItemResponse
+                    {
+                        EmployeeId = i.EmployeeId,
+                        EmployeeFullName = i.EmployeeFullName,
+                        Date = i.Date,
+                        TapInUtc = i.TapInUtc,
+                        TapOutUtc = i.TapOutUtc,
+                        Status = i.Status,
+                        LeaveType = i.LeaveType,
+                        LeaveStartDate = i.LeaveStartDate,
+                        LeaveEndDate = i.LeaveEndDate,
+                        LeaveWorkdayCount = i.LeaveWorkdayCount,
+                        LeaveReason = i.LeaveReason,
+                        LeaveRequestedAtUtc = i.LeaveRequestedAtUtc,
+                        LeaveDecidedByName = i.LeaveDecidedByName,
+                        LeaveDecidedAtUtc = i.LeaveDecidedAtUtc,
+                        LeaveRequestId = i.LeaveRequestId,
+                        LeaveAttachmentFileName = i.LeaveAttachmentFileName,
+                        CanWrite = i.CanWrite,
+                    }).ToList(),
                 }).ToList(),
-                Page = s.Value.Page,
-                PageSize = s.Value.PageSize,
-                TotalCount = s.Value.TotalCount,
             }, ct);
             return;
         }
