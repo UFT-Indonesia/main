@@ -37,10 +37,10 @@ overtime hour and index columns, barcode export, print preview. Overtime belongs
 | 1 | Rows are dates, whole company, one page | replaces the flat list |
 | 2 | Date row expands inline to employee rows | no route, no modal, several dates can be open at once |
 | 3 | Absent is derived, never stored | see below |
-| 4 | Every date in the period appears; weekends read `Off` | reuses the hardcoded Mon–Fri rule |
+| 4 | Every date in the period appears; ~~weekends read `Off`~~ weekends render `–` in every cell, muted | reuses the hardcoded Mon–Fri rule. **Changed on purpose**, see below |
 | 5 | Staff see the same table; the summary cell shows their own status | their scope is always one person |
 | 6 | Filter builder keeps employee fields only, plus a problems-only toggle | see below |
-| 7 | Summary shows exceptions only, or `All present` | no ratios, nothing to subtract |
+| 7 | ~~Summary shows exceptions only, or `All present`~~ Settled dates show five count columns | **Changed on purpose**, see below |
 | 8 | One request per period, no pagination | expansion is client-side |
 | 9 | Export the period as shown; checkbox selection deleted | contract moves to a date range |
 | 10 | Future dates render blank; today reads as in progress | see below |
@@ -101,6 +101,9 @@ day Budi had this quarter"* — is reproduced by the employee filter plus the to
 quarter-wide period.
 
 ## Shape
+
+As designed (the L1 summary cell and period picker were later changed, see *Changed after
+design*; the L2 expansion is as shown):
 
 ```
 Period: [01-09] – [10-09]    [☑ Only dates with problems]
@@ -189,10 +192,27 @@ computed. The reference has a Late In (Minute) column; adding one is cheap (tap-
 **No attendance-request workflow.** The reference has per-day correction requests with start,
 end and remark, approved and shown inline. We have log notes on punches, which is a weaker thing.
 
+## Changed after design
+
+All three were made on purpose after the design above; confirmed 2026-09-25.
+
+1. **Count columns replace the exceptions summary (decision 7).** A settled workday shows
+   `Headcount · Present · Absent · Incomplete · On Leave` as five numeric columns. The merged
+   summary cell now appears only for today in progress (*45 clocked in · 2 not in yet*), Staff's
+   own day, and dates with nothing to report. The exceptions-only branch and its
+   `summary.allPresent/absent/incomplete/onLeave` keys were deleted as unreachable.
+2. **Month dropdown replaces the from/to picker.** Whole months only, the last 24 (`MONTHS_BACK`
+   in `page.tsx`, marked `ponytail:`). A past month runs 1st to last day; the current month runs
+   to today, which keeps decision 14. The UI can no longer reach the 92-day cap — only direct API
+   callers can.
+3. **Weekends render `–`, not `Off` (decision 4).** Every cell of a non-workday row is `–`, text
+   muted. No `Off` label or key exists.
+
 ## Resolved during implementation
 
 1. **Period cap.** 92 days, enforced server-side in `AttendancePeriod.TryValidate` and shared by
-   the list and the export. No UI cap; the picker allows any range and the server refuses.
+   the list and the export. A missing `from`/`to` is refused as `attendance.period_required`
+   (it would otherwise bind to 0001-01-01).
 2. **Problems-only hides `Off` rows.** `hasProblem` requires a settled workday, so weekends,
    future dates and today-in-progress all drop out of the filtered list.
 3. **New status vocabulary.** `ClockedIn` and `NotInYet` were added for today-in-progress, on top
@@ -203,10 +223,25 @@ end and remark, approved and shown inline. We have log notes on punches, which i
 Narrow-screen layout for the four-column expansion is unresolved. The tables scroll but were
 not designed for it.
 
+## PR review fixes (2026-09-25)
+
+- **Transactions.** `RecordManualLogHandler`, `UpdateAttendanceLogHandler` and
+  `UpdateAttendancePolicyHandler` gained `[Transactional]`. The manual punch now recomputes its
+  day directly inside the transaction (it had used `bus.InvokeAsync`, whose failure left a saved
+  punch behind a 500, so a retry duplicated it). `AttendanceLogRecorded` is still published and
+  now rides the outbox in the same transaction. App-wide rollout split out to
+  `GSS06-transactional-handlers.md`.
+- **Export** loads punches only for the employees in the file, not the whole company.
+- **Population** skips employees whose employment does not overlap the period.
+- **Manual log form** remounts on every open (a blank reopen used to keep the last input), and
+  both Add punch buttons wait for the policy so the prefill always uses the real shift start.
+- Locale-aware formatting split out to `GSS07-locale-aware-formatting.md`.
+
 ## Verification
 
-API unit tests pass (602, including 8 new `AttendanceCalendarTests` covering absence derivation,
-weekends, hire dates, the in-progress boundary and sort order). The web app typechecks, lints and
-builds. Integration tests compile but were not run — Docker was not available, so Testcontainers
-could not start Postgres. The two export tests there were rewritten for the period contract and
-have not executed.
+API unit tests pass (602, including 8 `AttendanceCalendarTests` covering absence derivation,
+weekends, hire dates, the in-progress boundary and sort order). The web app typechecks and lints.
+Integration tests compile but **have not run** — Docker was not available, so Testcontainers could
+not start Postgres. Unexecuted so far: the two export tests rewritten for the period contract, and
+the four rollback tests in `AttendanceTransactionTests.cs`, which are the proof `[Transactional]`
+actually applies.
