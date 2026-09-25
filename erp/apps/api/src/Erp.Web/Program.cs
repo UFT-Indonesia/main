@@ -55,10 +55,15 @@ try
         options.PersistMessagesWithPostgresql(connectionString);
         options.UseEntityFrameworkCoreTransactions();
 
+        // Every handler that touches the DbContext runs in one EF Core transaction. Ardalis
+        // repositories save on each call, so without this a handler with two writes can fail
+        // between them and leave half its work committed. Messages the handler publishes are
+        // outboxed into the same transaction, so a write and the event it raises land together.
+        options.Policies.AutoApplyTransactions();
+
         // Local queues are in-memory by default: a handler throw or a restart silently drops
         // the message. The audit log can't afford that, so envelopes are persisted before
-        // dispatch and retried. Note the enqueue is still a separate transaction from the
-        // aggregate save, so a crash in between can still lose a row.
+        // dispatch and retried.
         options.Policies.UseDurableLocalQueues();
     });
 
@@ -128,6 +133,16 @@ try
         "sync-employee-leave-status",
         job => job.RunAsync(CancellationToken.None),
         Cron.Hourly());
+
+    // Safety net: a recompute message that exhausts its retries leaves a punch with no day,
+    // which reads as Absent. Rebuilding from punches is idempotent, so correct days are
+    // untouched. Pinned to the shift zone so "nightly" means night at the office, not on the
+    // server. ponytail: zone hardcoded to the policy's current one — change both together.
+    app.Services.GetRequiredService<IRecurringJobManager>().AddOrUpdate<RecomputeAttendanceDaysJob>(
+        "recompute-attendance-days",
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Daily(2),
+        new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta") });
 
     app.UseFastEndpoints();
 

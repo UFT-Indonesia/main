@@ -6,13 +6,11 @@ using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
 using NodaTime;
 using Wolverine;
-using Wolverine.Attributes;
 
 namespace Erp.UseCases.Attendance.UpdateAttendancePolicy;
 
 public static class UpdateAttendancePolicyHandler
 {
-    [Transactional]
     public static async Task<Result<AttendancePolicyResult>> Handle(
         UpdateAttendancePolicyCommand command,
         IRepository<AttendancePolicy> policies,
@@ -60,10 +58,9 @@ public static class UpdateAttendancePolicyHandler
             command.ChangedByUserId,
             now);
 
-        // Validation passed — now persist both. [Transactional] wraps the handler in a single
-        // EF Core transaction, so these two writes (and the outboxed event below) commit or
-        // roll back together. The attribute is required: UseEntityFrameworkCoreTransactions in
-        // Program.cs only registers the middleware, it does not apply it to any handler.
+        // Validation passed — now persist both. The handler runs in one EF Core transaction
+        // (AutoApplyTransactions, Program.cs), so these two writes and the outboxed event below
+        // commit or roll back together: the audit trail cannot record a change that never took.
         await policyHistories.AddAsync(history, ct);
         await policies.UpdateAsync(policy, ct);
 

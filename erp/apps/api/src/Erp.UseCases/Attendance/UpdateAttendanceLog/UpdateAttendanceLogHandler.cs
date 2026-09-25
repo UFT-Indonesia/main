@@ -5,17 +5,15 @@ using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
 using NodaTime;
-using Wolverine.Attributes;
 
 namespace Erp.UseCases.Attendance.UpdateAttendanceLog;
 
 public static class UpdateAttendanceLogHandler
 {
     /// <summary>
-    /// [Transactional]: the edited punch and the recomputed day(s) commit together, so a failed
-    /// recompute cannot leave the new time saved behind a stale day.
+    /// The edited punch and the recomputed day(s) commit in one transaction (AutoApplyTransactions,
+    /// Program.cs), so a failed recompute cannot leave the new time saved behind a stale day.
     /// </summary>
-    [Transactional]
     public static async Task<Result<AttendanceResult>> Handle(
         UpdateAttendanceLogCommand command,
         IRepository<AttendanceLog> attendanceLogs,
