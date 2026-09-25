@@ -162,20 +162,14 @@
   },
   "attendance": {
     "title": "Attendance",
-    "subtitle": "View and manage attendance logs.",
+    "subtitle": "Every date in the period, and who was counted on it.",
     "addManual": "Add manual log",
-    "empty": "No attendance logs found.",
-    "searchPlaceholder": "Search by employee name...",
+    "empty": "No dates in this period.",
     "filters": {
-      "dateFrom": "From date",
-      "dateTo": "To date",
+      "problemsOnly": "Only Dates With Problems",
       "fields": {
         "employeeName": "Employee Name",
-        "employee": "Employee",
-        "date": "Date",
-        "status": "Status",
-        "tapIn": "Tap In",
-        "tapOut": "Tap Out"
+        "employee": "Employee"
       }
     },
     "columns": {
@@ -188,7 +182,13 @@
       "tapIn": "Tap-In",
       "tapOut": "Tap-Out",
       "status": "Status",
-      "action": "Action"
+      "action": "Action",
+      "scheduleTime": "Schedule Time",
+      "headcount": "Headcount",
+      "present": "Present",
+      "absent": "Absent",
+      "incomplete": "Incomplete",
+      "onLeave": "On Leave"
     },
     "punchType": {
       "In": "Clock in",
@@ -210,27 +210,27 @@
       "successDescription": "Attendance log recorded successfully.",
       "errorTitle": "Failed to save log"
     },
-    "pagination": {
-      "summary": "Showing {from}-{to} of {total}"
-    },
     "status": {
       "Complete": "Complete",
       "Incomplete": "Incomplete",
-      "OnLeave": "On leave"
+      "OnLeave": "On leave",
+      "Absent": "Absent",
+      "ClockedIn": "Clocked In",
+      "NotInYet": "Not In Yet",
+      "Upcoming": "Upcoming"
     },
     "actions": {
       "viewLogDetails": "View log details",
       "edit": "Edit",
-      "exportSelected": "Export selected"
-    },
-    "selection": {
-      "nSelected": "{count} selected",
-      "selectAll": "Select all on this page",
-      "selectRow": "Select row"
+      "exportPeriod": "Export Period",
+      "expandDate": "Show employees for this date"
     },
     "details": {
       "title": "Attendance log details",
-      "description": "Chronological list of all punches for this day."
+      "description": "Chronological list of all punches for this day.",
+      "noPunches": "No punches recorded.",
+      "addPunch": "Add Punch",
+      "addAttendance": "Attendance"
     },
     "leaveDetails": {
       "title": "Leave Details",
@@ -249,8 +249,6 @@
       "dayCount": "{count, plural, =0 {0 days} one {# day} other {# days}}"
     },
     "edit": {
-      "title": "Edit attendance log",
-      "description": "Correct individual punches for this day.",
       "successTitle": "Changes saved",
       "successDescription": "Attendance log updated successfully.",
       "errorTitle": "Failed to update log"
@@ -267,6 +265,15 @@
     },
     "export": {
       "errorTitle": "Failed to export"
+    },
+    "period": {
+      "label": "Period"
+    },
+    "summary": {
+      "clockedIn": "{count} clocked in",
+      "notInYet": "{count} not in yet",
+      "inProgress": "In progress",
+      "nothingYet": "—"
     }
   },
   "attendanceSettings": {
