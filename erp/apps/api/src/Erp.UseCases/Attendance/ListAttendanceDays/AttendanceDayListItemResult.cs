@@ -18,11 +18,11 @@ public sealed class AttendanceDayListItemResult
 
     /// <summary>
     /// Detail of the leave covering this day, all null when none does. Denormalized off the
-    /// already-Include'd LeaveRequest navigation (see AttendanceDayListSpec), so this costs no
+    /// already-Include'd LeaveRequest navigation (see AttendanceDaysInRangeSpec), so this costs no
     /// extra query.
     /// </summary>
     /// <remarks>
-    /// Reason needs no per-row permission check of its own: AttendanceDayListSpec.ApplyCallerScope
+    /// Reason needs no per-row permission check of its own: AttendanceCalendarEmployeesSpec.ApplyCallerScope
     /// already restricts Staff to their own days and lets only Owner/Manager see everyone's, which
     /// is exactly the rule this reason is meant to follow. Any row a caller can fetch is a row
     /// whose reason they may read.

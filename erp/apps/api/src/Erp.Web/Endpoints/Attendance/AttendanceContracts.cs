@@ -71,8 +71,11 @@ public sealed class ListAttendanceLogsResponse
 
 public sealed class ListAttendanceDaysRequest
 {
-    public int Page { get; init; } = 1;
-    public int PageSize { get; init; } = 20;
+    /// <summary>Inclusive start of the calendar window.</summary>
+    public DateOnly From { get; init; }
+
+    /// <summary>Inclusive end of the calendar window.</summary>
+    public DateOnly To { get; init; }
 
     /// <summary>Filter builder rows as a JSON array; see FilterApplier.Parse.</summary>
     public string? Filter { get; init; }
@@ -104,12 +107,26 @@ public sealed class AttendanceDayListItemResponse
     public bool CanWrite { get; init; }
 }
 
+public sealed class AttendanceCalendarDateResponse
+{
+    public DateOnly Date { get; init; }
+
+    /// <summary>False for Saturday and Sunday. No absence is reported on a non-working day.</summary>
+    public bool IsWorkday { get; init; }
+
+    /// <summary>A date after today: employees are listed, but nothing is claimed about them.</summary>
+    public bool IsFuture { get; init; }
+
+    /// <summary>Today, before the shift has closed. Employees read ClockedIn or NotInYet.</summary>
+    public bool IsInProgress { get; init; }
+
+    public IReadOnlyList<AttendanceDayListItemResponse> Employees { get; init; } = [];
+}
+
 public sealed class ListAttendanceDaysResponse
 {
-    public IReadOnlyList<AttendanceDayListItemResponse> Items { get; init; } = [];
-    public int Page { get; init; }
-    public int PageSize { get; init; }
-    public int TotalCount { get; init; }
+    /// <summary>Newest date first.</summary>
+    public IReadOnlyList<AttendanceCalendarDateResponse> Dates { get; init; } = [];
 }
 
 public sealed class GetAttendanceDayLogsRequest
@@ -130,15 +147,20 @@ public sealed class UpdateAttendanceLogRequest
     public string PunchType { get; init; } = default!;
 }
 
-public sealed class ExportAttendanceDayKeyRequest
-{
-    public Guid EmployeeId { get; init; }
-    public DateOnly Date { get; init; }
-}
-
+/// <summary>
+/// Exports the period as shown, so the same window and employee filters the calendar is
+/// displaying produce the file. Absent employees appear as absent rows.
+/// </summary>
 public sealed class ExportAttendanceDaysRequest
 {
-    public IReadOnlyList<ExportAttendanceDayKeyRequest> Items { get; init; } = [];
+    public DateOnly From { get; init; }
+    public DateOnly To { get; init; }
+
+    /// <summary>Filter builder rows as a JSON array; see FilterApplier.Parse.</summary>
+    public string? Filter { get; init; }
+
+    /// <summary>Mirrors the screen's "only dates with problems" toggle.</summary>
+    public bool ProblemsOnly { get; init; }
 }
 
 public sealed class DeviceAttendanceLogRequest

@@ -3,13 +3,14 @@ using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Common;
 using Erp.UseCases.Attendance.ExportAttendanceDays;
+using Erp.UseCases.Common.Filtering;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
 using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
-/// <summary>Capped at 500 keys. Staff may export only their own rows, and are refused rather than silently trimmed.</summary>
+/// <summary>Exports the period as shown. Staff are scoped to their own rows by the calendar's employee spec.</summary>
 [Authorize]
 public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDaysRequest>
 {
@@ -36,8 +37,11 @@ public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDays
 
         var result = await _bus.InvokeAsync<Result<ExportAttendanceDaysResult>>(
             new ExportAttendanceDaysQuery(
-                req.Items.Select(i => new AttendanceDayKey(i.EmployeeId, i.Date)).ToList(),
-                caller),
+                req.From,
+                req.To,
+                FilterBinding.ParseOrThrow(req.Filter),
+                caller,
+                req.ProblemsOnly),
             ct);
 
         if (result is Result<ExportAttendanceDaysResult>.Success s)
@@ -50,7 +54,7 @@ public sealed class ExportAttendanceDaysEndpoint : Endpoint<ExportAttendanceDays
 
         if (result is Result<ExportAttendanceDaysResult>.Error e)
         {
-            if (e.Code == ResultErrors.Forbidden)
+            if (e.Code == ResultErrors.Forbidden || e.Code == FilterErrors.FieldForbidden)
             {
                 await SendForbiddenAsync(ct);
                 return;

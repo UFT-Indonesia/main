@@ -33,7 +33,7 @@ public class FilterTranslationTests
         new(Guid.NewGuid(), EmployeeRole.Owner, new EmployeeId(Guid.NewGuid()), "Owner");
 
     public static TheoryData<string, string> EmployeeCases => Cases(EmployeeFilterFields.Fields);
-    public static TheoryData<string, string> AttendanceDayCases => Cases(AttendanceDayFilterFields.Fields);
+    public static TheoryData<string, string> AttendanceCalendarCases => Cases(AttendanceCalendarFilterFields.Fields);
     public static TheoryData<string, string> AuditLogCases => Cases(EmployeeAuditLogFilterFields.Fields);
     public static TheoryData<string, string> LeaveCases => Cases(LeaveRequestFilterFields.Fields);
     public static TheoryData<string, string> ProbationCases => Cases(ProbationExtensionFilterFields.Fields);
@@ -44,9 +44,9 @@ public class FilterTranslationTests
         => Translates(EmployeeFilterFields.Fields, field, op, db => db.Employees);
 
     [Theory]
-    [MemberData(nameof(AttendanceDayCases))]
-    public void AttendanceDay_fields_translate(string field, string op)
-        => Translates(AttendanceDayFilterFields.Fields, field, op, db => db.AttendanceDays);
+    [MemberData(nameof(AttendanceCalendarCases))]
+    public void AttendanceCalendar_fields_translate(string field, string op)
+        => Translates(AttendanceCalendarFilterFields.Fields, field, op, db => db.Employees);
 
     [Theory]
     [MemberData(nameof(AuditLogCases))]

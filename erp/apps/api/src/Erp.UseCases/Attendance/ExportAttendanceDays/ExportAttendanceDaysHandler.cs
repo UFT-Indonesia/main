@@ -1,62 +1,37 @@
-using System.Linq.Expressions;
 using System.Text.Json;
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
-using Erp.UseCases.Attendance.Common;
-using Erp.UseCases.Common;
+using Erp.UseCases.Attendance.ListAttendanceDays;
+using Erp.UseCases.Common.Filtering;
 using NodaTime;
 using NodaTime.Text;
 
 namespace Erp.UseCases.Attendance.ExportAttendanceDays;
 
-/// <summary>
-/// Fetches exactly the selected (employee, date) rows. Built as one OR-clause per distinct
-/// employee — "employee == e AND date IN (selected dates for e)" — rather than a date-range
-/// scan across all employees: a date-range scan pulls every employee's row for every day
-/// between the earliest and latest selected date, even though only a handful of exact pairs
-/// were asked for.
-/// </summary>
-internal sealed class AttendanceDayExportSpec : Specification<AttendanceDay>
+/// <summary>Every punch in the period, for the employees the calendar is showing.</summary>
+internal sealed class AttendanceLogsInRangeSpec : Specification<AttendanceLog>
 {
-    public AttendanceDayExportSpec(IReadOnlyCollection<(EmployeeId EmployeeId, LocalDate Date)> keys)
+    public AttendanceLogsInRangeSpec(Instant start, Instant end, IReadOnlyCollection<EmployeeId> employeeIds)
     {
-        Query.Where(BuildKeyPredicate(keys));
-        Query.Include(day => day.Employee);
-        Query.Include(day => day.LeaveRequest);
-        Query.OrderBy(day => day.CalendarDate).ThenBy(day => day.Employee!.FullName);
+        Query.Where(log => log.PunchedAtUtc >= start && log.PunchedAtUtc < end
+            && employeeIds.Contains(log.EmployeeId));
+        Query.Include(log => log.Notes);
+        Query.OrderBy(log => log.PunchedAtUtc);
         Query.AsNoTracking();
-    }
-
-    private static Expression<Func<AttendanceDay, bool>> BuildKeyPredicate(
-        IReadOnlyCollection<(EmployeeId EmployeeId, LocalDate Date)> keys)
-    {
-        var day = Expression.Parameter(typeof(AttendanceDay), "day");
-        var employeeIdProperty = Expression.Property(day, nameof(AttendanceDay.EmployeeId));
-        var calendarDateProperty = Expression.Property(day, nameof(AttendanceDay.CalendarDate));
-        var containsMethod = typeof(List<LocalDate>).GetMethod(nameof(List<LocalDate>.Contains))!;
-
-        var perEmployeeClauses = keys
-            .GroupBy(key => key.EmployeeId)
-            .Select(group =>
-            {
-                var dates = group.Select(key => key.Date).ToList();
-                var employeeMatch = Expression.Equal(employeeIdProperty, Expression.Constant(group.Key));
-                var dateMatch = Expression.Call(Expression.Constant(dates), containsMethod, calendarDateProperty);
-                return (Expression)Expression.AndAlso(employeeMatch, dateMatch);
-            })
-            .Aggregate(Expression.OrElse);
-
-        return Expression.Lambda<Func<AttendanceDay, bool>>(perEmployeeClauses, day);
     }
 }
 
+/// <summary>
+/// Exports the period as shown. Built on the same <see cref="AttendanceCalendar"/> the screen
+/// renders, so an employee who never punched appears here as an Absent row rather than being
+/// silently missing — which is the whole point of the calendar.
+/// </summary>
 public static class ExportAttendanceDaysHandler
 {
-    private const int MaxKeys = 500;
-
     private static readonly LocalDateTimePattern LocalTimeStampPattern =
         LocalDateTimePattern.CreateWithInvariantCulture("yyyy-MM-dd HH:mm");
 
@@ -64,58 +39,67 @@ public static class ExportAttendanceDaysHandler
         ExportAttendanceDaysQuery query,
         IReadRepository<AttendanceDay> attendanceDays,
         IReadRepository<AttendanceLog> attendanceLogs,
+        IReadRepository<Employee> employees,
         AttendanceDayPolicy policy,
+        IClock clock,
         CancellationToken ct)
     {
-        if (query.Items is not { Count: > 0 })
+        if (!AttendancePeriod.TryValidate(query.From, query.To, out var from, out var to, out var invalid))
         {
-            return new Result<ExportAttendanceDaysResult>.Error(
-                "attendance.export_empty", "Select at least one attendance day to export.");
+            return new Result<ExportAttendanceDaysResult>.Error(invalid.Code, invalid.Message);
         }
 
-        if (query.Items.Count > MaxKeys)
+        if (!FilterApplier.TryCompile(
+                AttendanceCalendarFilterFields.Fields, query.Filters, query.Caller, out var filters, out var failure))
         {
-            return new Result<ExportAttendanceDaysResult>.Error(
-                "attendance.export_too_many", $"Cannot export more than {MaxKeys} rows at once.");
+            return new Result<ExportAttendanceDaysResult>.Error(failure.Code, failure.Message);
         }
 
-        // Rejected rather than silently trimmed: a CSV that quietly omits rows the caller
-        // asked for is worse than being told no.
-        if (!AttendanceRules.CanReadAll(query.Caller)
-            && query.Items.Any(item => !AttendanceRules.CanRead(query.Caller, new EmployeeId(item.EmployeeId))))
+        // Which employees the caller may export is decided inside the calendar's employee spec,
+        // the same rule the screen obeys. No separate check is needed here.
+        var dates = await AttendanceCalendar.BuildAsync(
+            from, to, filters, query.Caller, attendanceDays, employees, policy, clock, ct);
+
+        if (query.ProblemsOnly)
         {
-            return new Result<ExportAttendanceDaysResult>.Error(
-                ResultErrors.Forbidden, "You cannot export attendance for another employee.");
+            // Same rule as the screen: a settled workday where someone is Absent or Incomplete.
+            dates = dates
+                .Where(date => date.IsWorkday && !date.IsFuture && !date.IsInProgress
+                    && date.Employees.Any(employee =>
+                        employee.Status is AttendanceCalendarStatus.Absent or AttendanceCalendarStatus.Incomplete))
+                .ToList();
         }
 
-        var keys = query.Items
-            .Select(item => (EmployeeId: new EmployeeId(item.EmployeeId), Date: LocalDate.FromDateOnly(item.Date)))
+        var windowStart = from.AtStartOfDayInZone(policy.TimeZone).ToInstant();
+        var windowEnd = to.PlusDays(1).AtStartOfDayInZone(policy.TimeZone).ToInstant();
+        // Only the employees actually in the file — without this a Staff export loads the whole
+        // company's punches for the period just to discard all but their own.
+        var employeeIds = dates
+            .SelectMany(date => date.Employees)
+            .Select(employee => new EmployeeId(employee.EmployeeId))
             .ToHashSet();
-
-        var days = await attendanceDays.ListAsync(new AttendanceDayExportSpec(keys), ct);
-
-        var windows = keys
-            .Select(key => (
-                key.EmployeeId,
-                Start: key.Date.AtStartOfDayInZone(policy.TimeZone).ToInstant(),
-                End: key.Date.PlusDays(1).AtStartOfDayInZone(policy.TimeZone).ToInstant()))
-            .ToList();
-        var punches = await attendanceLogs.ListAsync(new AttendanceLogsForKeysSpec(windows), ct);
+        var punches = await attendanceLogs.ListAsync(
+            new AttendanceLogsInRangeSpec(windowStart, windowEnd, employeeIds), ct);
         var punchesByKey = punches
             .GroupBy(log => (log.EmployeeId, Date: log.PunchedAtUtc.InZone(policy.TimeZone).Date))
-            .ToDictionary(group => group.Key, group => group.ToList());
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<AttendanceLog>)group.ToList());
 
-        var rows = days
-            .Select(day => new ExportAttendanceDayRowResult
-            {
-                EmployeeFullName = day.Employee?.FullName ?? "—",
-                Date = day.CalendarDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
-                Punches = BuildPunchesJson(
-                    punchesByKey.GetValueOrDefault((day.EmployeeId, day.CalendarDate)) ?? [],
-                    policy.TimeZone),
-                Status = day.Status.ToString(),
-                LeaveType = day.LeaveRequest?.Type.ToString() ?? string.Empty,
-            })
+        // Oldest first: a CSV is read top to bottom, unlike the screen, which leads with today.
+        var rows = dates
+            .OrderBy(date => date.Date)
+            .SelectMany(date => date.Employees
+                .OrderBy(employee => employee.EmployeeFullName, StringComparer.OrdinalIgnoreCase)
+                .Select(employee => new ExportAttendanceDayRowResult
+                {
+                    EmployeeFullName = employee.EmployeeFullName,
+                    Date = date.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                    Punches = BuildPunchesJson(
+                        punchesByKey.GetValueOrDefault(
+                            (new EmployeeId(employee.EmployeeId), LocalDate.FromDateOnly(date.Date))) ?? [],
+                        policy.TimeZone),
+                    Status = employee.Status,
+                    LeaveType = employee.LeaveType,
+                }))
             .ToList();
 
         return new Result<ExportAttendanceDaysResult>.Success(
