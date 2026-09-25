@@ -7,7 +7,8 @@ namespace Erp.Infrastructure.Attendance;
 
 /// <summary>
 /// Hangfire background job: recomputes every materialized <see cref="AttendanceDay"/> row
-/// under the CURRENT global policy. Enqueued whenever the policy is updated. Resolves the
+/// under the CURRENT global policy. Enqueued whenever the policy is updated, and run nightly
+/// (Program.cs) to heal any day whose recompute message was lost. Resolves the
 /// policy fresh from the database (not the request-scoped <see cref="AttendanceDayPolicy"/>)
 /// since the job runs in its own DI scope, outside the HTTP request that changed it.
 /// </summary>
