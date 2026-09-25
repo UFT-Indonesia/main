@@ -55,19 +55,15 @@ export const EMPLOYEE_FILTER_FIELDS: readonly FilterFieldDef[] = [
   },
 ];
 
+/**
+ * Identity only. A row on Kehadiran is now a calendar date, so these narrow *which employees
+ * are counted on every date* — the period picker owns the dates. Status and tap-time filters
+ * are deliberately gone: they would redefine each date's counts to describe a subset while
+ * still reading like totals. The problems-only toggle covers that instead.
+ */
 export const ATTENDANCE_DAY_FILTER_FIELDS: readonly FilterFieldDef[] = [
   { key: 'employeeName', type: 'text', labelKey: 'attendance.filters.fields.employeeName' },
   { key: 'employeeId', type: 'relation', labelKey: 'attendance.filters.fields.employee', relation: 'employee' },
-  { key: 'date', type: 'date', labelKey: 'attendance.filters.fields.date' },
-  {
-    key: 'status',
-    type: 'enum',
-    labelKey: 'attendance.filters.fields.status',
-    options: ['Complete', 'Incomplete', 'OnLeave'],
-    optionLabelPrefix: 'attendance.status',
-  },
-  { key: 'tapIn', type: 'date', labelKey: 'attendance.filters.fields.tapIn', nullable: true },
-  { key: 'tapOut', type: 'date', labelKey: 'attendance.filters.fields.tapOut', nullable: true },
 ];
 
 export const AUDIT_LOG_FILTER_FIELDS: readonly FilterFieldDef[] = [

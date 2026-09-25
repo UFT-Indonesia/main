@@ -1,8 +1,8 @@
 import { apiClient } from './client';
 import type {
-  AttendanceDayKey,
   AttendanceLogNote,
   AttendanceLogResponse,
+  ExportAttendanceDaysBody,
   GetAttendanceDayLogsResponse,
   ListAttendanceDaysParams,
   ListAttendanceDaysResponse,
@@ -39,8 +39,8 @@ export async function listAttendanceDays(
 ): Promise<ListAttendanceDaysResponse> {
   const { data } = await apiClient.get<ListAttendanceDaysResponse>('/api/attendance/days', {
     params: {
-      page: params.page,
-      pageSize: params.pageSize,
+      from: params.from,
+      to: params.to,
       filter: params.filter || undefined,
     },
   });
@@ -68,10 +68,11 @@ export async function updateAttendanceLog(
   return data;
 }
 
-export async function exportAttendanceDays(dayKeys: AttendanceDayKey[]): Promise<Blob> {
+/** Exports the period as shown, so the file and the screen can never disagree. */
+export async function exportAttendanceDays(body: ExportAttendanceDaysBody): Promise<Blob> {
   const { data } = await apiClient.post<Blob>(
     '/api/attendance/days/export',
-    { items: dayKeys },
+    body,
     { responseType: 'blob' },
   );
   return data;
