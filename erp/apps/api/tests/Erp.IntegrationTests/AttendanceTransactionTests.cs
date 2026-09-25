@@ -5,8 +5,6 @@ using Erp.Core.Aggregates.Employees;
 using Erp.Core.Interfaces;
 using Erp.Infrastructure.Persistence;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -15,8 +13,8 @@ namespace Erp.IntegrationTests;
 
 /// <summary>
 /// The manual-punch, punch-edit and policy-update handlers each make several writes in one
-/// [Transactional] unit. The attribute fails silently if Wolverine cannot find the DbContext
-/// behind the repositories, so only a forced write failure proves it actually applies.
+/// transaction (AutoApplyTransactions). The policy skips silently any handler where Wolverine
+/// cannot find the DbContext behind the repositories, so only a forced write failure proves it applies.
 /// </summary>
 public class AttendanceTransactionTests : IntegrationTestBase
 {
@@ -26,7 +24,7 @@ public class AttendanceTransactionTests : IntegrationTestBase
     private static readonly DateTimeOffset PunchAt = new(2026, 8, 5, 1, 0, 0, TimeSpan.Zero);
 
     /// <summary>Every write to the materialized day throws, standing in for any recompute failure.</summary>
-    private sealed class ThrowingAttendanceDayRepository(AppDbContext db) : EfRepository<AttendanceDay>(db)
+    internal sealed class ThrowingAttendanceDayRepository(AppDbContext db) : EfRepository<AttendanceDay>(db)
     {
         public override Task<AttendanceDay> AddAsync(AttendanceDay entity, CancellationToken cancellationToken = default)
             => throw new InvalidOperationException("Simulated recompute failure.");
@@ -40,23 +38,6 @@ public class AttendanceTransactionTests : IntegrationTestBase
     {
         public override Task<int> UpdateAsync(AttendancePolicy entity, CancellationToken cancellationToken = default)
             => throw new InvalidOperationException("Simulated policy save failure.");
-    }
-
-    /// <summary>
-    /// A second host over the same database with one repository swapped for a throwing one. The token comes from
-    /// the shared host — both sign with the same test key, so it is valid on either. The caller
-    /// disposes the host, so its throwing repository never picks up another test's queued work.
-    /// </summary>
-    private async Task<(WebApplicationFactory<Program> Host, HttpClient Client)> CreateClientWithFailingHostAsync(
-        Employee caller,
-        Action<IServiceCollection> swapRepository)
-    {
-        var authorized = await CreateClientForAsync(caller);
-        var host = Factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(swapRepository));
-
-        var client = host.CreateClient();
-        client.DefaultRequestHeaders.Authorization = authorized.DefaultRequestHeaders.Authorization;
-        return (host, client);
     }
 
     [Fact]

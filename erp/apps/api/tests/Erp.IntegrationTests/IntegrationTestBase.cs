@@ -5,8 +5,13 @@ using Erp.Core.Aggregates.Employees;
 using Erp.Infrastructure.Identity;
 using Erp.SharedKernel.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NodaTime;
+using Wolverine;
+using Wolverine.Tracking;
 
 namespace Erp.IntegrationTests;
 
@@ -132,6 +137,39 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         }
 
         return await LoginAsync(username, TestPassword);
+    }
+
+    /// <summary>
+    /// A second host over the same database with one repository swapped for a throwing one. The token comes from
+    /// the shared host — both sign with the same test key, so it is valid on either. The caller
+    /// disposes the host, so its throwing repository never picks up another test's queued work.
+    /// </summary>
+    protected async Task<(WebApplicationFactory<Program> Host, HttpClient Client)> CreateClientWithFailingHostAsync(
+        Employee caller,
+        Action<IServiceCollection> swapRepository)
+    {
+        var authorized = await CreateClientForAsync(caller);
+        var host = Factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(swapRepository));
+
+        var client = host.CreateClient();
+        client.DefaultRequestHeaders.Authorization = authorized.DefaultRequestHeaders.Authorization;
+        return (host, client);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="act"/> and waits until every message it set off has been handled or
+    /// has failed for good, so a background handler's writes — or its rollback — are in place
+    /// before the test asserts. Failures are expected in rollback tests, so they are not rethrown.
+    /// </summary>
+    protected static async Task<T> AfterBackgroundWorkAsync<T>(IServiceProvider services, Func<Task<T>> act)
+    {
+        T result = default!;
+        await services.GetRequiredService<IHost>()
+            .TrackActivity()
+            .Timeout(TimeSpan.FromSeconds(30))
+            .DoNotAssertOnExceptionsDetected()
+            .ExecuteAndWaitAsync((Func<IMessageContext, Task>)(async _ => result = await act()));
+        return result;
     }
 
     /// <summary>Logs in through the real endpoint, so tokens carry whatever claims the app stamps.</summary>

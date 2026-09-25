@@ -3,10 +3,12 @@ using System.Net.Http.Json;
 using System.Text;
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Interfaces;
 using Erp.Infrastructure.DeviceIngest;
 using Erp.SharedKernel.Identity;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
 namespace Erp.IntegrationTests;
@@ -44,7 +46,8 @@ public class DeviceIngestTests : IntegrationTestBase
         string secret,
         DateTimeOffset punchedAt,
         string deviceKey = DeviceKey,
-        Instant? signedAt = null)
+        Instant? signedAt = null,
+        HttpClient? client = null)
     {
         var payload = System.Text.Json.JsonSerializer.Serialize(new
         {
@@ -65,7 +68,7 @@ public class DeviceIngestTests : IntegrationTestBase
         request.Headers.Add("X-Device-Timestamp", timestamp);
         request.Headers.Add("X-Device-Signature", signature);
 
-        return await Factory.CreateClient().SendAsync(request);
+        return await (client ?? Factory.CreateClient()).SendAsync(request);
     }
 
     [Fact]
@@ -185,6 +188,48 @@ public class DeviceIngestTests : IntegrationTestBase
         await using var db = Factory.CreateDbContext();
         var employeeId = new EmployeeId(staff.Id.Value);
         (await db.AttendanceLogs.CountAsync(log => log.EmployeeId == employeeId)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task A_device_punch_reaches_the_attendance_day()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", owner.Id);
+        var ownerClient = await CreateClientForAsync(owner);
+        var secret = await RegisterDeviceAsync(ownerClient);
+
+        // The day is built by the queued AttendanceLogRecorded handler, which only runs if the
+        // event committed alongside the punch.
+        var response = await AfterBackgroundWorkAsync(
+            Factory.Services, () => PunchAsync(staff.Id.Value, secret, DateTimeOffset.UtcNow));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        await using var db = Factory.CreateDbContext();
+        (await db.AttendanceDays.AnyAsync(day => day.EmployeeId == staff.Id)).Should().BeTrue(
+            "a tap with no day reads as Absent");
+    }
+
+    [Fact]
+    public async Task A_failed_recompute_keeps_the_device_punch()
+    {
+        var owner = await CreateEmployeeAsync(EmployeeRole.Owner, "Owner Utama");
+        var staff = await CreateEmployeeAsync(EmployeeRole.Staff, "Staff Biasa", owner.Id);
+        var secret = await RegisterDeviceAsync(await CreateClientForAsync(owner));
+
+        var (host, client) = await CreateClientWithFailingHostAsync(
+            owner,
+            services => services.AddScoped<IRepository<AttendanceDay>, AttendanceTransactionTests.ThrowingAttendanceDayRepository>());
+        await using var _ = host;
+        var response = await AfterBackgroundWorkAsync(
+            host.Services,
+            () => PunchAsync(staff.Id.Value, secret, DateTimeOffset.UtcNow, client: client));
+
+        // Unlike a manual punch, the device path recomputes in the background: a broken
+        // recompute must not cost the raw tap, which is what any later rebuild starts from.
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        await using var db = Factory.CreateDbContext();
+        (await db.AttendanceLogs.AnyAsync(log => log.EmployeeId == staff.Id)).Should().BeTrue();
+        (await db.AttendanceDays.AnyAsync(day => day.EmployeeId == staff.Id)).Should().BeFalse();
     }
 
     [Fact]
