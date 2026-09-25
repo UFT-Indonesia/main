@@ -26,6 +26,7 @@ import {
   Heading,
   Popover,
   RangeCalendar,
+  TimeField,
 } from 'react-aria-components';
 import type { DateValue } from 'react-aria-components';
 import { cn } from '@/lib/utils';
@@ -110,6 +111,13 @@ function CalendarBody({ partialDates }: { partialDates?: string[] }) {
   );
 }
 
+/** Matches `formatPunchedAt` elsewhere in the app, so the value doesn't change shape when a row
+ * flips from its static display into this field. */
+function formatDateTime(date: ZonedDateTime): string {
+  return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+    .format(date.toDate());
+}
+
 function TriggerButton() {
   return (
     <AriaButton className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
@@ -175,12 +183,20 @@ interface DateTimePickerFieldProps {
   isDisabled?: boolean;
   'aria-label'?: string;
   className?: string;
+  /** Drops the calendar-icon trigger for compact inline uses, e.g. a table cell, where the
+   * field already looking like an input is affordance enough. Clicking anywhere in the field
+   * opens the same calendar + time popover instead; segments stay keyboard-editable either way. */
+  hideTrigger?: boolean;
 }
 
 /**
  * Date + time in one segmented field. Value in and out is a UTC ISO instant; the segments show
  * the wall clock in `timeZone`, and `hideTimeZone` keeps the zone abbreviation out of the UI —
  * everyone here is in the same zone, so displaying it is noise.
+ *
+ * The popover pairs the calendar with a `TimeField` so both halves of the value can be set
+ * without leaving it — `shouldCloseOnSelect` is off because picking a date would otherwise close
+ * the popover before the time is touched.
  */
 export function DateTimePickerField({
   value,
@@ -189,6 +205,7 @@ export function DateTimePickerField({
   blockedDates,
   isDisabled,
   className,
+  hideTrigger,
   ...rest
 }: DateTimePickerFieldProps) {
   const parsed: ZonedDateTime | null = value ? parseAbsolute(value, timeZone) : null;
@@ -202,19 +219,43 @@ export function DateTimePickerField({
       onChange={(next) => onChange(next ? next.toDate().toISOString() : '')}
       isDisabled={isDisabled}
       isDateUnavailable={unavailableMatcher(blockedDates)}
+      shouldCloseOnSelect={false}
       className={cn('flex flex-col gap-1', className)}
     >
       <Group className={fieldStyles}>
-        <DateInput className="flex flex-1 items-center gap-0.5">
-          {(segment) => <DateSegment segment={segment} className={segmentStyles} />}
-        </DateInput>
-        <TriggerButton />
+        {hideTrigger ? (
+          <AriaButton className="flex-1 text-center tabular-nums outline-none">
+            {parsed ? formatDateTime(parsed) : '–'}
+          </AriaButton>
+        ) : (
+          <>
+            <DateInput className="flex flex-1 items-center gap-0.5">
+              {(segment) => <DateSegment segment={segment} className={segmentStyles} />}
+            </DateInput>
+            <TriggerButton />
+          </>
+        )}
       </Group>
       <Popover className={popoverStyles}>
         <Dialog>
-          <Calendar>
-            <CalendarBody />
-          </Calendar>
+          <div className="space-y-3">
+            <Calendar>
+              <CalendarBody />
+            </Calendar>
+            {parsed && (
+              <TimeField
+                aria-label="Time"
+                value={parsed}
+                onChange={(next) => next && onChange(next.toDate().toISOString())}
+                hideTimeZone
+                className="flex justify-center gap-0.5 border-t border-border pt-3"
+              >
+                <DateInput className="flex items-center gap-0.5">
+                  {(segment) => <DateSegment segment={segment} className={segmentStyles} />}
+                </DateInput>
+              </TimeField>
+            )}
+          </div>
         </Dialog>
       </Popover>
     </AriaDatePicker>
