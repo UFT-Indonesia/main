@@ -20,7 +20,7 @@ import {
   formatHour,
   useFormatLeaveDate,
 } from '@/components/leave/leave-dialogs';
-import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
+import { useAttendancePolicy, useHolidayCalendar } from '@/hooks/use-attendance-settings';
 import { useBlockedLeaveDates } from '@/hooks/use-leave';
 import type { EditLeaveRequestBody, HalfDayPeriod, LeaveRequest } from '@/lib/api/types';
 
@@ -71,6 +71,8 @@ export function EditLeaveDialog({
     endHour: hourly && endHour !== '' ? endHour : null,
   });
 
+  const holidays = useHolidayCalendar();
+
   // Re-seed from the request every time a different one is opened.
   useEffect(() => {
     if (!request) return;
@@ -86,7 +88,7 @@ export function EditLeaveDialog({
 
   if (!request) return null;
 
-  const workdays = countWorkdays(startDate, endDate);
+  const workdays = countWorkdays(startDate, endDate, holidays.dates);
   const hourlyValid =
     !hourly
     || (startHour !== '' && endHour !== '' && startHour < endHour
@@ -124,6 +126,7 @@ export function EditLeaveDialog({
               onChange={(s, e) => { setStartDate(s); setEndDate(e); }}
               blockedDates={blocked.data?.blockedDates}
               partialDates={blocked.data?.partialDates}
+              holidayDates={holidays.dates}
             />
           </div>
 
