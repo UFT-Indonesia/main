@@ -47,7 +47,7 @@ public class GetBlockedLeaveDatesHandlerTests
             Employee, LeaveType.Annual,
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "acara pagi", null, halfDay: true, halfDayPeriod: HalfDayPeriod.Morning,
-            startHour: null, endHour: null, Guid.NewGuid(), Now);
+            startHour: null, endHour: null, Guid.NewGuid(), Now, TestPolicies.Standard);
         existing.Approve(Guid.NewGuid(), "Owner Utama", Now);
         Approved(existing);
 
@@ -70,7 +70,7 @@ public class GetBlockedLeaveDatesHandlerTests
             Employee, LeaveType.Permission,
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "izin", null, halfDay: false, halfDayPeriod: null, startHour: 14, endHour: 17,
-            Guid.NewGuid(), Now);
+            Guid.NewGuid(), Now, TestPolicies.Standard);
         existing.Approve(Guid.NewGuid(), "Owner Utama", Now);
         Approved(existing);
 
@@ -92,7 +92,7 @@ public class GetBlockedLeaveDatesHandlerTests
             Employee, LeaveType.Annual,
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "acara pagi", null, halfDay: true, halfDayPeriod: HalfDayPeriod.Morning,
-            startHour: null, endHour: null, Guid.NewGuid(), Now);
+            startHour: null, endHour: null, Guid.NewGuid(), Now, TestPolicies.Standard);
         existing.Approve(Guid.NewGuid(), "Owner Utama", Now);
         Approved(existing);
 
@@ -140,7 +140,7 @@ public class GetBlockedLeaveDatesHandlerTests
     {
         var request = LeaveRequest.Create(
             Employee, LeaveType.Sick, start, end, "sakit", TestAttachments.DoctorsNote(),
-            halfDay: false, halfDayPeriod: null, startHour: null, endHour: null, Guid.NewGuid(), Now);
+            halfDay: false, halfDayPeriod: null, startHour: null, endHour: null, Guid.NewGuid(), Now, TestPolicies.Standard);
         request.Approve(Guid.NewGuid(), "Owner Utama", Now);
         return request;
     }

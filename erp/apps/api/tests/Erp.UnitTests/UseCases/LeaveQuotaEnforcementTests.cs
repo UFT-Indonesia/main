@@ -89,7 +89,7 @@ public class LeaveQuotaEnforcementTests
     {
         var request = LeaveRequest.Create(
             subject.Id, type, start, end, "cuti", AttachmentFor(type),
-            halfDay: false, halfDayPeriod: null, startHour: null, endHour: null, Guid.NewGuid(), Now);
+            halfDay: false, halfDayPeriod: null, startHour: null, endHour: null, Guid.NewGuid(), Now, TestPolicies.Standard);
         request.Approve(Guid.NewGuid(), "Owner Utama", Now);
         return request;
     }

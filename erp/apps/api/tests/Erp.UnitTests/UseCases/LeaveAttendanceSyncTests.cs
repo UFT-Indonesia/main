@@ -34,7 +34,7 @@ public class LeaveAttendanceSyncTests
         // Thu 2026-08-20 → Wed 2026-08-26, straddling Sat 22nd and Sun 23rd.
         await LeaveAttendanceSync.MaterializeAsync(
             Request, Employee, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 26),
-            isFractional: false, _attendanceDays, CancellationToken.None);
+            isFractional: false, TestPolicies.Standard, _attendanceDays, CancellationToken.None);
 
         added.Select(day => day.CalendarDate).Should().Equal(new LocalDate(2026, 8, 20));
 
@@ -52,7 +52,7 @@ public class LeaveAttendanceSyncTests
         // Sat 2026-08-22 → Tue 2026-08-25: the row belongs on Monday, not the start date.
         await LeaveAttendanceSync.MaterializeAsync(
             Request, Employee, new LocalDate(2026, 8, 22), new LocalDate(2026, 8, 25),
-            isFractional: false, _attendanceDays, CancellationToken.None);
+            isFractional: false, TestPolicies.Standard, _attendanceDays, CancellationToken.None);
 
         added.Select(day => day.CalendarDate).Should().Equal(new LocalDate(2026, 8, 24));
     }
@@ -67,13 +67,50 @@ public class LeaveAttendanceSyncTests
 
         await LeaveAttendanceSync.MaterializeAsync(
             Request, Employee, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 21),
-            isFractional: false, _attendanceDays, CancellationToken.None);
+            isFractional: false, TestPolicies.Standard, _attendanceDays, CancellationToken.None);
 
         // The first workday already has a row of its own, so the leave adds nothing: the day
         // is in the table on its own merits and a second row further in would be the
         // duplication this is removing.
         added.Should().BeEmpty();
         punched.Status.Should().Be(AttendanceDayStatus.Complete);
+    }
+
+    [Fact]
+    public async Task Reanchor_moves_the_row_off_a_first_day_that_became_a_holiday()
+    {
+        // Mon 17 → Wed 19 Aug, materialized on the 17th before HUT RI was declared.
+        var request = ApprovedLeave(new LocalDate(2026, 8, 17), new LocalDate(2026, 8, 19));
+        var stale = AttendanceDay.CreateForLeave(Employee, new LocalDate(2026, 8, 17), request.Id);
+        _attendanceDays.ListAsync(Arg.Any<ISpecification<AttendanceDay>>(), Arg.Any<CancellationToken>())
+            // Reanchor's lookup, then Release's, then Materialize's check of the new day.
+            .Returns(_ => [stale], _ => [stale], _ => []);
+        var added = CaptureAdds();
+
+        await LeaveAttendanceSync.ReanchorAsync(
+            request, Policy with { Holidays = new HashSet<LocalDate> { new(2026, 8, 17) } },
+            _attendanceDays, CancellationToken.None);
+
+        await _attendanceDays.Received(1).DeleteAsync(stale, Arg.Any<CancellationToken>());
+        added.Select(day => day.CalendarDate).Should().Equal(new LocalDate(2026, 8, 18));
+    }
+
+    [Fact]
+    public async Task Reanchor_leaves_a_row_already_on_the_first_workday_alone()
+    {
+        // A holiday on the 18th, mid-range, changes nothing about where the row belongs.
+        var request = ApprovedLeave(new LocalDate(2026, 8, 17), new LocalDate(2026, 8, 19));
+        var anchored = AttendanceDay.CreateForLeave(Employee, new LocalDate(2026, 8, 17), request.Id);
+        _attendanceDays.ListAsync(Arg.Any<ISpecification<AttendanceDay>>(), Arg.Any<CancellationToken>())
+            .Returns([anchored]);
+        var added = CaptureAdds();
+
+        await LeaveAttendanceSync.ReanchorAsync(
+            request, Policy with { Holidays = new HashSet<LocalDate> { new(2026, 8, 18) } },
+            _attendanceDays, CancellationToken.None);
+
+        await _attendanceDays.DidNotReceive().DeleteAsync(Arg.Any<AttendanceDay>(), Arg.Any<CancellationToken>());
+        added.Should().BeEmpty();
     }
 
     [Fact]
@@ -85,7 +122,7 @@ public class LeaveAttendanceSyncTests
         // so attendance must stay exactly what their punches say.
         await LeaveAttendanceSync.MaterializeAsync(
             Request, Employee, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 20),
-            isFractional: true, _attendanceDays, CancellationToken.None);
+            isFractional: true, TestPolicies.Standard, _attendanceDays, CancellationToken.None);
 
         added.Should().BeEmpty();
         await _attendanceDays.DidNotReceive().ListAsync(
@@ -145,19 +182,19 @@ public class LeaveAttendanceSyncTests
         var fullDay = LeaveRequest.Create(
             Employee, LeaveType.Sick, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 20),
             "sakit", TestAttachments.DoctorsNote(), halfDay: false, halfDayPeriod: null,
-            startHour: null, endHour: null, Guid.NewGuid(), Now);
+            startHour: null, endHour: null, Guid.NewGuid(), Now, TestPolicies.Standard);
         fullDay.Approve(Guid.NewGuid(), "Owner Utama", Now);
 
         var halfDay = LeaveRequest.Create(
             Employee, LeaveType.Annual, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 20),
             "acara", null, halfDay: true, halfDayPeriod: HalfDayPeriod.Morning,
-            startHour: null, endHour: null, Guid.NewGuid(), Now);
+            startHour: null, endHour: null, Guid.NewGuid(), Now, TestPolicies.Standard);
         halfDay.Approve(Guid.NewGuid(), "Owner Utama", Now);
 
         var hourly = LeaveRequest.Create(
             Employee, LeaveType.Permission, new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 20),
             "izin", null, halfDay: false, halfDayPeriod: null, startHour: 9, endHour: 11,
-            Guid.NewGuid(), Now);
+            Guid.NewGuid(), Now, TestPolicies.Standard);
         hourly.Approve(Guid.NewGuid(), "Owner Utama", Now);
 
         var spec = new FullDayApprovedLeaveOnDateSpec(Employee, new LocalDate(2026, 8, 20));
@@ -187,6 +224,15 @@ public class LeaveAttendanceSyncTests
         ClockOutGraceMinutes: 15,
         MaxIzinHours: 4,
         DateTimeZoneProviders.Tzdb["Asia/Jakarta"]);
+
+    private static LeaveRequest ApprovedLeave(LocalDate start, LocalDate end)
+    {
+        var request = LeaveRequest.Create(
+            Employee, LeaveType.Annual, start, end, "liburan", null, halfDay: false, halfDayPeriod: null,
+            startHour: null, endHour: null, Guid.NewGuid(), Now, Policy);
+        request.Approve(Guid.NewGuid(), "Owner Utama", Now);
+        return request;
+    }
 
     private List<AttendanceDay> CaptureAdds()
     {

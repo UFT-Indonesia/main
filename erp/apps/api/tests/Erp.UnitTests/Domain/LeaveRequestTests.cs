@@ -1,3 +1,4 @@
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Leave;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Identity;
@@ -14,7 +15,8 @@ public class LeaveRequestTests
 
     private static LeaveRequest PendingRequest(
         LocalDate? start = null,
-        LocalDate? end = null) =>
+        LocalDate? end = null,
+        AttendanceDayPolicy? policy = null) =>
         LeaveRequest.Create(
             EmployeeId.New(),
             LeaveType.Annual,
@@ -27,7 +29,11 @@ public class LeaveRequestTests
             startHour: null,
             endHour: null,
             Requester,
-            Now);
+            Now, policy ?? TestPolicies.Standard);
+
+    // HUT RI, Mon 17 Aug 2026.
+    private static readonly AttendanceDayPolicy WithIndependenceDay =
+        TestPolicies.Standard with { Holidays = new HashSet<LocalDate> { new(2026, 8, 17) } };
 
     [Fact]
     public void Create_computes_workdays_and_starts_pending()
@@ -60,7 +66,7 @@ public class LeaveRequestTests
             startHour: null,
             endHour: null,
             Requester,
-            Now);
+            Now, TestPolicies.Standard);
 
         act.Should().Throw<DomainException>().Which.Code.Should().Be("leave.reason_required");
     }
@@ -80,7 +86,7 @@ public class LeaveRequestTests
             startHour: null,
             endHour: null,
             Requester,
-            Now);
+            Now, TestPolicies.Standard);
 
         request.Reason.Should().Be("demam");
     }
@@ -91,7 +97,7 @@ public class LeaveRequestTests
     [InlineData(2026, 7, 27, 2026, 8, 9, 10)]  // two full weeks
     public void CountWorkdays_skips_weekends(int y1, int m1, int d1, int y2, int m2, int d2, int expected)
     {
-        LeaveRequest.CountWorkdays(new LocalDate(y1, m1, d1), new LocalDate(y2, m2, d2))
+        LeaveRequest.CountWorkdays(new LocalDate(y1, m1, d1), new LocalDate(y2, m2, d2), TestPolicies.Standard)
             .Should().Be(expected);
     }
 
@@ -101,6 +107,38 @@ public class LeaveRequestTests
         var act = () => PendingRequest(new LocalDate(2026, 8, 8), new LocalDate(2026, 8, 9)); // Sat–Sun
 
         act.Should().Throw<DomainException>().Where(e => e.Code == "leave.no_workdays");
+    }
+
+    [Fact]
+    public void A_holiday_inside_the_range_is_not_a_workday()
+    {
+        // Mon 17 – Fri 21 Aug: five weekdays, one of them HUT RI.
+        var request = PendingRequest(new LocalDate(2026, 8, 17), new LocalDate(2026, 8, 21), WithIndependenceDay);
+
+        request.WorkdayCount.Should().Be(4);
+    }
+
+    [Fact]
+    public void Create_rejects_a_range_that_is_only_a_holiday()
+    {
+        var act = () => PendingRequest(new LocalDate(2026, 8, 17), new LocalDate(2026, 8, 17), WithIndependenceDay);
+
+        act.Should().Throw<DomainException>().Where(e => e.Code == "leave.no_workdays");
+    }
+
+    [Fact]
+    public void RecountWorkdays_follows_a_holiday_declared_after_filing_and_accepts_zero()
+    {
+        var wholeWeek = PendingRequest(new LocalDate(2026, 8, 17), new LocalDate(2026, 8, 21));
+        var singleDay = PendingRequest(new LocalDate(2026, 8, 17), new LocalDate(2026, 8, 17));
+
+        wholeWeek.RecountWorkdays(WithIndependenceDay).Should().BeTrue();
+        wholeWeek.WorkdayCount.Should().Be(4);
+        wholeWeek.RecountWorkdays(WithIndependenceDay).Should().BeFalse();
+
+        // Legal when filed; the calendar has since swallowed it, so it simply charges nothing.
+        singleDay.RecountWorkdays(WithIndependenceDay).Should().BeTrue();
+        singleDay.WorkdayCount.Should().Be(0);
     }
 
     [Fact]
@@ -190,7 +228,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "sakit", TestAttachments.DoctorsNote(),
             halfDay: true, halfDayPeriod: HalfDayPeriod.Morning, startHour: null, endHour: null,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         act.Should().Throw<DomainException>().Which.Code.Should().Be("leave.half_day_not_allowed");
     }
@@ -203,7 +241,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "acara", null,
             halfDay: true, halfDayPeriod: null, startHour: null, endHour: null,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         act.Should().Throw<DomainException>().Which.Code.Should().Be("leave.half_day_period");
     }
@@ -216,7 +254,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "acara", null,
             halfDay: false, halfDayPeriod: null, startHour: 10, endHour: 11,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         act.Should().Throw<DomainException>().Which.Code.Should().Be("leave.hourly_not_allowed");
     }
@@ -231,7 +269,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "izin", null,
             halfDay: false, halfDayPeriod: null, startHour: start, endHour: end,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         act.Should().Throw<DomainException>().Which.Code.Should().Be("leave.hourly_range_invalid");
     }
@@ -244,7 +282,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "izin", null,
             halfDay: false, halfDayPeriod: null, startHour: 11, endHour: 10,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         act.Should().Throw<DomainException>().Which.Code.Should().Be("leave.hourly_range_invalid");
     }
@@ -257,7 +295,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "izin", null,
             halfDay: false, halfDayPeriod: null, startHour: 11, endHour: 14,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         act.Should().Throw<DomainException>().Which.Code.Should().Be("leave.hourly_range_crosses_lunch");
     }
@@ -272,7 +310,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "izin", null,
             halfDay: false, halfDayPeriod: null, startHour: start, endHour: end,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         request.StartHour.Should().Be(start);
         request.EndHour.Should().Be(end);
@@ -297,7 +335,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "acara", null,
             halfDay: true, halfDayPeriod: HalfDayPeriod.Morning, startHour: null, endHour: null,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         morning.ChargePerWorkday(TestPolicies.Standard).Should().Be(0.5m);
         morning.OccupiedWindow(TestPolicies.Standard).Should().Be((new LocalTime(9, 0), new LocalTime(12, 0)));
@@ -307,7 +345,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "acara", null,
             halfDay: true, halfDayPeriod: HalfDayPeriod.Afternoon, startHour: null, endHour: null,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         afternoon.OccupiedWindow(TestPolicies.Standard).Should().Be((new LocalTime(13, 0), new LocalTime(18, 0)));
     }
@@ -321,7 +359,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "izin", null,
             halfDay: false, halfDayPeriod: null, startHour: 9, endHour: 11,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         request.ChargePerWorkday(TestPolicies.Standard).Should().Be(2m / 8m);
         request.OccupiedWindow(TestPolicies.Standard).Should().Be((new LocalTime(9, 0), new LocalTime(11, 0)));
@@ -336,7 +374,7 @@ public class LeaveRequestTests
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 5),
             "acara", null,
             halfDay: true, halfDayPeriod: HalfDayPeriod.Morning, startHour: null, endHour: null,
-            Requester, Now);
+            Requester, Now, TestPolicies.Standard);
 
         request.TotalCharge(TestPolicies.Standard).Should().Be(1.5m);
     }
