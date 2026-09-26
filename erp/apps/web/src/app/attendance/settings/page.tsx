@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { HolidayCalendar } from '@/components/attendance/holiday-calendar';
 import { useAttendancePolicy, useUpdateAttendancePolicy } from '@/hooks/use-attendance-settings';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
@@ -147,6 +148,8 @@ export default function AttendanceSettingsPage() {
             </div>
           </form>
         )}
+
+        <HolidayCalendar canEdit={canEdit} />
       </div>
     </AppShell>
   );
