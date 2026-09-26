@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DatePickerField } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
-import { LEAVE_TYPES, formatLeaveDate } from '@/components/leave/leave-dialogs';
+import { LEAVE_TYPES, useFormatLeaveDate } from '@/components/leave/leave-dialogs';
 import { CreateProbationExtensionDialog } from '@/components/probation/probation-dialogs';
 import { useSetLeaveQuota, useSetProbationEnd } from '@/hooks/use-employees';
 import { useCreateProbationExtension } from '@/hooks/use-probation';
@@ -35,6 +35,7 @@ interface ProbationQuotaCardProps {
  */
 export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
   const t = useTranslations('employees.probation');
+  const formatLeaveDate = useFormatLeaveDate();
   const tLeave = useTranslations('leave');
   const tCommon = useTranslations('common');
   const toast = useToast();

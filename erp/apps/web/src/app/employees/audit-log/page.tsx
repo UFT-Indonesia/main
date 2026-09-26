@@ -18,6 +18,7 @@ import {
 import { isKnownEventType } from '@/components/employees/audit-log-event-types';
 import { AuditLogSummary } from '@/components/employees/audit-log-summary';
 import { useEmployeeAuditLog } from '@/hooks/use-employee-audit-log';
+import { useDateLocale } from '@/hooks/use-date-locale';
 import { useToast } from '@/hooks/use-toast';
 import { exportEmployeeAuditLog } from '@/lib/api/employee-audit-log';
 import { extractApiError } from '@/lib/api/client';
@@ -31,14 +32,15 @@ import { useVisibleFilterFields } from '@/lib/filters/use-visible-fields';
 const PAGE_SIZE = 20;
 
 // Pinned to Jakarta so the timestamps match the day the date filters select on the server.
-const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
   dateStyle: 'medium',
   timeStyle: 'short',
   timeZone: 'Asia/Jakarta',
-});
+};
 
 export default function EmployeeAuditLogPage() {
   const t = useTranslations('employeeAuditLog');
+  const dateLocale = useDateLocale();
   const tCommon = useTranslations('common');
   const toast = useToast();
 
@@ -134,7 +136,7 @@ export default function EmployeeAuditLogPage() {
                 {data!.items.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                      {dateTimeFormatter.format(new Date(entry.occurredAtUtc))}
+                      {new Intl.DateTimeFormat(dateLocale, DATE_TIME_OPTIONS).format(new Date(entry.occurredAtUtc))}
                     </TableCell>
                     <TableCell className="font-medium">{entry.employeeFullName}</TableCell>
                     <TableCell>

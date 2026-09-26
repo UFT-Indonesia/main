@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { useBlockedLeaveDates, useLeaveBalance } from '@/hooks/use-leave';
 import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
+import { useDateLocale } from '@/hooks/use-date-locale';
 import { useToast } from '@/hooks/use-toast';
 import { downloadLeaveAttachment } from '@/lib/api/leave';
 import { extractApiError } from '@/lib/api/client';
@@ -80,16 +81,11 @@ export function countWorkdays(start: string, end: string): number {
   return count;
 }
 
-const dateFormatter = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeZone: 'UTC' });
-
-export function formatLeaveDate(ymd: string): string {
-  return dateFormatter.format(new Date(`${ymd}T00:00:00Z`));
+/** Formats a calendar date (yyyy-MM-dd) in the app language, with no zone conversion. */
+export function useFormatLeaveDate(): (ymd: string) => string {
+  const formatter = new Intl.DateTimeFormat(useDateLocale(), { dateStyle: 'medium', timeZone: 'UTC' });
+  return (ymd) => formatter.format(new Date(`${ymd}T00:00:00Z`));
 }
-
-const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
 
 interface CreateLeaveDialogProps {
   open: boolean;
@@ -500,6 +496,7 @@ export function DecideLeaveDialog({
   submitting,
 }: DecideLeaveDialogProps) {
   const t = useTranslations('leave');
+  const formatLeaveDate = useFormatLeaveDate();
   const tCommon = useTranslations('common');
   const [note, setNote] = useState('');
 
@@ -563,6 +560,9 @@ interface LeaveDetailsDialogProps {
 
 export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialogProps) {
   const t = useTranslations('leave');
+  const formatLeaveDate = useFormatLeaveDate();
+  const dateLocale = useDateLocale();
+  const dateTimeFormatter = new Intl.DateTimeFormat(dateLocale, { dateStyle: 'medium', timeStyle: 'short' });
 
   if (!request) return null;
 

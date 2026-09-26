@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatLeaveDate } from '@/components/leave/leave-dialogs';
+import { useFormatLeaveDate } from '@/components/leave/leave-dialogs';
 import {
   CreateProbationExtensionDialog,
   DecideProbationDialog,
@@ -41,6 +41,7 @@ const PAGE_SIZE = 20;
 
 export default function ProbationPage() {
   const t = useTranslations('probation');
+  const formatLeaveDate = useFormatLeaveDate();
   const tCommon = useTranslations('common');
   const toast = useToast();
 
