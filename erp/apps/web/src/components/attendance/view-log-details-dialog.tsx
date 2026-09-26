@@ -29,10 +29,11 @@ import {
   useUpdateAttendanceLog,
 } from '@/hooks/use-attendance';
 import { DateTimePickerField } from '@/components/ui/date-picker';
-import { formatLeaveDate } from '@/components/leave/leave-dialogs';
+import { useFormatLeaveDate } from '@/components/leave/leave-dialogs';
 import { downloadLeaveAttachment } from '@/lib/api/leave';
 import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
 import { useBlockedLeaveDates } from '@/hooks/use-leave';
+import { type DateLocale, useDateLocale } from '@/hooks/use-date-locale';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { APP_TIME_ZONE } from '@/lib/constants';
@@ -49,8 +50,8 @@ const SOURCE_VARIANT: Record<AttendanceSource, 'outline' | 'secondary'> = {
   Manual: 'secondary',
 };
 
-function formatPunchedAt(iso: string, timeZoneId: string | undefined): string {
-  return new Intl.DateTimeFormat('id-ID', {
+function formatPunchedAt(iso: string, timeZoneId: string | undefined, locale: DateLocale): string {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
     timeZone: timeZoneId,
@@ -80,6 +81,8 @@ export function ViewLogDetailsDialog({
   onAddPunch,
 }: ViewLogDetailsDialogProps) {
   const t = useTranslations('attendance');
+  const formatLeaveDate = useFormatLeaveDate();
+  const dateLocale = useDateLocale();
   const tCommon = useTranslations('common');
   const toast = useToast();
 
@@ -191,7 +194,7 @@ export function ViewLogDetailsDialog({
           <div className="flex items-center justify-between gap-3">
             <DialogDescription>
               {viewingNotes && day
-                ? `${day.employeeFullName} — ${formatPunchedAt(notesLog.punchedAtUtc, policy?.timeZoneId)} (${t(`punchType.${notesLog.punchType}`)})`
+                ? `${day.employeeFullName} — ${formatPunchedAt(notesLog.punchedAtUtc, policy?.timeZoneId, dateLocale)} (${t(`punchType.${notesLog.punchType}`)})`
                 : day
                   ? `${day.employeeFullName} — ${formatLeaveDate(day.date)}`
                   : t('details.description')}
@@ -232,7 +235,7 @@ export function ViewLogDetailsDialog({
                       <p className="text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">{note.createdByName}</span>
                         {' · '}
-                        {formatPunchedAt(note.createdAtUtc, policy?.timeZoneId)}
+                        {formatPunchedAt(note.createdAtUtc, policy?.timeZoneId, dateLocale)}
                       </p>
                       {canEdit && (
                         <Button
@@ -360,7 +363,7 @@ export function ViewLogDetailsDialog({
                 return (
                   <TableRow key={log.id}>
                     <TableCell className="text-center tabular-nums">
-                      {formatPunchedAt(log.punchedAtUtc, policy?.timeZoneId)}
+                      {formatPunchedAt(log.punchedAtUtc, policy?.timeZoneId, dateLocale)}
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant={log.punchType === 'In' ? 'success' : 'destructive'}>
@@ -532,6 +535,7 @@ function LeaveSummary({
   timeZoneId: string | undefined;
 }) {
   const t = useTranslations('attendance');
+  const formatLeaveDate = useFormatLeaveDate();
   const tLeave = useTranslations('leave');
   const zone = timeZoneId ?? APP_TIME_ZONE;
   const none = '–';

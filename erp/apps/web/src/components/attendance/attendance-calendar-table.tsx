@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
+import { type DateLocale, useDateLocale } from '@/hooks/use-date-locale';
 import { cn } from '@/lib/utils';
 import type {
   AttendanceCalendarDate,
@@ -48,21 +49,21 @@ export function hasProblem(date: AttendanceCalendarDate): boolean {
 
 // ymd is a calendar date only (no time), already derived server-side under the policy's
 // zone — format it as-is, with no zone conversion, so it can't drift from that date.
-const dateFormatter = new Intl.DateTimeFormat('id-ID', {
+const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   weekday: 'short',
   day: '2-digit',
   month: 'short',
   year: 'numeric',
   timeZone: 'UTC',
-});
+};
 
-function formatDate(ymd: string): string {
-  return dateFormatter.format(new Date(`${ymd}T00:00:00Z`));
+function formatDate(ymd: string, locale: DateLocale): string {
+  return new Intl.DateTimeFormat(locale, DATE_OPTIONS).format(new Date(`${ymd}T00:00:00Z`));
 }
 
-function formatTime(iso: string | null, timeZoneId: string | undefined): string {
+function formatTime(iso: string | null, timeZoneId: string | undefined, locale: DateLocale): string {
   return iso
-    ? new Intl.DateTimeFormat('id-ID', { timeStyle: 'short', timeZone: timeZoneId }).format(new Date(iso))
+    ? new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone: timeZoneId }).format(new Date(iso))
     : '–';
 }
 
@@ -86,6 +87,7 @@ export function AttendanceCalendarTable({
   onViewDetails,
 }: AttendanceCalendarTableProps) {
   const t = useTranslations('attendance');
+  const dateLocale = useDateLocale();
   const { data: policy } = useAttendancePolicy();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -154,7 +156,7 @@ export function AttendanceCalendarTable({
                   )}
                 </TableCell>
                 <TableCell className={cn('text-center tabular-nums', date.isInProgress && 'font-semibold')}>
-                  {formatDate(date.date)}
+                  {formatDate(date.date, dateLocale)}
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
                   {date.isWorkday && policy ? `${policy.shiftStart} – ${policy.shiftEnd}` : '–'}
@@ -220,6 +222,7 @@ function DateSummary({
   timeZoneId: string | undefined;
 }) {
   const t = useTranslations('attendance');
+  const dateLocale = useDateLocale();
 
   if (date.isFuture || date.employees.length === 0) {
     return <span className="text-sm text-muted-foreground">{t('summary.nothingYet')}</span>;
@@ -232,7 +235,7 @@ function DateSummary({
       <div className="flex items-center justify-center gap-2">
         {(own.tapInUtc || own.tapOutUtc) && (
           <span className="text-sm tabular-nums text-muted-foreground">
-            {formatTime(own.tapInUtc, timeZoneId)} – {formatTime(own.tapOutUtc, timeZoneId)}
+            {formatTime(own.tapInUtc, timeZoneId, dateLocale)} – {formatTime(own.tapOutUtc, timeZoneId, dateLocale)}
           </span>
         )}
         <Badge variant={STATUS_VARIANT[own.status]}>{t(`status.${own.status}`)}</Badge>
@@ -272,6 +275,7 @@ function EmployeeTable({
   onViewDetails: (item: AttendanceDayListItem) => void;
 }) {
   const t = useTranslations('attendance');
+  const dateLocale = useDateLocale();
   const tLeave = useTranslations('leave');
 
   return (
@@ -292,8 +296,8 @@ function EmployeeTable({
             className="cursor-pointer"
           >
             <TableCell className="font-medium">{employee.employeeFullName}</TableCell>
-            <TableCell className="tabular-nums">{formatTime(employee.tapInUtc, timeZoneId)}</TableCell>
-            <TableCell className="tabular-nums">{formatTime(employee.tapOutUtc, timeZoneId)}</TableCell>
+            <TableCell className="tabular-nums">{formatTime(employee.tapInUtc, timeZoneId, dateLocale)}</TableCell>
+            <TableCell className="tabular-nums">{formatTime(employee.tapOutUtc, timeZoneId, dateLocale)}</TableCell>
             <TableCell>
               <div className="flex items-center gap-1.5">
                 <Badge variant={STATUS_VARIANT[employee.status]}>

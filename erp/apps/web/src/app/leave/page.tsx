@@ -20,7 +20,7 @@ import {
   DecideLeaveDialog,
   LeaveDetailsDialog,
   LEAVE_STATUS_VARIANT,
-  formatLeaveDate,
+  useFormatLeaveDate,
   type LeaveDecision,
 } from '@/components/leave/leave-dialogs';
 import {
@@ -48,6 +48,7 @@ const PAGE_SIZE = 20;
 
 export default function LeavePage() {
   const t = useTranslations('leave');
+  const formatLeaveDate = useFormatLeaveDate();
   const tCommon = useTranslations('common');
   const toast = useToast();
 

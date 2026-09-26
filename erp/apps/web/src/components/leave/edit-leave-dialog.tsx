@@ -18,7 +18,7 @@ import {
   HOURLY_BOUNDARIES,
   countWorkdays,
   formatHour,
-  formatLeaveDate,
+  useFormatLeaveDate,
 } from '@/components/leave/leave-dialogs';
 import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
 import { useBlockedLeaveDates } from '@/hooks/use-leave';
@@ -44,6 +44,7 @@ export function EditLeaveDialog({
   submitting,
 }: EditLeaveDialogProps) {
   const t = useTranslations('leave');
+  const formatLeaveDate = useFormatLeaveDate();
   const tCommon = useTranslations('common');
 
   const [startDate, setStartDate] = useState('');

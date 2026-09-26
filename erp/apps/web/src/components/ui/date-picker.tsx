@@ -9,6 +9,7 @@ import {
   today,
 } from '@internationalized/date';
 import { CalendarDays } from 'lucide-react';
+import { type DateLocale, useDateLocale } from '@/hooks/use-date-locale';
 import {
   Button as AriaButton,
   Calendar,
@@ -113,8 +114,8 @@ function CalendarBody({ partialDates }: { partialDates?: string[] }) {
 
 /** Matches `formatPunchedAt` elsewhere in the app, so the value doesn't change shape when a row
  * flips from its static display into this field. */
-function formatDateTime(date: ZonedDateTime): string {
-  return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+function formatDateTime(date: ZonedDateTime, locale: DateLocale): string {
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' })
     .format(date.toDate());
 }
 
@@ -209,6 +210,7 @@ export function DateTimePickerField({
   ...rest
 }: DateTimePickerFieldProps) {
   const parsed: ZonedDateTime | null = value ? parseAbsolute(value, timeZone) : null;
+  const dateLocale = useDateLocale();
 
   return (
     <AriaDatePicker
@@ -225,7 +227,7 @@ export function DateTimePickerField({
       <Group className={fieldStyles}>
         {hideTrigger ? (
           <AriaButton className="flex-1 text-center tabular-nums outline-none">
-            {parsed ? formatDateTime(parsed) : '–'}
+            {parsed ? formatDateTime(parsed, dateLocale) : '–'}
           </AriaButton>
         ) : (
           <>

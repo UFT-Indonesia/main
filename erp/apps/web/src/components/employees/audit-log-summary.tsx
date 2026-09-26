@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { formatLeaveDate } from '@/components/leave/leave-dialogs';
+import { useFormatLeaveDate } from '@/components/leave/leave-dialogs';
 import type { EmployeeAuditLogEntry } from '@/lib/api/types';
 
 interface CreatedValue {
@@ -56,6 +56,7 @@ function parse<T>(json: string | null): T | null {
 /** One-line human summary of an audit row's old/new JSON, per event type. */
 export function AuditLogSummary({ entry }: { entry: EmployeeAuditLogEntry }) {
   const t = useTranslations('employeeAuditLog.summary');
+  const formatLeaveDate = useFormatLeaveDate();
   const none = t('none');
 
   switch (entry.eventType) {

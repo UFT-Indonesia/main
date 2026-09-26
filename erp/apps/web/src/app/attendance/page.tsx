@@ -24,6 +24,7 @@ import {
 } from '@/components/attendance/add-manual-log-dialog';
 import { ViewLogDetailsDialog } from '@/components/attendance/view-log-details-dialog';
 import { useAttendanceDays, useRecordManualLog } from '@/hooks/use-attendance';
+import { type DateLocale, useDateLocale } from '@/hooks/use-date-locale';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { exportAttendanceDays } from '@/lib/api/attendance';
@@ -49,8 +50,8 @@ function recentMonths(today: string): string[] {
 }
 
 /** "2026-09" → "September 2026". */
-function formatMonth(ym: string): string {
-  return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+function formatMonth(ym: string, locale: DateLocale): string {
+  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' })
     .format(new Date(`${ym}-01T00:00:00Z`));
 }
 
@@ -62,6 +63,7 @@ function defaultPeriod(timeZone: string): { from: string; to: string } {
 
 export default function AttendancePage() {
   const t = useTranslations('attendance');
+  const dateLocale = useDateLocale();
   const tCommon = useTranslations('common');
   const toast = useToast();
 
@@ -191,7 +193,7 @@ export default function AttendancePage() {
             >
               {recentMonths(todayInZone(APP_TIME_ZONE)).map((month) => (
                 <option key={month} value={month}>
-                  {formatMonth(month)}
+                  {formatMonth(month, dateLocale)}
                 </option>
               ))}
             </Select>

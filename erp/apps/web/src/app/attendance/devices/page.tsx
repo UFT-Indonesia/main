@@ -22,15 +22,15 @@ import {
   useRegisterAttendanceDevice,
   useSetAttendanceDeviceEnabled,
 } from '@/hooks/use-attendance-devices';
+import { useDateLocale } from '@/hooks/use-date-locale';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { useHasRole } from '@/lib/auth/store';
 import type { AttendanceDevice } from '@/lib/api/types';
 
-const dateFormatter = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' });
-
 export default function AttendanceDevicesPage() {
   const t = useTranslations('attendanceDevices');
+  const dateLocale = useDateLocale();
   const tCommon = useTranslations('common');
   const toast = useToast();
 
@@ -124,7 +124,7 @@ export default function AttendanceDevicesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {dateFormatter.format(new Date(device.createdAtUtc))}
+                      {new Intl.DateTimeFormat(dateLocale, { dateStyle: 'medium' }).format(new Date(device.createdAtUtc))}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

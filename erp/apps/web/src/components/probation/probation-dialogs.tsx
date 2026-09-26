@@ -15,7 +15,8 @@ import { DatePickerField } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { EmployeePicker } from '@/components/employees/employee-picker';
-import { formatLeaveDate } from '@/components/leave/leave-dialogs';
+import { useFormatLeaveDate } from '@/components/leave/leave-dialogs';
+import { useDateLocale } from '@/hooks/use-date-locale';
 import type { ProbationExtension } from '@/lib/api/types';
 
 export const PROBATION_STATUS_VARIANT = {
@@ -24,11 +25,6 @@ export const PROBATION_STATUS_VARIANT = {
   Denied: 'destructive',
   Cancelled: 'secondary',
 } as const;
-
-const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
 
 interface CreateProbationExtensionDialogProps {
   open: boolean;
@@ -140,6 +136,7 @@ export function DecideProbationDialog({
   submitting,
 }: DecideProbationDialogProps) {
   const t = useTranslations('probation');
+  const formatLeaveDate = useFormatLeaveDate();
   const tCommon = useTranslations('common');
   const [note, setNote] = useState('');
 
@@ -199,6 +196,12 @@ interface ProbationDetailsDialogProps {
 
 export function ProbationDetailsDialog({ request, onOpenChange }: ProbationDetailsDialogProps) {
   const t = useTranslations('probation');
+  const formatLeaveDate = useFormatLeaveDate();
+  const dateLocale = useDateLocale();
+  const dateTimeFormatter = new Intl.DateTimeFormat(dateLocale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
   if (!request) return null;
 
