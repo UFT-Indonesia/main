@@ -217,7 +217,12 @@
       "Absent": "Absent",
       "ClockedIn": "Clocked In",
       "NotInYet": "Not In Yet",
-      "Upcoming": "Upcoming"
+      "Upcoming": "Upcoming",
+      "WorkedOnDayOff": "Worked On Day Off"
+    },
+    "holidayKind": {
+      "National": "Libur Nasional",
+      "Collective": "Cuti Bersama"
     },
     "actions": {
       "viewLogDetails": "View log details",
@@ -293,7 +298,24 @@
     "successTitle": "Policy updated",
     "successDescription": "Attendance days are being recomputed under the new policy.",
     "errorTitle": "Failed to update policy",
-    "loadErrorTitle": "Failed to load policy"
+    "loadErrorTitle": "Failed to load policy",
+    "holidays": {
+      "title": "Holidays",
+      "subtitle": "Days the whole office is closed. Nobody is marked absent, and leave covering them costs no quota.",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "name": "Name",
+      "namePlaceholder": "e.g. HUT RI",
+      "kind": "Type",
+      "declare": "Add Holiday",
+      "update": "Save Changes",
+      "remove": "Remove",
+      "cancel": "Cancel",
+      "savedTitle": "Holiday saved",
+      "removedTitle": "Holiday removed",
+      "savedDescription": "Leave counts on this date are being updated.",
+      "errorTitle": "Failed to save holiday"
+    }
   },
   "leave": {
     "title": "Leave",
