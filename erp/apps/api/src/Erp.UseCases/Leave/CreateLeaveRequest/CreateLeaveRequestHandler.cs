@@ -136,7 +136,8 @@ public static class CreateLeaveRequestHandler
                 command.StartHour,
                 command.EndHour,
                 command.Caller.UserId,
-                now);
+                now,
+                policy);
 
             // Nobody outranks an Owner, so their own leave is recorded already-approved. An
             // Owner filing for someone else gets the same treatment: they could always approve

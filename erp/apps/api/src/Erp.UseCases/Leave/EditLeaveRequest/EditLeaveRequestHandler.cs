@@ -106,7 +106,8 @@ public static class EditLeaveRequestHandler
                 command.EndHour,
                 command.Caller.UserId,
                 command.Caller.Name,
-                now);
+                now,
+                policy);
 
             // An Owner editing a pending request decides it in the same act — nobody outranks
             // them, so there is nobody left for it to wait on. Deliberately NOT extended to a
@@ -136,6 +137,7 @@ public static class EditLeaveRequestHandler
                 request.StartDate,
                 request.EndDate,
                 request.HalfDay || request.StartHour is not null,
+                policy,
                 attendanceDays,
                 ct);
         }

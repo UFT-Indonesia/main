@@ -91,7 +91,11 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
     /// <summary>Last day of leave, inclusive.</summary>
     public LocalDate EndDate { get; private set; }
 
-    /// <summary>Mon–Fri days inside the range, computed at creation.</summary>
+    /// <summary>
+    /// Working days inside the range (<see cref="AttendanceDayPolicy.IsWorkday"/>). Computed at
+    /// creation and recounted by <see cref="RecountWorkdays"/> whenever a holiday lands on or
+    /// leaves the range.
+    /// </summary>
     public int WorkdayCount { get; private set; }
 
     public string Reason { get; private set; } = default!;
@@ -164,7 +168,8 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         int? startHour,
         int? endHour,
         Guid requestedByUserId,
-        Instant requestedAtUtc)
+        Instant requestedAtUtc,
+        AttendanceDayPolicy policy)
     {
         if (employeeId == EmployeeId.Empty)
         {
@@ -177,7 +182,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         }
 
         var workdays = EnsureShapeValid(
-            type, startDate, endDate, halfDay, halfDayPeriod, startHour, endHour);
+            type, startDate, endDate, halfDay, halfDayPeriod, startHour, endHour, policy);
 
         // Required since 2026-08: an absence with no stated reason is not reviewable. Mirrors
         // ProbationExtensionRequest.Create, which has always demanded one.
@@ -236,17 +241,19 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         bool halfDay,
         HalfDayPeriod? halfDayPeriod,
         int? startHour,
-        int? endHour)
+        int? endHour,
+        AttendanceDayPolicy policy)
     {
         if (startDate > endDate)
         {
             throw new DomainException("leave.date_range", "Start date must be on or before end date.");
         }
 
-        var workdays = CountWorkdays(startDate, endDate);
+        var workdays = CountWorkdays(startDate, endDate, policy);
         if (workdays == 0)
         {
-            throw new DomainException("leave.no_workdays", "Leave range contains no working days (Mon–Fri).");
+            throw new DomainException(
+                "leave.no_workdays", "Leave range contains no working days (weekends and holidays are off).");
         }
 
         // Half-day is Annual's own toggle; every other type must leave both fields alone.
@@ -326,7 +333,8 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         int? endHour,
         Guid editedByUserId,
         string editedByName,
-        Instant nowUtc)
+        Instant nowUtc,
+        AttendanceDayPolicy policy)
     {
         if (Status is not (LeaveRequestStatus.Pending or LeaveRequestStatus.Approved))
         {
@@ -345,7 +353,7 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         }
 
         var workdays = EnsureShapeValid(
-            Type, startDate, endDate, halfDay, halfDayPeriod, startHour, endHour);
+            Type, startDate, endDate, halfDay, halfDayPeriod, startHour, endHour, policy);
 
         // Only the most recent edit is kept — enough to answer "who moved my leave, and from
         // when?", which is the question this exists for.
@@ -363,6 +371,23 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
         EditedByUserId = editedByUserId;
         EditedByName = editedByName.Trim();
         EditedAtUtc = nowUtc;
+    }
+
+    /// <summary>
+    /// Re-derives <see cref="WorkdayCount"/> after a holiday was declared or removed inside the
+    /// range. Unlike <see cref="Create"/> this accepts zero: a range the calendar has since
+    /// swallowed whole was legal when filed, and simply charges nothing now. True when it moved.
+    /// </summary>
+    public bool RecountWorkdays(AttendanceDayPolicy policy)
+    {
+        var workdays = CountWorkdays(StartDate, EndDate, policy);
+        if (workdays == WorkdayCount)
+        {
+            return false;
+        }
+
+        WorkdayCount = workdays;
+        return true;
     }
 
     public void Approve(Guid decidedByUserId, string decidedByName, Instant nowUtc)
@@ -502,21 +527,19 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
 
     private static int MinutesOfDay(LocalTime time) => time.Hour * 60 + time.Minute;
 
-    // Workweek hardcoded to Mon–Fri; lift into AttendancePolicy when the
-    // office's working days actually vary (Saturday shifts, etc.).
-    public static IEnumerable<LocalDate> Workdays(LocalDate startDate, LocalDate endDate)
+    public static IEnumerable<LocalDate> Workdays(LocalDate startDate, LocalDate endDate, AttendanceDayPolicy policy)
     {
         for (var date = startDate; date <= endDate; date = date.PlusDays(1))
         {
-            if (date.DayOfWeek is not (IsoDayOfWeek.Saturday or IsoDayOfWeek.Sunday))
+            if (policy.IsWorkday(date))
             {
                 yield return date;
             }
         }
     }
 
-    public static int CountWorkdays(LocalDate startDate, LocalDate endDate) =>
-        Workdays(startDate, endDate).Count();
+    public static int CountWorkdays(LocalDate startDate, LocalDate endDate, AttendanceDayPolicy policy) =>
+        Workdays(startDate, endDate, policy).Count();
 
     private void EnsurePending(string action)
     {

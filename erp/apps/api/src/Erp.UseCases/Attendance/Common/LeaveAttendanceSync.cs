@@ -24,7 +24,7 @@ public static class LeaveAttendanceSync
     /// row spells out the whole range anyway.
     /// </summary>
     /// <remarks>
-    /// Weekends are skipped, so the first row is the first *workday*, not necessarily
+    /// Weekends and holidays are skipped, so the first row is the first *workday*, not necessarily
     /// <paramref name="startDate"/>. If that day already has a row it is left alone — a real
     /// punch outranks the leave, the day is already in the table, and the unique
     /// (employee, date) index would reject the insert anyway.
@@ -39,6 +39,7 @@ public static class LeaveAttendanceSync
         LocalDate startDate,
         LocalDate endDate,
         bool isFractional,
+        AttendanceDayPolicy policy,
         IRepository<AttendanceDay> attendanceDays,
         CancellationToken ct)
     {
@@ -47,7 +48,7 @@ public static class LeaveAttendanceSync
             return;
         }
 
-        var firstWorkday = LeaveRequest.Workdays(startDate, endDate)
+        var firstWorkday = LeaveRequest.Workdays(startDate, endDate, policy)
             .Select(date => (LocalDate?)date)
             .FirstOrDefault();
 
@@ -66,6 +67,34 @@ public static class LeaveAttendanceSync
 
         await attendanceDays.AddAsync(
             AttendanceDay.CreateForLeave(employeeId, workday, leaveRequestId), ct);
+    }
+
+    /// <summary>
+    /// Moves a full-day approved leave's row after the holiday calendar changed under it. The
+    /// row belongs on the first workday; if it is already there — or that day has punches of
+    /// its own, which <see cref="MaterializeAsync"/> never overwrites — nothing happens, so a
+    /// holiday declared mid-range touches no attendance at all.
+    /// </summary>
+    public static async Task ReanchorAsync(
+        LeaveRequest request,
+        AttendanceDayPolicy policy,
+        IRepository<AttendanceDay> attendanceDays,
+        CancellationToken ct)
+    {
+        var anchor = LeaveRequest.Workdays(request.StartDate, request.EndDate, policy)
+            .Select(date => (LocalDate?)date)
+            .FirstOrDefault();
+
+        var linked = await attendanceDays.ListAsync(new AttendanceDaysForLeaveRequestSpec(request.Id), ct);
+        if (anchor is not null && linked.Any(day => day.CalendarDate == anchor))
+        {
+            return;
+        }
+
+        await ReleaseAsync(request.Id, attendanceDays, ct);
+        await MaterializeAsync(
+            request.Id, request.EmployeeId, request.StartDate, request.EndDate,
+            isFractional: false, policy, attendanceDays, ct);
     }
 
     /// <summary>
@@ -169,6 +198,7 @@ public static class LeaveRequestApprovedHandler
             message.StartDate,
             message.EndDate,
             message.IsFractional,
+            policy,
             attendanceDays,
             ct);
 

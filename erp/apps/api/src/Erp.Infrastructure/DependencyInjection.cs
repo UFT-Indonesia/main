@@ -62,7 +62,13 @@ public static class DependencyInjection
             var policy = db.AttendancePolicies.AsNoTracking().SingleOrDefault(p => p.Id == AttendancePolicyId.Singleton)
                 ?? throw new InvalidOperationException(
                     "Attendance policy singleton row is missing. Seed it (or re-run migrations) before starting the app.");
-            return policy.ToAttendanceDayPolicy();
+
+            // ponytail: every holiday ever declared, ~20 rows a year. Filter to a window around
+            // today if the table ever grows large enough to notice.
+            return policy.ToAttendanceDayPolicy() with
+            {
+                Holidays = db.Holidays.AsNoTracking().Select(h => h.Date).ToHashSet(),
+            };
         });
 
         services.AddOptions<LeaveAttachmentOptions>()
