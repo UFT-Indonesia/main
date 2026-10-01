@@ -93,6 +93,49 @@ public class AttendanceCalendarTests
     }
 
     [Fact]
+    public async Task Nobody_is_absent_on_a_holiday()
+    {
+        Given([MakeEmployee("Rina")], []);
+
+        var dates = await AttendanceCalendar.BuildAsync(
+            Wednesday, Wednesday, [], Owner, _days, _employees,
+            Policy with { Holidays = new HashSet<LocalDate> { Wednesday } },
+            ClockAt(new LocalDateTime(2026, 9, 10, 9, 0)), CancellationToken.None);
+
+        dates[0].IsWorkday.Should().BeFalse();
+        dates[0].Employees.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(false)] // Saturday
+    [InlineData(true)]  // Wednesday declared a holiday
+    public async Task Punches_on_a_day_off_are_reported_not_judged(bool holiday)
+    {
+        var date = holiday ? Wednesday : Saturday;
+        var worker = MakeEmployee("Zidan");
+
+        // A single punch would read Incomplete on a workday — here there is no shift to miss.
+        var punched = AttendanceDay.Create(
+            worker.Id,
+            date,
+            [AttendanceLog.FromDevice(
+                worker.Id,
+                date.At(new LocalTime(10, 0)).InZoneLeniently(Zone).ToInstant(),
+                PunchType.In,
+                "DEV-01")],
+            Policy);
+        Given([worker], [punched]);
+
+        var policy = holiday ? Policy with { Holidays = new HashSet<LocalDate> { Wednesday } } : Policy;
+        var dates = await AttendanceCalendar.BuildAsync(
+            date, date, [], Owner, _days, _employees, policy,
+            ClockAt(new LocalDateTime(2026, 9, 10, 9, 0)), CancellationToken.None);
+
+        dates[0].Employees.Should().ContainSingle()
+            .Which.Status.Should().Be(AttendanceCalendarStatus.WorkedOnDayOff);
+    }
+
+    [Fact]
     public async Task Somebody_hired_after_the_date_is_not_counted()
     {
         Given([MakeEmployee("Rina", hireDate: Wednesday.PlusDays(1))], []);

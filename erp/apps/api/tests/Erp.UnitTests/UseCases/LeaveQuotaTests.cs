@@ -181,11 +181,11 @@ public class LeaveQuotaTests
             startHour: null,
             endHour: null,
             Guid.NewGuid(),
-            Instant.FromUtc(2026, 12, 1, 0, 0));
+            Instant.FromUtc(2026, 12, 1, 0, 0), TestPolicies.Standard);
 
         request.WorkdayCount.Should().Be(10);
-        LeaveQuota.WorkdaysInYear(request, 2026).Should().Be(4);
-        LeaveQuota.WorkdaysInYear(request, 2027).Should().Be(6);
+        LeaveQuota.WorkdaysInYear(request, 2026, TestPolicies.Standard).Should().Be(4);
+        LeaveQuota.WorkdaysInYear(request, 2027, TestPolicies.Standard).Should().Be(6);
     }
 
     [Fact]
@@ -196,12 +196,12 @@ public class LeaveQuotaTests
             employeeId, LeaveType.Annual,
             new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 6),
             "cuti", null, halfDay: false, halfDayPeriod: null, startHour: null, endHour: null,
-            Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
+            Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0), TestPolicies.Standard);
         var sick = LeaveRequest.Create(
             employeeId, LeaveType.Sick,
             new LocalDate(2026, 4, 6), new LocalDate(2026, 4, 7),
             "sakit", TestAttachments.DoctorsNote(), halfDay: false, halfDayPeriod: null,
-            startHour: null, endHour: null, Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0));
+            startHour: null, endHour: null, Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0), TestPolicies.Standard);
 
         LeaveRequest[] approved = [annual, sick];
 

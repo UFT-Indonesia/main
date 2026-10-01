@@ -60,11 +60,8 @@ public static class AttendanceCalendar
         var dates = new List<AttendanceCalendarDateResult>();
         for (var date = to; date >= from; date = date.PlusDays(-1))
         {
-            // ponytail: mirrors the hardcoded Mon–Fri rule in LeaveRequest.Workdays() and
-            // countWorkdays() in leave-dialogs.tsx; all three change together if the working
-            // week becomes configurable. Public holidays are still not modelled — see
-            // planning/meeting-27082026/GSS02-attendance-holiday-workaround.md.
-            var isWorkday = date.DayOfWeek is not (IsoDayOfWeek.Saturday or IsoDayOfWeek.Sunday);
+            // Weekends and declared holidays alike — the same rule leave charging uses.
+            var isWorkday = policy.IsWorkday(date);
             var isFuture = date > today;
             var isInProgress = date == today && now < shiftClosesAt;
 
@@ -116,7 +113,7 @@ public static class AttendanceCalendar
                 continue;
             }
 
-            items.Add(Present(employee, day, isInProgress, caller));
+            items.Add(Present(employee, day, isWorkday, isInProgress, caller));
         }
 
         // Decision 13: problems first, alphabetical inside each group. OrderBy is stable and the
@@ -147,6 +144,7 @@ public static class AttendanceCalendar
     private static AttendanceDayListItemResult Present(
         Employee employee,
         AttendanceDay day,
+        bool isWorkday,
         bool isInProgress,
         Caller caller) => new()
         {
@@ -156,9 +154,12 @@ public static class AttendanceCalendar
             TapInUtc = day.TapInUtc?.ToDateTimeOffset(),
             TapOutUtc = day.TapOutUtc?.ToDateTimeOffset(),
 
+            // A day off has no shift to complete, so punches on it are reported, never judged.
             // While today is unfinished, a punch means "here", not "done" — the second punch has
             // not been missed yet. A punchless row on such a day can only have come from leave.
-            Status = isInProgress
+            Status = !isWorkday && day.TapInUtc is not null
+                ? AttendanceCalendarStatus.WorkedOnDayOff
+                : isInProgress
                 ? day.TapInUtc is not null
                     ? AttendanceCalendarStatus.ClockedIn
                     : AttendanceCalendarStatus.OnLeave

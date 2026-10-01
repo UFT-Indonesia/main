@@ -35,7 +35,7 @@ public class EmployeeTerminatedLeaveHandlerTests
         startHour: null,
         endHour: null,
         Guid.NewGuid(),
-        Now);
+        Now, TestPolicies.Standard);
 
     private Task InvokeAsync() => EmployeeTerminatedLeaveHandler.Handle(
         new EmployeeTerminated(_employeeId.Value, new LocalDate(2026, 8, 5)),

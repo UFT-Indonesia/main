@@ -27,6 +27,12 @@ public static class AttendanceCalendarStatus
     /// <summary>Today, before the shift has closed: no punch yet. Not a failure — the day is unfinished.</summary>
     public const string NotInYet = "NotInYet";
 
+    /// <summary>
+    /// Punched on a weekend or holiday. There was no shift to complete, so the punches are not
+    /// judged against one — the overtime module is what will eventually price this time.
+    /// </summary>
+    public const string WorkedOnDayOff = "WorkedOnDayOff";
+
     /// <summary>A date after today. Nothing has happened, so nothing is claimed.</summary>
     public const string Upcoming = "Upcoming";
 
@@ -42,6 +48,7 @@ public static class AttendanceCalendarStatus
         OnLeave => 3,
         ClockedIn => 4,
         Complete => 5,
-        _ => 6,
+        WorkedOnDayOff => 6,
+        _ => 7,
     };
 }

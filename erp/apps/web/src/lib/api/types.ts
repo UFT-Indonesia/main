@@ -231,7 +231,9 @@ export type AttendanceDayStatus =
   /** Today, before the shift closed: no punch yet. Not a failure — the day is unfinished. */
   | 'NotInYet'
   /** A date after today. Nothing has happened, so nothing is claimed. */
-  | 'Upcoming';
+  | 'Upcoming'
+  /** Punched on a weekend or holiday. No shift to complete, so reported, never judged. */
+  | 'WorkedOnDayOff';
 
 export interface AttendanceDayListItem {
   employeeId: string;
@@ -261,7 +263,7 @@ export interface AttendanceDayListItem {
 export interface AttendanceCalendarDate {
   /** "YYYY-MM-DD" in the attendance policy time zone. */
   date: string;
-  /** False for Saturday and Sunday. No absence is reported on a non-working day. */
+  /** False for Saturday, Sunday and declared holidays. No absence is reported on a non-working day. */
   isWorkday: boolean;
   /** A date after today: employees are listed, but nothing is claimed about them. */
   isFuture: boolean;
@@ -542,6 +544,21 @@ export interface AttendancePolicy {
   maxIzinHours: number;
   updatedByUserId: string;
   updatedAtUtc: string;
+}
+
+/** Display label only — both close the office and cost no leave quota. */
+export type HolidayKind = 'National' | 'Collective';
+
+export interface Holiday {
+  /** "YYYY-MM-DD". */
+  date: string;
+  name: string;
+  kind: HolidayKind;
+}
+
+export interface SaveHolidayBody {
+  name: string;
+  kind: HolidayKind;
 }
 
 export interface UpdateAttendancePolicyBody {

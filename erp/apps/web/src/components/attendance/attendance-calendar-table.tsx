@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
+import { useAttendancePolicy, useHolidayCalendar } from '@/hooks/use-attendance-settings';
 import { type DateLocale, useDateLocale } from '@/hooks/use-date-locale';
 import { cn } from '@/lib/utils';
 import type {
@@ -33,6 +33,8 @@ const STATUS_VARIANT: Record<AttendanceDayStatus, 'success' | 'destructive' | 'w
   ClockedIn: 'yellow',
   NotInYet: 'outline',
   Upcoming: 'outline',
+  // Reported, not judged: there was no shift to complete.
+  WorkedOnDayOff: 'secondary',
 };
 
 /** A date is "in trouble" only for these. Approved leave is expected, not a problem. */
@@ -89,6 +91,7 @@ export function AttendanceCalendarTable({
   const t = useTranslations('attendance');
   const dateLocale = useDateLocale();
   const { data: policy } = useAttendancePolicy();
+  const holidays = useHolidayCalendar();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   if (dates.length === 0) {
@@ -129,6 +132,7 @@ export function AttendanceCalendarTable({
         <TableBody>
           {dates.map((date) => {
             const isOpen = expanded.has(date.date);
+            const holiday = holidays.byDate.get(date.date);
             // A weekend or an untouched future date has nothing to open.
             const canExpand = date.employees.length > 0;
             // Counts only mean something once a day has settled into a verdict for every
@@ -159,7 +163,11 @@ export function AttendanceCalendarTable({
                   {formatDate(date.date, dateLocale)}
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
-                  {date.isWorkday && policy ? `${policy.shiftStart} – ${policy.shiftEnd}` : '–'}
+                  {holiday ? (
+                    <span className="text-destructive">
+                      {t(`holidayKind.${holiday.kind}`)}: {holiday.name}
+                    </span>
+                  ) : date.isWorkday && policy ? `${policy.shiftStart} – ${policy.shiftEnd}` : '–'}
                 </TableCell>
                 {settled ? (
                   <>

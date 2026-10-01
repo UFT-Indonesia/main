@@ -45,7 +45,7 @@ internal static class LeaveQuotaGuard
 
         // Days are charged to the year they fall in, so a request across New Year has to fit
         // both years' remaining quota — neither year subsidises the other.
-        var requestedByYear = LeaveRequest.Workdays(startDate, endDate)
+        var requestedByYear = LeaveRequest.Workdays(startDate, endDate, policy)
             .GroupBy(date => date.Year)
             .ToDictionary(group => group.Key, group => group.Count() * chargePerWorkday);
 

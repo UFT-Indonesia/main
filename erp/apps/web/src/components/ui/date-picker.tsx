@@ -61,6 +61,12 @@ const cellStyles =
  */
 const partialCellStyles = 'bg-warning/20';
 
+/**
+ * A declared holiday: shown, never blocked — a leave range legitimately spans one, it just isn't
+ * charged for it. Same rule as weekends.
+ */
+const holidayCellStyles = 'text-destructive';
+
 const popoverStyles =
   'z-50 rounded-md border border-border bg-background p-3 text-foreground shadow-md';
 
@@ -71,7 +77,13 @@ function unavailableMatcher(dates: string[] | undefined) {
   return (date: DateValue) => blocked.has(date.toString());
 }
 
-function CalendarBody({ partialDates }: { partialDates?: string[] }) {
+function CalendarBody({
+  partialDates,
+  holidayDates,
+}: {
+  partialDates?: string[];
+  holidayDates?: ReadonlySet<string>;
+}) {
   const partial = partialDates?.length ? new Set(partialDates) : undefined;
 
   return (
@@ -102,6 +114,7 @@ function CalendarBody({ partialDates }: { partialDates?: string[] }) {
                   cellStyles,
                   partial?.has(date.toString()) && !render.isSelected && !render.isUnavailable
                     && partialCellStyles,
+                  holidayDates?.has(date.toString()) && !render.isSelected && holidayCellStyles,
                 )
               }
             />
@@ -273,6 +286,8 @@ interface DateRangePickerFieldProps {
   blockedDates?: string[];
   /** "YYYY-MM-DD" dates that are pickable but carry a non-conflicting approved leave. */
   partialDates?: string[];
+  /** "YYYY-MM-DD" declared holidays — marked, still pickable. */
+  holidayDates?: ReadonlySet<string>;
   isDisabled?: boolean;
   'aria-label'?: string;
   className?: string;
@@ -288,6 +303,7 @@ export function DateRangePickerField({
   onChange,
   blockedDates,
   partialDates,
+  holidayDates,
   isDisabled,
   className,
   ...rest
@@ -319,7 +335,7 @@ export function DateRangePickerField({
       <Popover className={popoverStyles}>
         <Dialog>
           <RangeCalendar>
-            <CalendarBody partialDates={partialDates} />
+            <CalendarBody partialDates={partialDates} holidayDates={holidayDates} />
           </RangeCalendar>
         </Dialog>
       </Popover>

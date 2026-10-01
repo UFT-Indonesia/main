@@ -97,8 +97,8 @@ public static class LeaveQuota
     /// Year charges each year the days actually taken in it, rather than dumping the lot on the
     /// year it started in.
     /// </summary>
-    public static int WorkdaysInYear(LeaveRequest request, int year) =>
-        LeaveRequest.Workdays(request.StartDate, request.EndDate).Count(date => date.Year == year);
+    public static int WorkdaysInYear(LeaveRequest request, int year, AttendanceDayPolicy policy) =>
+        LeaveRequest.Workdays(request.StartDate, request.EndDate, policy).Count(date => date.Year == year);
 
     /// <summary>
     /// Quota this request actually spends in the given year — <see cref="WorkdaysInYear"/> times
@@ -106,7 +106,7 @@ public static class LeaveQuota
     /// day, an hourly fraction for Izin).
     /// </summary>
     public static decimal ChargedDaysInYear(LeaveRequest request, int year, AttendanceDayPolicy policy) =>
-        WorkdaysInYear(request, year) * request.ChargePerWorkday(policy);
+        WorkdaysInYear(request, year, policy) * request.ChargePerWorkday(policy);
 
     /// <summary>Approved quota of one type spent in the given year.</summary>
     public static decimal UsedDays(

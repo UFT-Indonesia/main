@@ -217,7 +217,12 @@
       "Absent": "Tidak Hadir",
       "ClockedIn": "Sudah Masuk",
       "NotInYet": "Belum Masuk",
-      "Upcoming": "Belum Berlangsung"
+      "Upcoming": "Belum Berlangsung",
+      "WorkedOnDayOff": "Masuk Di Hari Libur"
+    },
+    "holidayKind": {
+      "National": "Libur Nasional",
+      "Collective": "Cuti Bersama"
     },
     "actions": {
       "viewLogDetails": "Lihat detail log",
@@ -293,7 +298,24 @@
     "successTitle": "Kebijakan diperbarui",
     "successDescription": "Data presensi sedang dihitung ulang dengan kebijakan baru.",
     "errorTitle": "Gagal memperbarui kebijakan",
-    "loadErrorTitle": "Gagal memuat kebijakan"
+    "loadErrorTitle": "Gagal memuat kebijakan",
+    "holidays": {
+      "title": "Hari Libur",
+      "subtitle": "Hari saat seluruh kantor tutup. Tidak ada yang dianggap tidak hadir, dan cuti pada hari ini tidak memotong kuota.",
+      "previousMonth": "Bulan sebelumnya",
+      "nextMonth": "Bulan berikutnya",
+      "name": "Nama",
+      "namePlaceholder": "mis. HUT RI",
+      "kind": "Jenis",
+      "declare": "Tambah Hari Libur",
+      "update": "Simpan Perubahan",
+      "remove": "Hapus",
+      "cancel": "Batal",
+      "savedTitle": "Hari libur disimpan",
+      "removedTitle": "Hari libur dihapus",
+      "savedDescription": "Jumlah hari cuti pada tanggal ini sedang diperbarui.",
+      "errorTitle": "Gagal menyimpan hari libur"
+    }
   },
   "leave": {
     "title": "Cuti",

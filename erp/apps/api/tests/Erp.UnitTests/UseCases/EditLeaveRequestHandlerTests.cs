@@ -79,7 +79,7 @@ public class EditLeaveRequestHandlerTests
             subject.Id, LeaveType.Annual,
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 7),
             "cuti", null, halfDay: false, halfDayPeriod: null, startHour: null, endHour: null,
-            requestedByUserId ?? Guid.NewGuid(), Now);
+            requestedByUserId ?? Guid.NewGuid(), Now, TestPolicies.Standard);
 
         if (approved)
         {
@@ -208,7 +208,7 @@ public class EditLeaveRequestHandlerTests
             _staff.Id, LeaveType.Sick,
             new LocalDate(2026, 8, 10), new LocalDate(2026, 8, 11),
             "sakit", TestAttachments.DoctorsNote(),
-            halfDay: false, halfDayPeriod: null, startHour: null, endHour: null, Guid.NewGuid(), Now);
+            halfDay: false, halfDayPeriod: null, startHour: null, endHour: null, Guid.NewGuid(), Now, TestPolicies.Standard);
         other.Approve(Guid.NewGuid(), "Owner Utama", Now);
         _leaveRequests.ListAsync(Arg.Any<ApprovedLeaveOverlappingSpec>(), Arg.Any<CancellationToken>())
             .Returns(new List<LeaveRequest> { other });

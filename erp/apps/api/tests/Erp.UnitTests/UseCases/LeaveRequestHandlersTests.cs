@@ -92,7 +92,7 @@ public class LeaveRequestHandlersTests
             subject.Id, LeaveType.Annual,
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 7),
             "cuti", null, halfDay: false, halfDayPeriod: null, startHour: null, endHour: null,
-            requestedByUserId, Now);
+            requestedByUserId, Now, TestPolicies.Standard);
         _leaveRequests.FirstOrDefaultAsync(Arg.Any<ISpecification<LeaveRequest>>(), Arg.Any<CancellationToken>())
             .Returns(request);
         return request;
@@ -254,7 +254,7 @@ public class LeaveRequestHandlersTests
             _staff.Id, LeaveType.Annual,
             new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
             "acara pagi", null, halfDay: true, halfDayPeriod: HalfDayPeriod.Morning,
-            startHour: null, endHour: null, Guid.NewGuid(), Now);
+            startHour: null, endHour: null, Guid.NewGuid(), Now, TestPolicies.Standard);
         morningHalfDay.Approve(Guid.NewGuid(), "Owner Utama", Now);
 
         _leaveRequests.ListAsync(Arg.Any<ApprovedLeaveOverlappingSpec>(), Arg.Any<CancellationToken>())

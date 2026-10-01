@@ -20,7 +20,7 @@ import { DateRangePickerField } from '@/components/ui/date-picker';
 import { FileDropzone } from '@/components/ui/file-dropzone';
 import { Switch } from '@/components/ui/switch';
 import { useBlockedLeaveDates, useLeaveBalance } from '@/hooks/use-leave';
-import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
+import { useAttendancePolicy, useHolidayCalendar } from '@/hooks/use-attendance-settings';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
 import { useDateLocale } from '@/hooks/use-date-locale';
 import { useToast } from '@/hooks/use-toast';
@@ -66,9 +66,11 @@ function minutesOfDay(hhmm: string): number {
   return h * 60 + m;
 }
 
-// ponytail: mirrors the backend's hardcoded Mon–Fri workday rule (LeaveRequest.CountWorkdays);
-// update both together if weekends ever become configurable.
-export function countWorkdays(start: string, end: string): number {
+/**
+ * Mirrors AttendanceDayPolicy.IsWorkday on the server: Mon–Fri, minus declared holidays. Update
+ * both together if the working week ever changes.
+ */
+export function countWorkdays(start: string, end: string, holidays: ReadonlySet<string>): number {
   if (!start || !end) return 0;
   const from = new Date(`${start}T00:00:00Z`);
   const to = new Date(`${end}T00:00:00Z`);
@@ -76,7 +78,7 @@ export function countWorkdays(start: string, end: string): number {
   let count = 0;
   for (const d = new Date(from); d <= to; d.setUTCDate(d.getUTCDate() + 1)) {
     const dow = d.getUTCDay();
-    if (dow !== 0 && dow !== 6) count += 1;
+    if (dow !== 0 && dow !== 6 && !holidays.has(d.toISOString().slice(0, 10))) count += 1;
   }
   return count;
 }
@@ -155,7 +157,8 @@ export function CreateLeaveDialog({
     || (form.startHour !== '' && form.endHour !== '' && form.startHour < form.endHour
       && form.endHour - form.startHour <= maxIzinHours);
 
-  const workdays = countWorkdays(form.startDate, form.endDate);
+  const holidays = useHolidayCalendar();
+  const workdays = countWorkdays(form.startDate, form.endDate, holidays.dates);
   const canSubmit =
     !!form.employeeId
     && !!form.type
@@ -302,6 +305,7 @@ export function CreateLeaveDialog({
               onChange={(startDate, endDate) => setForm((s) => ({ ...s, startDate, endDate }))}
               blockedDates={blocked.data?.blockedDates}
               partialDates={blocked.data?.partialDates}
+              holidayDates={holidays.dates}
               isDisabled={!form.employeeId}
             />
           </div>

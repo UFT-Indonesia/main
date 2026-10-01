@@ -31,6 +31,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
 
     public DbSet<AttendancePolicyHistory> AttendancePolicyHistories => Set<AttendancePolicyHistory>();
 
+    public DbSet<Holiday> Holidays => Set<Holiday>();
+
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();

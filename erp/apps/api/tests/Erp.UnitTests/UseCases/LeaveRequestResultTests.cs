@@ -19,13 +19,13 @@ public class LeaveRequestResultTests
         EmployeeId.New(), LeaveType.Permission,
         new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
         "izin", null, halfDay: false, halfDayPeriod: null, startHour: 9, endHour: 11,
-        Guid.NewGuid(), Now);
+        Guid.NewGuid(), Now, TestPolicies.Standard);
 
     private static LeaveRequest HalfDayAnnual() => LeaveRequest.Create(
         EmployeeId.New(), LeaveType.Annual,
         new LocalDate(2026, 8, 3), new LocalDate(2026, 8, 3),
         "acara", null, halfDay: true, halfDayPeriod: HalfDayPeriod.Morning,
-        startHour: null, endHour: null, Guid.NewGuid(), Now);
+        startHour: null, endHour: null, Guid.NewGuid(), Now, TestPolicies.Standard);
 
     [Fact]
     public void Hourly_detail_is_hidden_when_details_are_not_readable()
