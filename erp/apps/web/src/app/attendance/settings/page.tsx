@@ -19,7 +19,8 @@ import { useAuthStore } from '@/lib/auth/store';
 const formSchema = z
   .object({
     shiftStart: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid time.'),
-    shiftEnd: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid time.'),
+    // Weekday overtime starts at 18:30, after a 30-minute break: the shift cannot run past 18:00.
+    shiftEnd: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid time.').refine((v) => v <= '18:00', 'Shift cannot end after 18:00.'),
     clockInGraceMinutes: z.coerce.number().int().min(0, 'Must be zero or positive.'),
     clockOutGraceMinutes: z.coerce.number().int().min(0, 'Must be zero or positive.'),
     timeZoneId: z.string().min(1, 'Time zone is required.'),
@@ -121,7 +122,7 @@ export default function AttendanceSettingsPage() {
               </Field>
 
               <Field label={t('form.shiftEnd')} error={errors.shiftEnd?.message}>
-                <Input type="time" {...register('shiftEnd')} />
+                <Input type="time" max="18:00" {...register('shiftEnd')} />
               </Field>
 
               <Field label={t('form.clockInGraceMinutes')} error={errors.clockInGraceMinutes?.message}>

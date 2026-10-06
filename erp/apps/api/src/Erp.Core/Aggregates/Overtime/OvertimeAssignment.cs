@@ -16,7 +16,7 @@ public sealed class OvertimeAssignment : AggregateRoot<OvertimeAssignmentId>
 {
     public const int DecisionNoteMaxLength = 500;
 
-    /// <summary>Weekday OT starts here: 18:00–18:30 is a break after the shift. ponytail: if ShiftEnd moves past 18:30, OT overlaps regular hours.</summary>
+    /// <summary>Weekday OT starts here: 18:00–18:30 is a break after the shift. <see cref="Attendance.AttendancePolicy.MaxShiftEnd"/> keeps the shift from reaching it.</summary>
     public static readonly LocalTime WeekdayStart = new(18, 30);
 
     /// <summary>Where one overtime day ends and the next begins.</summary>
