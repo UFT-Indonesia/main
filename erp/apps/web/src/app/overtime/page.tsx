@@ -547,8 +547,15 @@ function MineTab() {
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{formatIdr(row.total)}</TableCell>
                   <TableCell className="text-right">
-                    {row.canRequestRapel && (
-                      <Button variant="outline" size="sm" onClick={() => { setAttachmentError(null); setRapelFor(row); }}>
+                    {/* Past the deadline the button stays, disabled: later claims go to the Owner directly. */}
+                    {row.closed && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!row.canRequestRapel}
+                        title={row.canRequestRapel ? undefined : t('rapel.deadlinePassed')}
+                        onClick={() => { setAttachmentError(null); setRapelFor(row); }}
+                      >
                         {t('rapel.requestButton')}
                       </Button>
                     )}

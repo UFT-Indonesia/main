@@ -16,12 +16,15 @@ import { Label } from '@/components/ui/label';
 import { EmployeePicker } from '@/components/employees/employee-picker';
 import { DatePickerField } from '@/components/ui/date-picker';
 import { FileDropzone } from '@/components/ui/file-dropzone';
-import { ATTACHMENT_ACCEPT, ATTACHMENT_MAX_BYTES, REASON_MIN_LENGTH } from '@/components/leave/leave-dialogs';
+import { Select } from '@/components/ui/select';
+import { ATTACHMENT_ACCEPT, ATTACHMENT_MAX_BYTES, REASON_MIN_LENGTH, useFormatLeaveDate } from '@/components/leave/leave-dialogs';
 import { markedDates, useDayMarkers } from '@/hooks/use-day-markers';
 import { useHolidayCalendar } from '@/hooks/use-attendance-settings';
+import { useOvertimeList } from '@/hooks/use-overtime';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
-import type { OvertimeAssignment, OvertimeCorrectionKind } from '@/lib/api/types';
+import type { CreateRapelBody, OvertimeAssignment, OvertimeCorrectionKind, Rapel } from '@/lib/api/types';
+import { formatIdr } from '@/lib/utils';
 
 export const OVERTIME_STATUS_VARIANT = {
   Pending: 'warning',
@@ -344,23 +347,29 @@ interface RapelDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Fixed for an employee's own claim; null lets the Owner pick whose. */
   employeeId: string | null;
-  /** Narrows the work date to one closed period when the claim starts from that period's row. */
-  period?: { start: string; end: string } | null;
-  /** True for an Owner adding one directly: they set the amount too. */
+  /** The closed period being claimed: only its approved overtime can be picked. */
+  period: { start: string; end: string } | null;
+  /** True for an Owner adding one directly: they may set the amount, or leave it to the suggestion. */
   withAmount?: boolean;
   submitting?: boolean;
   attachmentError?: string | null;
-  onConfirm: (body: { employeeId: string; workDate: string; note: string; attachment: File; amount?: number }) => void | Promise<void>;
+  onConfirm: (body: CreateRapelBody) => void | Promise<void>;
 }
 
-/** A late claim for a closed period: work date, note and the WA proof; the Owner names the amount. */
+/**
+ * A late claim on one approved overtime of a closed period: the times worked, a note and the WA
+ * proof. The server suggests the amount from those times; the employee never names one.
+ */
 export function RapelDialog({
   open, onOpenChange, employeeId, period, withAmount, submitting, attachmentError, onConfirm,
 }: RapelDialogProps) {
   const t = useTranslations('overtime');
   const tCommon = useTranslations('common');
+  const formatDate = useFormatLeaveDate();
   const [who, setWho] = useState('');
-  const [workDate, setWorkDate] = useState('');
+  const [assignmentId, setAssignmentId] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [note, setNote] = useState('');
   const [amount, setAmount] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
@@ -368,14 +377,27 @@ export function RapelDialog({
   useEffect(() => {
     if (open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setWho(''); setWorkDate(''); setNote(''); setAmount(''); setAttachment(null);
+    setWho(''); setAssignmentId(''); setFrom(''); setTo(''); setNote(''); setAmount(''); setAttachment(null);
   }, [open]);
 
   const target = employeeId ?? who;
-  const markers = useDayMarkers(target || null);
-  const inPeriod = !period || (workDate >= period.start && workDate <= period.end);
-  const amountOk = !withAmount || Number(amount) > 0;
-  const canSubmit = !!target && !!workDate && inPeriod && note.trim().length >= REASON_MIN_LENGTH && !!attachment && amountOk;
+  const { data } = useOvertimeList(
+    { employeeId: target, from: period?.start, to: period?.end, status: 'Approved', pageSize: 100 },
+    open && !!target && !!period,
+  );
+  const claimable = (data?.items ?? []).filter((a) => a.isFrozen);
+
+  const pick = (id: string) => {
+    setAssignmentId(id);
+    const chosen = claimable.find((a) => a.id === id);
+    // Prefilled with the assigned window; the employee trims it to what they really worked.
+    setFrom(chosen ? hhmm(chosen.startTime) : '');
+    setTo(chosen ? hhmm(chosen.endTime) : '');
+  };
+
+  const amountOk = !amount || Number(amount) > 0;
+  const canSubmit = !!assignmentId && !!from && !!to && from !== to
+    && note.trim().length >= REASON_MIN_LENGTH && !!attachment && amountOk;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -387,13 +409,31 @@ export function RapelDialog({
         {employeeId === null && (
           <div className="flex flex-col gap-1.5">
             <Label>{t('create.employee')}</Label>
-            <EmployeePicker value={who} onChange={setWho} placeholder={t('create.employeePlaceholder')} clearable={false} />
+            <EmployeePicker value={who} onChange={(id) => { setWho(id); pick(''); }} placeholder={t('create.employeePlaceholder')} clearable={false} />
           </div>
         )}
         <div className="flex flex-col gap-1.5">
-          <Label>{t('rapel.workDate')}</Label>
-          <DatePickerField value={workDate} onChange={setWorkDate} markers={markers} aria-label={t('rapel.workDate')} />
-          {workDate && !inPeriod && <p className="text-xs text-destructive">{t('rapel.outsidePeriod')}</p>}
+          <Label>{t('rapel.overtime')}</Label>
+          <Select value={assignmentId} onChange={(e) => pick(e.target.value)} disabled={!target} aria-label={t('rapel.overtime')}>
+            <option value="">{t('rapel.overtimePlaceholder')}</option>
+            {claimable.map((a) => (
+              <option key={a.id} value={a.id}>
+                {formatDate(a.date)} · {hhmm(a.startTime)}–{hhmm(a.endTime)}{a.endsNextDay ? ' (+1)' : ''}
+              </option>
+            ))}
+          </Select>
+          {target && data && claimable.length === 0 && <p className="text-xs text-muted-foreground">{t('rapel.noOvertime')}</p>}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label>{t('rapel.from')}</Label>
+            <Input type="time" value={from} onChange={(e) => setFrom(e.target.value)} disabled={!assignmentId} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>{t('rapel.to')}</Label>
+            <Input type="time" value={to} onChange={(e) => setTo(e.target.value)} disabled={!assignmentId} />
+          </div>
+          <p className="col-span-2 text-xs text-muted-foreground">{t('rapel.timesHint')}</p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label>{t('rapel.note')}</Label>
@@ -402,7 +442,7 @@ export function RapelDialog({
         {withAmount && (
           <div className="flex flex-col gap-1.5">
             <Label>{t('rapel.amount')}</Label>
-            <Input type="number" min={0} step={1000} value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <Input type="number" min={0} step={1000} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t('rapel.amountSuggestedPlaceholder')} />
           </div>
         )}
         <div className="flex flex-col gap-1.5">
@@ -417,7 +457,8 @@ export function RapelDialog({
         </Button>
         <Button
           onClick={() => attachment && onConfirm({
-            employeeId: target, workDate, note: note.trim(), attachment, amount: withAmount ? Number(amount) : undefined,
+            assignmentId, from, to, note: note.trim(), attachment,
+            amount: withAmount && amount ? Number(amount) : undefined,
           })}
           disabled={!canSubmit || submitting}
         >
@@ -429,35 +470,46 @@ export function RapelDialog({
 }
 
 interface ApproveRapelDialogProps {
-  open: boolean;
+  rapel: Rapel | null;
   onOpenChange: (open: boolean) => void;
-  employeeName: string;
   submitting?: boolean;
   onConfirm: (amount: number) => void | Promise<void>;
 }
 
-/** The Owner, not the employee, names the figure. */
-export function ApproveRapelDialog({ open, onOpenChange, employeeName, submitting, onConfirm }: ApproveRapelDialogProps) {
+/** The Owner decides the figure: the suggestion is prefilled, and they may change it. */
+export function ApproveRapelDialog({ rapel, onOpenChange, submitting, onConfirm }: ApproveRapelDialogProps) {
   const t = useTranslations('overtime');
   const tCommon = useTranslations('common');
+  const formatDate = useFormatLeaveDate();
   const [amount, setAmount] = useState('');
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!open) setAmount('');
-  }, [open]);
+    setAmount(rapel ? String(rapel.suggestedAmount) : '');
+  }, [rapel]);
 
-  if (!open) return null;
+  if (!rapel) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={onOpenChange}>
       <DialogHeader>
         <DialogTitle>{t('rapel.approveTitle')}</DialogTitle>
-        <DialogDescription>{t('rapel.approveDescription', { employee: employeeName })}</DialogDescription>
+        <DialogDescription>{t('rapel.approveDescription', { employee: rapel.employeeFullName })}</DialogDescription>
       </DialogHeader>
-      <div className="mt-4 flex flex-col gap-1.5">
-        <Label>{t('rapel.amount')}</Label>
-        <Input type="number" min={0} step={1000} value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <div className="mt-4 space-y-4">
+        <p className="text-sm">
+          {t('rapel.claimSummary', {
+            date: formatDate(rapel.workDate),
+            from: hhmm(rapel.claimedStart),
+            to: hhmm(rapel.claimedEnd),
+            hours: rapel.claimedHours,
+            suggested: formatIdr(rapel.suggestedAmount),
+          })}
+        </p>
+        <div className="flex flex-col gap-1.5">
+          <Label>{t('rapel.amount')}</Label>
+          <Input type="number" min={0} step={1000} value={amount} onChange={(e) => setAmount(e.target.value)} />
+        </div>
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>

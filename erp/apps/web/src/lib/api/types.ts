@@ -677,9 +677,16 @@ export interface CreateOvertimeCorrectionBody {
 
 export interface Rapel {
   id: string;
+  assignmentId: string;
   employeeId: string;
   employeeFullName: string;
   workDate: string;
+  /** "HH:mm:ss" — the times the employee says they worked; before 05:00 is the next morning. */
+  claimedStart: string;
+  claimedEnd: string;
+  claimedHours: number;
+  /** Tier of the claimed hours minus what the overtime already paid at close. */
+  suggestedAmount: number;
   note: string;
   attachmentFileName: string;
   status: OvertimeRequestStatus;
@@ -692,11 +699,14 @@ export interface Rapel {
 }
 
 export interface CreateRapelBody {
-  employeeId: string;
-  workDate: string;
+  /** An approved overtime in a closed period. */
+  assignmentId: string;
+  /** "HH:mm" — the times worked; before 05:00 means the next morning. */
+  from: string;
+  to: string;
   note: string;
   attachment: File;
-  /** Owner only: sets the figure and approves on the spot. */
+  /** Owner only: approves on the spot; left out, the suggested amount is kept. */
   amount?: number | null;
 }
 
@@ -715,6 +725,7 @@ export interface MyGajiPremiRow {
   overtimeAmount: number;
   rapelAmount: number;
   total: number;
+  /** Closed and within a month of the payout date; a closed row without it shows the button disabled. */
   canRequestRapel: boolean;
   /** Claims about this period's work, any status. */
   rapelClaims: Rapel[];

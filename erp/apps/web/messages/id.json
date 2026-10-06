@@ -892,11 +892,10 @@
     "rapel": {
       "requestButton": "Ajukan Rapel",
       "requestTitle": "Ajukan Rapel",
-      "requestDescription": "Klaim lembur yang terlewat di periode yang sudah ditutup. Hanya Owner yang memutuskan dan menentukan nominalnya.",
+      "requestDescription": "Klaim lembur yang sudah disetujui di periode yang sudah ditutup, yang absennya terlewat. Isi jam kerja Anda; Owner yang menentukan nominalnya.",
       "addTitle": "Tambah Rapel",
-      "addDescription": "Tambahkan rapel untuk periode yang sudah ditutup. Dibayar pada pembayaran berikutnya.",
+      "addDescription": "Tambahkan rapel untuk lembur yang sudah disetujui di periode yang sudah ditutup. Dibayar pada pembayaran berikutnya.",
       "workDate": "Tanggal Kerja",
-      "outsidePeriod": "Tanggal berada di luar periode ini.",
       "note": "Catatan",
       "notePlaceholder": "Apa yang dikerjakan",
       "amount": "Nominal (Rp)",
@@ -904,7 +903,7 @@
       "requestConfirm": "Kirim Pengajuan",
       "addConfirm": "Tambah Rapel",
       "approveTitle": "Setujui Rapel",
-      "approveDescription": "Tentukan nominal yang dibayarkan kepada {employee} pada pembayaran berikutnya.",
+      "approveDescription": "Bayarkan nominal ini kepada {employee} pada pembayaran berikutnya. Saran nominal bisa diubah.",
       "approveConfirm": "Setujui",
       "rejectTitle": "Tolak Rapel",
       "rejectDescription": "Tolak klaim rapel {employee}?",
@@ -914,7 +913,16 @@
       "errorTitle": "Rapel gagal",
       "addedTitle": "Rapel ditambahkan",
       "approvedTitle": "Rapel disetujui",
-      "rejectedTitle": "Rapel ditolak"
+      "rejectedTitle": "Rapel ditolak",
+      "overtime": "Lembur",
+      "overtimePlaceholder": "Pilih lembur",
+      "noOvertime": "Tidak ada lembur yang disetujui di periode ini.",
+      "from": "Kerja Dari",
+      "to": "Kerja Sampai",
+      "timesHint": "Terisi dengan jam yang ditugaskan. Sebelum 05:00 berarti keesokan paginya. Waktu di luar jam tugas tidak dihitung.",
+      "amountSuggestedPlaceholder": "Kosongkan untuk memakai nominal yang disarankan",
+      "claimSummary": "{date}, {from}–{to}: {hours} jam terhitung. Saran {suggested} (tarif dikurangi yang sudah dibayar).",
+      "deadlinePassed": "Batas pengajuan (satu bulan setelah pembayaran) sudah lewat. Hubungi Owner."
     }
   },
   "gajiPremi": {

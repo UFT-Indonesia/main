@@ -892,11 +892,10 @@
     "rapel": {
       "requestButton": "Request Rapel",
       "requestTitle": "Request Rapel",
-      "requestDescription": "Claim overtime missed in a closed period. Only an Owner decides it, and sets the amount.",
+      "requestDescription": "Claim an approved overtime of a closed period whose punches were missed. Say the times you worked; an Owner decides the amount.",
       "addTitle": "Add Rapel",
-      "addDescription": "Add a rapel for a closed period. It is paid on the next payout.",
+      "addDescription": "Add a rapel on an approved overtime of a closed period. It is paid on the next payout.",
       "workDate": "Work Date",
-      "outsidePeriod": "The date is outside this period.",
       "note": "Note",
       "notePlaceholder": "What was worked",
       "amount": "Amount (Rp)",
@@ -904,7 +903,7 @@
       "requestConfirm": "Send Request",
       "addConfirm": "Add Rapel",
       "approveTitle": "Approve Rapel",
-      "approveDescription": "Set the amount to pay {employee} on the next payout.",
+      "approveDescription": "Pay {employee} this amount on the next payout. The suggestion can be changed.",
       "approveConfirm": "Approve",
       "rejectTitle": "Reject Rapel",
       "rejectDescription": "Reject {employee}'s rapel claim?",
@@ -914,7 +913,16 @@
       "errorTitle": "Rapel failed",
       "addedTitle": "Rapel added",
       "approvedTitle": "Rapel approved",
-      "rejectedTitle": "Rapel rejected"
+      "rejectedTitle": "Rapel rejected",
+      "overtime": "Overtime",
+      "overtimePlaceholder": "Pick an overtime",
+      "noOvertime": "No approved overtime in this period.",
+      "from": "Worked From",
+      "to": "Worked Until",
+      "timesHint": "Prefilled with the assigned window. Before 05:00 means the next morning. Time outside the window does not count.",
+      "amountSuggestedPlaceholder": "Leave empty to use the suggested amount",
+      "claimSummary": "{date}, {from}–{to}: {hours} counted hours. Suggested {suggested} (tier minus what was already paid).",
+      "deadlinePassed": "The request deadline (one month after payout) has passed. Contact the Owner."
     }
   },
   "gajiPremi": {

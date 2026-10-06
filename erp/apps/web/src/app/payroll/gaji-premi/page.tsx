@@ -203,9 +203,8 @@ export default function GajiPremiPage() {
       />
 
       <ApproveRapelDialog
-        open={!!approving}
+        rapel={approving}
         onOpenChange={(open) => !open && setApproving(null)}
-        employeeName={approving?.employeeFullName ?? ''}
         submitting={decideRapel.isPending}
         onConfirm={async (amount) => {
           if (!approving) return;

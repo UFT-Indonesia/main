@@ -98,11 +98,12 @@ export async function getMyGajiPremi(): Promise<MyGajiPremiRow[]> {
   return data;
 }
 
-/** An employee files a claim (no amount); an Owner adds one directly and sets the amount. */
+/** An employee files a claim (no amount); an Owner adds one directly, optionally overriding the suggested amount. */
 export async function createRapel(body: CreateRapelBody): Promise<Rapel> {
   const form = new FormData();
-  form.append('employeeId', body.employeeId);
-  form.append('workDate', body.workDate);
+  form.append('assignmentId', body.assignmentId);
+  form.append('from', body.from);
+  form.append('to', body.to);
   form.append('note', body.note);
   form.append('attachment', body.attachment);
   if (body.amount != null) form.append('amount', String(body.amount));
