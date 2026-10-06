@@ -1,4 +1,5 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
@@ -17,15 +18,18 @@ public sealed class RecomputeAttendanceDaysJob
     private readonly IReadRepository<AttendancePolicy> _policies;
     private readonly IReadRepository<AttendanceLog> _attendanceLogs;
     private readonly IRepository<AttendanceDay> _attendanceDays;
+    private readonly IReadRepository<OvertimeAssignment> _overtime;
 
     public RecomputeAttendanceDaysJob(
         IReadRepository<AttendancePolicy> policies,
         IReadRepository<AttendanceLog> attendanceLogs,
-        IRepository<AttendanceDay> attendanceDays)
+        IRepository<AttendanceDay> attendanceDays,
+        IReadRepository<OvertimeAssignment> overtime)
     {
         _policies = policies;
         _attendanceLogs = attendanceLogs;
         _attendanceDays = attendanceDays;
+        _overtime = overtime;
     }
 
     public async Task RunAsync(CancellationToken ct = default)
@@ -57,7 +61,7 @@ public sealed class RecomputeAttendanceDaysJob
         foreach (var key in keys)
         {
             await AttendanceDayRecomputeService.RecomputeAsync(
-                key.EmployeeId, key.CalendarDate, _attendanceLogs, _attendanceDays, policy, ct);
+                key.EmployeeId, key.CalendarDate, _attendanceLogs, _attendanceDays, _overtime, policy, ct);
         }
     }
 }

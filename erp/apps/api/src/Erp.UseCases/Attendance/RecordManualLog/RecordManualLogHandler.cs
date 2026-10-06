@@ -1,5 +1,6 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
@@ -24,6 +25,7 @@ public static class RecordManualLogHandler
         IRepository<AttendanceLog> attendanceLogs,
         IReadRepository<AttendanceLog> attendanceLogReader,
         IRepository<AttendanceDay> attendanceDays,
+        IReadRepository<OvertimeAssignment> overtime,
         AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
@@ -53,6 +55,7 @@ public static class RecordManualLogHandler
                 AttendanceDayRecomputeService.CalendarDateOf(Instant.FromDateTimeOffset(command.PunchedAtUtc), policy),
                 attendanceLogReader,
                 attendanceDays,
+                overtime,
                 policy,
                 ct);
         }
