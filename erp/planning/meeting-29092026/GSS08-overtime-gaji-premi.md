@@ -11,7 +11,18 @@ Design decided in a grilling session on 2026-09-28/29, seeded by the owner's mes
 The rules were later revised by the owner (tiers, who initiates, payout cycle). **This doc is the
 revised version; the quote above is history.**
 
-**Not started. No code written.**
+**Implemented** (backend, migration `AddOvertimeAndGajiPremi`, web pages `/overtime` and `/payroll/gaji-premi`).
+Choices made while building, where this doc was silent: a period closes only after it ends and only
+in order (Q1); a correction time must fall inside the assigned window; rapel work date must be in a
+closed period, an Owner adding one must set the amount (Q7); leave date pickers do not yet grey out
+OT dates (the server refuses with `leave.overtime_on_date`); the attendance calendar's
+`WorkedOnDayOff` badge is unchanged (Q8).
+
+Follow-up (done): Q8 resolved — the attendance calendar now shows OT (`Overtime` status on a day off
+with only OT punches, plus an OT badge with window and counted hours on any day; `WorkedOnDayOff`
+is now unplanned work only). Every date picker marks holidays; pickers with an employee also mark
+leave (primary dot) and OT (success dot), lighter when Pending, via `GET /api/calendar/markers`
+(kinds only, no reasons). Leave pickers refuse OT dates; the OT picker refuses dates already holding OT.
 
 ## Scope
 
@@ -28,9 +39,8 @@ weekday from a day off (`AttendanceDayPolicy.IsWorkday`). Lives in `Erp.Core/Agg
 
 ## Prerequisite: the holiday engine (GSS02)
 
-Lives on `feat/holiday-calendar` (not on `main` when this doc was written). **Merge it before
-starting any GSS08 code**, and branch `feat/overtime` off the updated `main`. Both touch the leave
-module (`CreateLeaveRequestHandler`), so building on the same branch would also bloat the holiday PR.
+Merged to `main` in #36. GSS08 work happens on `refactor/overtime-and-gaji-premi`, branched off
+the updated `main`.
 
 Checked against GSS08 (2026-10-01):
 
@@ -87,7 +97,7 @@ OT branch.
 |---|---|
 | 6 | An OT assignment = **date + from–to**, picked by the assigner |
 | 7 | **Weekday:** start fixed at **18:30** (18:00–18:30 is a break after the shift). Only the end is picked |
-| 8 | **Day off** (weekend or holiday): start is free, 12:00–13:00 lunch is deducted when covered (reuse `LeaveRequest.LunchStart`/`LunchEnd`) |
+| 8 | **Day off** (weekend or holiday): start is free, 12:00–13:00 lunch (1h) is deducted **only when the counted span, after grace, contains all of 12:00–13:00**; partial overlap deducts nothing (reuse `LeaveRequest.LunchStart`/`LunchEnd`) |
 | 9 | **05:00 is the day boundary.** Every window sits inside 05:00 day D → 05:00 day D+1: day-off start ≥ 05:00, end ≤ 05:00 next day |
 | 10 | Past midnight counts on the **start date** (18:30 Tue → 01:00 Wed is Tuesday's OT, one tier) |
 | 11 | One OT assignment per employee per date |
@@ -119,7 +129,11 @@ Examples (grace 5m):
 | 18:30–01:00 | In 18:31, Out 22:10 | 3h | 25rb (left early) |
 | 18:30–01:00 | In 18:31, Out 20:15 | 1h | Rp0 (left early, under 2h) |
 | 18:30–01:00 | In 18:31, Out 01:40 | capped 6.5h → 6h | 70rb |
-| Sat 09:00–16:00 | In 09:10, Out 16:00 | 7h − 1h lunch = 6h | 70rb |
+| 18:30–21:30 | In 18:36, Out 20:35 | 1h 59m → 1h (no partial grace) | Rp0 (late, under 2h) |
+| Sat 09:00–16:00 | In 09:10, Out 16:00 | 6h 50m − 1h lunch = 5h 50m → 5h | 50rb (late) |
+| Sat 09:00–16:00, **grace 10m** | In 09:10, Out 16:00 | snaps to 09:00: 7h − 1h lunch = 6h | 70rb |
+| Sun 12:30–14:45 | In 12:30, Out 14:45 | 2h 15m, lunch not fully inside → no deduction → 2h | 25rb |
+| Sun 12:00–16:00 | In 12:04, Out 16:00 | snaps to 12:00, full lunch → 4h − 1h = 3h | 25rb |
 
 ### Punch ownership
 
@@ -133,6 +147,10 @@ hides real lateness.
 > them. Everything before belongs to the regular day.
 >
 > **Day off:** every punch from 05:00 to 05:00 next day belongs to the OT assignment.
+>
+> Applies to `Pending` **and** `Approved` OT assignments. A `Pending` one that expires at close keeps
+> its punches and pays Rp0. Rejecting or cancelling one recomputes D and D+1, and the punches go back
+> to the regular day.
 
 | Case | Regular day | OT assignment |
 |---|---|---|
