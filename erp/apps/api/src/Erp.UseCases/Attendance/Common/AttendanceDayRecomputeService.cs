@@ -1,6 +1,8 @@
 using Erp.Core.Aggregates.Attendance;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Overtime.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Attendance.Common;
@@ -9,6 +11,10 @@ namespace Erp.UseCases.Attendance.Common;
 /// Recomputes the materialized <see cref="AttendanceDay"/> row for a single
 /// employee + calendar day. Called from the <c>AttendanceLogRecorded</c> domain
 /// event handler and from punch-correction command handlers.
+/// <para>
+/// Punches claimed by an overtime assignment (<see cref="OvertimeCalculator.OwnedPunches"/>) are
+/// left out: they belong to the OT, not to the regular day they happen to fall on.
+/// </para>
 /// </summary>
 public static class AttendanceDayRecomputeService
 {
@@ -20,15 +26,30 @@ public static class AttendanceDayRecomputeService
         LocalDate calendarDate,
         IReadRepository<AttendanceLog> attendanceLogs,
         IRepository<AttendanceDay> attendanceDays,
+        IReadRepository<OvertimeAssignment> overtime,
         AttendanceDayPolicy policy,
         CancellationToken ct)
     {
         var dayStart = calendarDate.AtStartOfDayInZone(policy.TimeZone).ToInstant();
         var dayEnd = calendarDate.PlusDays(1).AtStartOfDayInZone(policy.TimeZone).ToInstant();
 
+        // An assignment dated the day before can own this day's small hours, so look back one day.
+        var assignments = await overtime.ListAsync(
+            new OvertimeOwningPunchesSpec(employeeId, calendarDate.PlusDays(-1), calendarDate), ct);
+
         var punches = await attendanceLogs.ListAsync(
-            new AttendanceLogsForEmployeeDaySpec(employeeId, dayStart, dayEnd),
+            new AttendanceLogsForEmployeeDaySpec(
+                employeeId, assignments.Count > 0 ? dayStart.Minus(Duration.FromDays(1)) : dayStart, dayEnd),
             ct);
+
+        if (assignments.Count > 0)
+        {
+            var owned = assignments
+                .SelectMany(a => OvertimeCalculator.OwnedPunches(a, punches, policy))
+                .Select(p => p.Id)
+                .ToHashSet();
+            punches = punches.Where(p => p.PunchedAtUtc >= dayStart && !owned.Contains(p.Id)).ToList();
+        }
 
         var existing = await attendanceDays.FirstOrDefaultAsync(
             new AttendanceDayByEmployeeDateSpec(employeeId, calendarDate),

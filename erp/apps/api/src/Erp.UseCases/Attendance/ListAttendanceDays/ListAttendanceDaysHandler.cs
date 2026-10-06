@@ -1,5 +1,6 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Common.Filtering;
@@ -17,6 +18,8 @@ public static class ListAttendanceDaysHandler
         ListAttendanceDaysQuery query,
         IReadRepository<AttendanceDay> attendanceDays,
         IReadRepository<Employee> employees,
+        IReadRepository<OvertimeAssignment> overtime,
+        IReadRepository<AttendanceLog> logs,
         AttendanceDayPolicy policy,
         IClock clock,
         CancellationToken ct)
@@ -33,7 +36,7 @@ public static class ListAttendanceDaysHandler
         }
 
         var dates = await AttendanceCalendar.BuildAsync(
-            from, to, filters, query.Caller, attendanceDays, employees, policy, clock, ct);
+            from, to, filters, query.Caller, attendanceDays, employees, overtime, logs, policy, clock, ct);
 
         return new Result<ListAttendanceDaysResult>.Success(new ListAttendanceDaysResult { Dates = dates });
     }

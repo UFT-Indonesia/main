@@ -1,12 +1,14 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
+using Erp.UseCases.Overtime.Common;
 using NodaTime;
 using Wolverine;
 
@@ -18,6 +20,7 @@ public static class CreateLeaveRequestHandler
         CreateLeaveRequestCommand command,
         IReadRepository<Employee> employees,
         IRepository<LeaveRequest> leaveRequests,
+        IReadRepository<OvertimeAssignment> overtime,
         AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
@@ -81,6 +84,13 @@ public static class CreateLeaveRequestHandler
             return new Result<LeaveRequestResult>.Error(
                 "leave.izin_hours_exceeded",
                 $"Izin cannot exceed {policy.MaxIzinHours} hour(s); this request spans {endHour - startHour}.");
+        }
+
+        // Overtime wins the date: the leave is refused, never the other way round (GSS08).
+        if (await overtime.AnyAsync(new LiveOvertimeInRangeSpec(employeeId, startDate, endDate), ct))
+        {
+            return new Result<LeaveRequestResult>.Error(
+                "leave.overtime_on_date", "The requested dates include a day with an overtime assignment.");
         }
 
         // New leave only conflicts with an already-approved request when their occupied hours

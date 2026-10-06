@@ -65,7 +65,7 @@ public class RecomputeAttendanceDaysJobTests
         _days.FirstOrDefaultAsync(Arg.Any<ISpecification<AttendanceDay>>(), Arg.Any<CancellationToken>())
             .Returns(ci => ci.Arg<ISpecification<AttendanceDay>>().Evaluate(existingDays).FirstOrDefault());
 
-        var job = new RecomputeAttendanceDaysJob(_policies, _logs, _days);
+        var job = new RecomputeAttendanceDaysJob(_policies, _logs, _days, TestOvertime.None());
         await job.RunAsync(CancellationToken.None);
 
         // New date's row is materialized from the moved punch...

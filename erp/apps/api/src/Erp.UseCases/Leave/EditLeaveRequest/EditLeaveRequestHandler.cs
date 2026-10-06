@@ -1,6 +1,7 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
@@ -8,6 +9,7 @@ using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
 using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
+using Erp.UseCases.Overtime.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Leave.EditLeaveRequest;
@@ -28,6 +30,7 @@ public static class EditLeaveRequestHandler
         IRepository<LeaveRequest> leaveRequests,
         IRepository<Employee> employees,
         IRepository<AttendanceDay> attendanceDays,
+        IReadRepository<OvertimeAssignment> overtime,
         AttendanceDayPolicy policy,
         // ReconcileEmployeeStatusAsync wants the read interface specifically; IRepository and
         // IReadRepository are siblings here, not parent and child.
@@ -70,6 +73,12 @@ public static class EditLeaveRequestHandler
             return new Result<LeaveRequestResult>.Error(
                 "leave.izin_hours_exceeded",
                 $"Izin cannot exceed {policy.MaxIzinHours} hour(s); this request spans {endHour - startHour}.");
+        }
+
+        if (await overtime.AnyAsync(new LiveOvertimeInRangeSpec(request.EmployeeId, startDate, endDate), ct))
+        {
+            return new Result<LeaveRequestResult>.Error(
+                "leave.overtime_on_date", "The requested dates include a day with an overtime assignment.");
         }
 
         var candidateWindow = LeaveRequest.OccupiedWindow(

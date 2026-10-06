@@ -1,5 +1,6 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
@@ -20,6 +21,7 @@ public static class UpdateAttendanceLogHandler
         IReadRepository<AttendanceLog> attendanceLogReader,
         IRepository<AttendanceDay> attendanceDays,
         IReadRepository<Employee> employees,
+        IReadRepository<OvertimeAssignment> overtime,
         AttendanceDayPolicy policy,
         CancellationToken ct)
     {
@@ -53,11 +55,11 @@ public static class UpdateAttendanceLogHandler
         // The derived Tap-In/Tap-Out/Status may now be stale — recompute the
         // affected day(s). Editing the timestamp can move the punch across days.
         await AttendanceDayRecomputeService.RecomputeAsync(
-            log.EmployeeId, oldDate, attendanceLogReader, attendanceDays, policy, ct);
+            log.EmployeeId, oldDate, attendanceLogReader, attendanceDays, overtime, policy, ct);
         if (newDate != oldDate)
         {
             await AttendanceDayRecomputeService.RecomputeAsync(
-                log.EmployeeId, newDate, attendanceLogReader, attendanceDays, policy, ct);
+                log.EmployeeId, newDate, attendanceLogReader, attendanceDays, overtime, policy, ct);
         }
 
         return new Result<AttendanceResult>.Success(AttendanceLogService.ToResult(log));

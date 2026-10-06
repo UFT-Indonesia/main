@@ -1,5 +1,6 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Attendance.Events;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
@@ -12,6 +13,7 @@ public static class AttendanceLogRecordedHandler
         AttendanceLogRecorded message,
         IReadRepository<AttendanceLog> attendanceLogs,
         IRepository<AttendanceDay> attendanceDays,
+        IReadRepository<OvertimeAssignment> overtime,
         AttendanceDayPolicy policy,
         CancellationToken ct)
     {
@@ -23,6 +25,7 @@ public static class AttendanceLogRecordedHandler
             calendarDate,
             attendanceLogs,
             attendanceDays,
+            overtime,
             policy,
             ct);
 

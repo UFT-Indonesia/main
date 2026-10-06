@@ -45,6 +45,18 @@ public sealed class AttendanceDayListItemResult
     /// <summary>The doctor's note on a Sick request; null when there is none.</summary>
     public string? LeaveAttachmentFileName { get; init; }
 
+    /// <summary>
+    /// The OT assignment on this date, all null/false when there is none. Pay is deliberately
+    /// absent — this is the attendance calendar, not payroll. <see cref="OvertimeHours"/> counts
+    /// only once the assignment is Approved.
+    /// </summary>
+    public string? OvertimeStatus { get; init; }
+    public TimeOnly? OvertimeStart { get; init; }
+    public TimeOnly? OvertimeEnd { get; init; }
+    public bool OvertimeEndsNextDay { get; init; }
+    public int? OvertimeHours { get; init; }
+    public bool OvertimeIncomplete { get; init; }
+
     /// <summary>Server-computed: whether the caller may create or alter this employee's records.</summary>
     public bool CanWrite { get; init; }
 }

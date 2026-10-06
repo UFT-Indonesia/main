@@ -13,6 +13,9 @@ namespace Erp.Core.Aggregates.Attendance;
 /// </summary>
 public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
 {
+    /// <summary>Latest a shift may end: weekday overtime starts at 18:30, after a 30-minute break (GSS08).</summary>
+    public static readonly LocalTime MaxShiftEnd = new(18, 0);
+
     // EF Core constructor.
     private AttendancePolicy() { }
 
@@ -132,6 +135,12 @@ public sealed class AttendancePolicy : AggregateRoot<AttendancePolicyId>
         if (shiftStart >= shiftEnd)
         {
             throw new DomainException("attendance_policy.shift_window", "Shift start must be before shift end.");
+        }
+
+        if (shiftEnd > MaxShiftEnd)
+        {
+            throw new DomainException(
+                "attendance_policy.shift_end_too_late", $"Shift cannot end after {MaxShiftEnd:HH:mm}.");
         }
 
         // LeaveRequest.ChargePerWorkday divides an hourly Izin's minutes by (shift length − the

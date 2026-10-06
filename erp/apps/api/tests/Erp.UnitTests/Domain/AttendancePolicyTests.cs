@@ -46,6 +46,28 @@ public class AttendancePolicyTests
     }
 
     [Theory]
+    [InlineData(18, 1, true)]
+    [InlineData(19, 0, true)]
+    [InlineData(18, 0, false)]
+    [InlineData(17, 0, false)]
+    public void Update_caps_shift_end_at_18_00_so_weekday_overtime_never_overlaps_it(int hour, int minute, bool refused)
+    {
+        var policy = CreatePolicy();
+
+        var act = () => policy.Update(
+            new LocalTime(9, 0), new LocalTime(hour, minute), 5, 5, "Asia/Jakarta", 4, Guid.NewGuid(), Instant.FromUtc(2026, 1, 2, 0, 0));
+
+        if (refused)
+        {
+            act.Should().Throw<DomainException>().Where(e => e.Code == "attendance_policy.shift_end_too_late");
+        }
+        else
+        {
+            act.Should().NotThrow();
+        }
+    }
+
+    [Theory]
     [InlineData(-1, 5)]
     [InlineData(5, -1)]
     public void Update_rejects_negative_grace_minutes(int clockIn, int clockOut)

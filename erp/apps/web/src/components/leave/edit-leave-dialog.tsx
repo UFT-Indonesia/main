@@ -21,6 +21,7 @@ import {
   useFormatLeaveDate,
 } from '@/components/leave/leave-dialogs';
 import { useAttendancePolicy, useHolidayCalendar } from '@/hooks/use-attendance-settings';
+import { markedDates, useDayMarkers } from '@/hooks/use-day-markers';
 import { useBlockedLeaveDates } from '@/hooks/use-leave';
 import type { EditLeaveRequestBody, HalfDayPeriod, LeaveRequest } from '@/lib/api/types';
 
@@ -70,6 +71,8 @@ export function EditLeaveDialog({
     startHour: hourly && startHour !== '' ? startHour : null,
     endHour: hourly && endHour !== '' ? endHour : null,
   });
+  const markers = useDayMarkers(request?.employeeId ?? null);
+  const blockedDates = [...(blocked.data?.blockedDates ?? []), ...markedDates(markers, ['Overtime', 'OvertimePending'])];
 
   const holidays = useHolidayCalendar();
 
@@ -124,9 +127,10 @@ export function EditLeaveDialog({
               start={startDate}
               end={endDate}
               onChange={(s, e) => { setStartDate(s); setEndDate(e); }}
-              blockedDates={blocked.data?.blockedDates}
+              blockedDates={blockedDates}
               partialDates={blocked.data?.partialDates}
               holidayDates={holidays.dates}
+              markers={markers}
             />
           </div>
 

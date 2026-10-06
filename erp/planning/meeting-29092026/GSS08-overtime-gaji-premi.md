@@ -11,7 +11,24 @@ Design decided in a grilling session on 2026-09-28/29, seeded by the owner's mes
 The rules were later revised by the owner (tiers, who initiates, payout cycle). **This doc is the
 revised version; the quote above is history.**
 
-**Not started. No code written.**
+**Implemented** (backend, migration `AddOvertimeAndGajiPremi`, web pages `/overtime` and `/payroll/gaji-premi`).
+Choices made while building, where this doc was silent: a period closes only after it ends and only
+in order (Q1); a correction time must fall inside the assigned window; rapel work date must be in a
+closed period, an Owner adding one must set the amount (Q7); leave date pickers do not yet grey out
+OT dates (the server refuses with `leave.overtime_on_date`); the attendance calendar's
+`WorkedOnDayOff` badge is unchanged (Q8).
+
+Follow-up (done): Q8 resolved — the attendance calendar now shows OT (`Overtime` status on a day off
+with only OT punches, plus an OT badge with window and counted hours on any day; `WorkedOnDayOff`
+is now unplanned work only). Every date picker marks holidays; pickers with an employee also mark
+leave (primary dot) and OT (success dot), lighter when Pending, via `GET /api/calendar/markers`
+(kinds only, no reasons). Leave pickers refuse OT dates; the OT picker refuses dates already holding OT.
+
+**Decided and built 2026-10-06** (answers to open questions 2–7, see *Resolved questions*; migration `LinkRapelToOvertimeAssignment`):
+`ShiftEnd` capped at 18:00; a tap-out correction is allowed when the last owned punch left early
+(before the assigned end, beyond grace); rapel requests close one month after the payout date; a rapel is tied to an
+approved OT assignment and the amount is suggested from the employee's claimed times (difference
+from what was already paid), with the Owner able to override.
 
 ## Scope
 
@@ -28,9 +45,8 @@ weekday from a day off (`AttendanceDayPolicy.IsWorkday`). Lives in `Erp.Core/Agg
 
 ## Prerequisite: the holiday engine (GSS02)
 
-Lives on `feat/holiday-calendar` (not on `main` when this doc was written). **Merge it before
-starting any GSS08 code**, and branch `feat/overtime` off the updated `main`. Both touch the leave
-module (`CreateLeaveRequestHandler`), so building on the same branch would also bloat the holiday PR.
+Merged to `main` in #36. GSS08 work happens on `refactor/overtime-and-gaji-premi`, branched off
+the updated `main`.
 
 Checked against GSS08 (2026-10-01):
 
@@ -87,14 +103,15 @@ OT branch.
 |---|---|
 | 6 | An OT assignment = **date + from–to**, picked by the assigner |
 | 7 | **Weekday:** start fixed at **18:30** (18:00–18:30 is a break after the shift). Only the end is picked |
-| 8 | **Day off** (weekend or holiday): start is free, 12:00–13:00 lunch is deducted when covered (reuse `LeaveRequest.LunchStart`/`LunchEnd`) |
+| 8 | **Day off** (weekend or holiday): start is free, 12:00–13:00 lunch (1h) is deducted **only when the counted span, after grace, contains all of 12:00–13:00**; partial overlap deducts nothing (reuse `LeaveRequest.LunchStart`/`LunchEnd`) |
 | 9 | **05:00 is the day boundary.** Every window sits inside 05:00 day D → 05:00 day D+1: day-off start ≥ 05:00, end ≤ 05:00 next day |
 | 10 | Past midnight counts on the **start date** (18:30 Tue → 01:00 Wed is Tuesday's OT, one tier) |
 | 11 | One OT assignment per employee per date |
 | 12 | Weekday/day-off is checked only at creation and **stored on the OT assignment (`IsDayOff`)**. A holiday declared or removed later leaves the window, the punch ownership and the lunch deduction as entered (see *Prerequisite*) |
 
-18:30 and 05:00 are constants next to `LunchStart`/`LunchEnd`. `ponytail:` ceiling — if the Owner
-ever moves `AttendancePolicy.ShiftEnd` past 18:30, OT would overlap regular hours.
+18:30 and 05:00 are constants next to `LunchStart`/`LunchEnd`. **`AttendancePolicy.ShiftEnd` is
+capped at 18:00** (earlier is allowed): the policy update is refused with a later value, so the 18:30
+start can never overlap regular hours.
 
 ### Counted hours
 
@@ -119,7 +136,11 @@ Examples (grace 5m):
 | 18:30–01:00 | In 18:31, Out 22:10 | 3h | 25rb (left early) |
 | 18:30–01:00 | In 18:31, Out 20:15 | 1h | Rp0 (left early, under 2h) |
 | 18:30–01:00 | In 18:31, Out 01:40 | capped 6.5h → 6h | 70rb |
-| Sat 09:00–16:00 | In 09:10, Out 16:00 | 7h − 1h lunch = 6h | 70rb |
+| 18:30–21:30 | In 18:36, Out 20:35 | 1h 59m → 1h (no partial grace) | Rp0 (late, under 2h) |
+| Sat 09:00–16:00 | In 09:10, Out 16:00 | 6h 50m − 1h lunch = 5h 50m → 5h | 50rb (late) |
+| Sat 09:00–16:00, **grace 10m** | In 09:10, Out 16:00 | snaps to 09:00: 7h − 1h lunch = 6h | 70rb |
+| Sun 12:30–14:45 | In 12:30, Out 14:45 | 2h 15m, lunch not fully inside → no deduction → 2h | 25rb |
+| Sun 12:00–16:00 | In 12:04, Out 16:00 | snaps to 12:00, full lunch → 4h − 1h = 3h | 25rb |
 
 ### Punch ownership
 
@@ -133,6 +154,10 @@ hides real lateness.
 > them. Everything before belongs to the regular day.
 >
 > **Day off:** every punch from 05:00 to 05:00 next day belongs to the OT assignment.
+>
+> Applies to `Pending` **and** `Approved` OT assignments. A `Pending` one that expires at close keeps
+> its punches and pays Rp0. Rejecting or cancelling one recomputes D and D+1, and the punches go back
+> to the regular day.
 
 | Case | Regular day | OT assignment |
 |---|---|---|
@@ -182,6 +207,7 @@ OT wins, for Staff and Managers alike. The leave stays approved and charged as n
 | 27 | Approved by `LeaveRules.CanDecideFor` — own Manager or any Owner for Staff; Owner only for a Manager; never the requester. Safe for Managers because a correction can only move a punch inside a window the Owner already approved |
 | 28 | Approval writes an `AttendanceLog.Manual(...)` punch (`AttendanceLog.cs:93`); the existing recompute does the rest. `RecordedByUserId` is the audit trail |
 | 29 | Counts toward the **work date**, never the approval date. Oct 30 corrected on Nov 5 is October OT |
+| 29a | A tap-out correction is also allowed when the OT assignment already owns a tap-out that **left early** — before the assigned end, beyond `ClockOutGraceMinutes` (within grace it already counts to the end) (e.g. tapped out at 20:15 by mistake, worked until 21:30). The new time must be later than the last owned punch and inside the window. It adds a manual Out; the stray punch stays in the log. The system cannot tell this from a wrong device clock — the approver judges from the reason and proof, and rejects device faults with a note. Those go to the Owner for a manual punch edit |
 
 ### Gaji Premi
 
@@ -196,7 +222,9 @@ OT wins, for Staff and Managers alike. The leave stays approved and charged as n
 | 30 | While open, everything is computed live from punches |
 | 31 | **Owner presses Close period** (confirmation dialog, irreversible). At close: counted hours, tier and amount frozen onto each OT assignment; still-`Pending` correction requests and OT assignments **expire** → pay follows the punches / Rp0. No nightly job needed — expiry happens in the close action |
 | 32 | After close, anything dated in that period is refused — only a rapel gets in |
-| 33 | **Rapel:** a late claim for a **closed** period. Decided by the Owner only. Fields: work date (inside that period), note, **WA proof upload** (same attachment rules); the Owner sets the **amount** when approving (not the employee). Added as a line to the next payout, labelled with its work date: *"Rapel · OT 14 Oct"*. No counted hours. Frozen when its own payout period closes |
+| 33 | **Rapel:** a late claim for a **closed** period. Decided by the Owner only. Fields: an **approved OT assignment** dated inside that period, the **from–to times actually worked** (prefilled with the assigned window), note, **WA proof upload** (same attachment rules). The system computes counted hours with the same rules as the calculator (whole hours down, day-off lunch rule via the OT assignment's `IsDayOff`) and **suggests the amount = tier(claimed hours) − amount already frozen on that OT assignment**. The Owner approves it or overrides it; the employee never enters an amount. A claim that adds nothing (suggested amount ≤ 0) is refused on the form. Added as a line to the next payout, labelled with its work date: *"Rapel · OT 14 Oct"*. Frozen when its own payout period closes |
+| 33b | **One rapel per OT assignment**, counting `Pending` and `Approved` (assumed, confirm) |
+| 33c | **Request deadline: one month from the payout date** of the closed period (Sep–Oct, paid Nov 15 → open until Dec 15). After it the *Request Rapel* button stays visible but disabled ("Deadline passed, contact the Owner") and the server refuses the request. The Owner's direct add has no deadline |
 | 33a | **The employee starts it:** a **Request Rapel** button on each closed-period row of *Gaji Premi Saya* (their table of past OT disbursements). It goes to the **Owner, never the Manager**. Pending until decided; a rejected one is kept in the history with the Owner's note. The Owner may also add a rapel directly, with the same fields (assumed, confirm) |
 | 34 | Terminated employees are still paid for OT already worked |
 
@@ -244,13 +272,15 @@ table, and can work the amount out. Accepted — unlike wage (GSS03), the figure
 The counted-hours calculator is the money path — it gets a unit test per row of the examples table
 above, plus the punch-ownership table.
 
-## Open questions
+## Resolved questions
 
-1. **Close order.** Must Sep–Oct be closed before Nov–Dec can be? Assumed yes.
-2. **`ShiftEnd` moved past 18:30.** Refuse the policy change while OT is fixed at 18:30, or accept the overlap?
-3. **Correction for a wrong (not missing) OT punch** — e.g. device clock off. Not covered; manual punch edit by Owner/Manager is the only route today.
-4. **Owner confirmation** of the revised tiers against the original message (2h / 2–6h / 6h+ became 2–3h / 4–5h / 6h+).
-5. **Rapel request deadline.** Is there a limit on how long after a payout an employee may request a rapel? None was stated.
-6. **Where does Gaji Premi Saya live?** Tab inside `/overtime` (as decided in Q17) or its own sidebar item? Employee-visible either way.
-7. **Rapel amount.** Assumed the Owner sets it on approval. Confirm the employee does not enter a claimed amount.
-8. **Day-off OT on the attendance calendar.** OT-owned punches are filtered out of `AttendanceDay`, so a day-off OT may no longer raise the `WorkedOnDayOff` badge (`AttendanceCalendar.cs:161`). Not checked in detail — decide whether the calendar should show OT.
+| # | Question | Answer (2026-10-06) |
+|---|---|---|
+| 1 | Close order | Sep–Oct must close before Nov–Dec (built) |
+| 2 | `ShiftEnd` moved past 18:30 | Policy refuses a `ShiftEnd` later than 18:00 |
+| 3 | Correction for a wrong OT punch | Decision 29a: allowed for an early tap-out; a device clock fault goes to the Owner for a manual edit |
+| 4 | Revised tiers | Confirmed: 2–3h 25rb, 4–5h 50rb, 6h+ 70rb |
+| 5 | Rapel request deadline | One month from the payout date (33c) |
+| 6 | Where Gaji Premi Saya lives | A tab inside `/overtime` |
+| 7 | Rapel amount | Owner decides; suggested automatically from the claimed times (33) |
+| 8 | OT on the attendance calendar | Done, see *Follow-up* above |

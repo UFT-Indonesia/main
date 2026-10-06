@@ -9,7 +9,11 @@ import {
   today,
 } from '@internationalized/date';
 import { CalendarDays } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { type DateLocale, useDateLocale } from '@/hooks/use-date-locale';
+import { useHolidayCalendar } from '@/hooks/use-attendance-settings';
+import type { DayMarkers } from '@/hooks/use-day-markers';
+import type { DayMarkerKind } from '@/lib/api/types';
 import {
   Button as AriaButton,
   Calendar,
@@ -77,13 +81,31 @@ function unavailableMatcher(dates: string[] | undefined) {
   return (date: DateValue) => blocked.has(date.toString());
 }
 
+/** One dot per marker: leave is primary, OT is success, and Pending is the same colour, lighter. */
+const MARKER_DOT: Record<DayMarkerKind, string> = {
+  Leave: 'bg-primary',
+  LeavePending: 'bg-primary/40',
+  Overtime: 'bg-success',
+  OvertimePending: 'bg-success/40',
+};
+
+/**
+ * The month grid shared by every picker. Holidays are marked on all of them — straight from the
+ * holiday calendar, so no caller has to remember to pass them. When an employee's `markers` are
+ * given, leave and OT dates get a dot and a tooltip, with a legend underneath.
+ */
 function CalendarBody({
   partialDates,
   holidayDates,
+  markers,
 }: {
   partialDates?: string[];
   holidayDates?: ReadonlySet<string>;
+  markers?: DayMarkers;
 }) {
+  const t = useTranslations('calendarMarkers');
+  const calendarHolidays = useHolidayCalendar();
+  const holidays = holidayDates ?? calendarHolidays.dates;
   const partial = partialDates?.length ? new Set(partialDates) : undefined;
 
   return (
@@ -106,21 +128,53 @@ function CalendarBody({
           )}
         </CalendarGridHeader>
         <CalendarGridBody>
-          {(date) => (
-            <CalendarCell
-              date={date}
-              className={(render) =>
-                cn(
-                  cellStyles,
-                  partial?.has(date.toString()) && !render.isSelected && !render.isUnavailable
-                    && partialCellStyles,
-                  holidayDates?.has(date.toString()) && !render.isSelected && holidayCellStyles,
-                )
-              }
-            />
-          )}
+          {(date) => {
+            const key = date.toString();
+            const kinds = markers?.get(key);
+            const tooltip = [
+              holidays.has(key) ? t('holiday') : null,
+              ...(kinds ?? []).map((k) => t(k)),
+            ].filter(Boolean).join(' · ');
+            return (
+              <CalendarCell
+                date={date}
+                className={(render) =>
+                  cn(
+                    cellStyles,
+                    'relative',
+                    partial?.has(key) && !render.isSelected && !render.isUnavailable && partialCellStyles,
+                    holidays.has(key) && !render.isSelected && holidayCellStyles,
+                  )
+                }
+              >
+                {({ formattedDate }) => (
+                  <span title={tooltip || undefined} className="flex h-full w-full items-center justify-center">
+                    {formattedDate}
+                    {kinds && (
+                      <span className="absolute bottom-0.5 flex gap-0.5">
+                        {kinds.map((kind) => (
+                          <span key={kind} className={cn('h-1 w-1 rounded-full', MARKER_DOT[kind])} />
+                        ))}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </CalendarCell>
+            );
+          }}
         </CalendarGridBody>
       </CalendarGrid>
+      {markers && (
+        <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-border pt-2 text-xs text-muted-foreground">
+          <li className="text-destructive">{t('holiday')}</li>
+          {(['Leave', 'LeavePending', 'Overtime', 'OvertimePending'] as const).map((kind) => (
+            <li key={kind} className="flex items-center gap-1">
+              <span className={cn('h-1.5 w-1.5 rounded-full', MARKER_DOT[kind])} />
+              {t(kind)}
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }
@@ -146,6 +200,8 @@ interface DatePickerFieldProps {
   onChange: (value: string) => void;
   /** "YYYY-MM-DD" dates that must not be selectable. */
   blockedDates?: string[];
+  /** The employee's leave and OT dates, marked with a dot. Holidays are always marked. */
+  markers?: DayMarkers;
   isDisabled?: boolean;
   'aria-label'?: string;
   className?: string;
@@ -156,6 +212,7 @@ export function DatePickerField({
   value,
   onChange,
   blockedDates,
+  markers,
   isDisabled,
   className,
   ...rest
@@ -178,7 +235,7 @@ export function DatePickerField({
       <Popover className={popoverStyles}>
         <Dialog>
           <Calendar>
-            <CalendarBody />
+            <CalendarBody markers={markers} />
           </Calendar>
         </Dialog>
       </Popover>
@@ -194,6 +251,7 @@ interface DateTimePickerFieldProps {
   timeZone: string;
   /** "YYYY-MM-DD" dates that must not be selectable. */
   blockedDates?: string[];
+  markers?: DayMarkers;
   isDisabled?: boolean;
   'aria-label'?: string;
   className?: string;
@@ -217,6 +275,7 @@ export function DateTimePickerField({
   onChange,
   timeZone,
   blockedDates,
+  markers,
   isDisabled,
   className,
   hideTrigger,
@@ -255,7 +314,7 @@ export function DateTimePickerField({
         <Dialog>
           <div className="space-y-3">
             <Calendar>
-              <CalendarBody />
+              <CalendarBody markers={markers} />
             </Calendar>
             {parsed && (
               <TimeField
@@ -288,6 +347,8 @@ interface DateRangePickerFieldProps {
   partialDates?: string[];
   /** "YYYY-MM-DD" declared holidays — marked, still pickable. */
   holidayDates?: ReadonlySet<string>;
+  /** The employee's leave and OT dates, marked with a dot. */
+  markers?: DayMarkers;
   isDisabled?: boolean;
   'aria-label'?: string;
   className?: string;
@@ -304,6 +365,7 @@ export function DateRangePickerField({
   blockedDates,
   partialDates,
   holidayDates,
+  markers,
   isDisabled,
   className,
   ...rest
@@ -335,7 +397,7 @@ export function DateRangePickerField({
       <Popover className={popoverStyles}>
         <Dialog>
           <RangeCalendar>
-            <CalendarBody partialDates={partialDates} holidayDates={holidayDates} />
+            <CalendarBody partialDates={partialDates} holidayDates={holidayDates} markers={markers} />
           </RangeCalendar>
         </Dialog>
       </Popover>

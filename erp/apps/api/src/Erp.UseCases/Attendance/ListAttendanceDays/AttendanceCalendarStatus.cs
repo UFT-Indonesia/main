@@ -28,10 +28,16 @@ public static class AttendanceCalendarStatus
     public const string NotInYet = "NotInYet";
 
     /// <summary>
-    /// Punched on a weekend or holiday. There was no shift to complete, so the punches are not
-    /// judged against one — the overtime module is what will eventually price this time.
+    /// Punched on a weekend or holiday with no OT assignment. There was no shift to complete, so
+    /// the punches are not judged against one. Planned work shows as <see cref="Overtime"/> instead.
     /// </summary>
     public const string WorkedOnDayOff = "WorkedOnDayOff";
+
+    /// <summary>
+    /// A day off whose only punches belong to an OT assignment: the regular day has nothing left,
+    /// but the person did work. The OT fields on the row say what was assigned and counted.
+    /// </summary>
+    public const string Overtime = "Overtime";
 
     /// <summary>A date after today. Nothing has happened, so nothing is claimed.</summary>
     public const string Upcoming = "Upcoming";
@@ -48,7 +54,8 @@ public static class AttendanceCalendarStatus
         OnLeave => 3,
         ClockedIn => 4,
         Complete => 5,
-        WorkedOnDayOff => 6,
-        _ => 7,
+        Overtime => 6,
+        WorkedOnDayOff => 7,
+        _ => 8,
     };
 }

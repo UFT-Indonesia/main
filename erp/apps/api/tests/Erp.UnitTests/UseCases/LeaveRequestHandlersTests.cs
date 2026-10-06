@@ -84,7 +84,7 @@ public class LeaveRequestHandlersTests
 
     private Task<Result<LeaveRequestResult>> CreateAsync(Employee subject, Caller caller) =>
         CreateLeaveRequestHandler.Handle(
-            CommandFor(subject, caller), _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
+            CommandFor(subject, caller), _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
     private LeaveRequest PendingFor(Employee subject, Guid requestedByUserId)
     {
@@ -191,7 +191,7 @@ public class LeaveRequestHandlersTests
         var command = CommandFor(_staff, _staffCaller) with { Type = "Vacation" };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
+            command, _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
             .Which.Code.Should().Be("leave.type");
@@ -203,7 +203,7 @@ public class LeaveRequestHandlersTests
         var command = CommandFor(_staff, _staffCaller) with { EmployeeId = Guid.NewGuid() };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
+            command, _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.NotFound>();
     }
@@ -270,7 +270,7 @@ public class LeaveRequestHandlersTests
         };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
+            command, _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Success>();
     }
@@ -287,7 +287,7 @@ public class LeaveRequestHandlersTests
         };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
+            command, _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
             .Which.Code.Should().Be("leave.izin_hours_exceeded");

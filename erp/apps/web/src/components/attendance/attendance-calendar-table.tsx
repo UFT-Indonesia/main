@@ -21,7 +21,7 @@ import type {
   AttendanceDayStatus,
 } from '@/lib/api/types';
 
-const STATUS_VARIANT: Record<AttendanceDayStatus, 'success' | 'destructive' | 'warning' | 'yellow' | 'outline' | 'secondary'> = {
+const STATUS_VARIANT: Record<AttendanceDayStatus, 'default' | 'success' | 'destructive' | 'warning' | 'yellow' | 'outline' | 'secondary'> = {
   Complete: 'success',
   Incomplete: 'destructive',
   // A no-show is the one thing on this page that needs chasing today.
@@ -35,6 +35,8 @@ const STATUS_VARIANT: Record<AttendanceDayStatus, 'success' | 'destructive' | 'w
   Upcoming: 'outline',
   // Reported, not judged: there was no shift to complete.
   WorkedOnDayOff: 'secondary',
+  // Planned work on a day off: the OT badge beside it carries the window and hours.
+  Overtime: 'default',
 };
 
 /** A date is "in trouble" only for these. Approved leave is expected, not a problem. */
@@ -68,6 +70,9 @@ function formatTime(iso: string | null, timeZoneId: string | undefined, locale: 
     ? new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone: timeZoneId }).format(new Date(iso))
     : '–';
 }
+
+/** "18:30" from the API's "18:30:00". */
+const hhmm = (time: string) => time.slice(0, 5);
 
 function countBy(date: AttendanceCalendarDate, status: AttendanceDayStatus): number {
   return date.employees.filter((employee) => employee.status === status).length;
@@ -178,13 +183,12 @@ export function AttendanceCalendarTable({
                     <TableCell className="text-center tabular-nums">{countBy(date, 'OnLeave')}</TableCell>
                   </>
                 ) : !date.isWorkday ? (
-                  <>
-                    <TableCell className="text-center tabular-nums">–</TableCell>
-                    <TableCell className="text-center tabular-nums">–</TableCell>
-                    <TableCell className="text-center tabular-nums">–</TableCell>
-                    <TableCell className="text-center tabular-nums">–</TableCell>
-                    <TableCell className="text-center tabular-nums">–</TableCell>
-                  </>
+                  // Nobody is judged on a day off, but planned work on it is worth a line.
+                  <TableCell colSpan={5} className="text-center tabular-nums">
+                    {date.employees.some((e) => e.overtimeStatus)
+                      ? t('summary.overtime', { count: date.employees.filter((e) => e.overtimeStatus).length })
+                      : '–'}
+                  </TableCell>
                 ) : (
                   <TableCell colSpan={5} className="text-center">
                     <DateSummary
@@ -311,6 +315,19 @@ function EmployeeTable({
                 <Badge variant={STATUS_VARIANT[employee.status]}>
                   {t(`status.${employee.status}`)}
                 </Badge>
+                {employee.overtimeStatus && (
+                  // Pending OT is not yet a commitment; an approved one missing a tap says so.
+                  <Badge variant={employee.overtimeStatus === 'Approved' ? 'success' : 'outline'}>
+                    {t('overtime.badge', {
+                      start: hhmm(employee.overtimeStart ?? ''),
+                      end: hhmm(employee.overtimeEnd ?? ''),
+                      next: employee.overtimeEndsNextDay ? ' (+1)' : '',
+                      status: employee.overtimeStatus,
+                      hours: employee.overtimeHours ?? 0,
+                    })}
+                    {employee.overtimeIncomplete && ` · ${t('overtime.incomplete')}`}
+                  </Badge>
+                )}
                 {employee.leaveType && (
                   // Punches outrank leave for Status, but the day stays attributable to the
                   // leave — this badge is the only place a Complete-during-leave day is

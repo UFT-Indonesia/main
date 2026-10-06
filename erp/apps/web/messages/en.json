@@ -28,7 +28,9 @@
     "accounts": "Accounts",
     "attendanceDevices": "Attendance devices",
     "employeeAuditLog": "Employee audit log",
-    "probation": "Probation"
+    "probation": "Probation",
+    "overtime": "Overtime",
+    "gajiPremi": "Gaji Premi"
   },
   "home": {
     "title": "Welcome",
@@ -218,7 +220,8 @@
       "ClockedIn": "Clocked In",
       "NotInYet": "Not In Yet",
       "Upcoming": "Upcoming",
-      "WorkedOnDayOff": "Worked On Day Off"
+      "WorkedOnDayOff": "Worked On Day Off",
+      "Overtime": "Overtime"
     },
     "holidayKind": {
       "National": "Libur Nasional",
@@ -278,7 +281,12 @@
       "clockedIn": "{count} clocked in",
       "notInYet": "{count} not in yet",
       "inProgress": "In progress",
-      "nothingYet": "—"
+      "nothingYet": "—",
+      "overtime": "{count, plural, one {# on OT} other {# on OT}}"
+    },
+    "overtime": {
+      "badge": "OT {start}–{end}{next} · {status, select, Approved {{hours}h counted} Pending {awaiting approval} other {{status}}}",
+      "incomplete": "Missing Punch"
     }
   },
   "attendanceSettings": {
@@ -733,5 +741,229 @@
       "gt": "is greater than",
       "lt": "is less than"
     }
+  },
+  "overtime": {
+    "title": "Overtime",
+    "subtitle": "OT assignments, missing-punch corrections and your Gaji Premi.",
+    "month": "Month",
+    "allMonths": "All Months",
+    "empty": "No OT assignments found.",
+    "dayOff": "Day Off",
+    "weekday": "Weekday",
+    "assignedUntil": "assigned until {end}",
+    "pagination": "{from}–{to} of {total}",
+    "note": "Note",
+    "notePlaceholder": "Optional note",
+    "proofHint": "PDF, JPG or PNG · max 10MB",
+    "proofError": "Could not download the proof",
+    "tabs": {
+      "assignments": "OT Assignments",
+      "corrections": "Corrections",
+      "mine": "Gaji Premi Saya"
+    },
+    "columns": {
+      "employee": "Employee",
+      "date": "Date",
+      "window": "OT Window",
+      "punches": "OT Tap-In / Tap-Out",
+      "hours": "Counted Hours",
+      "pay": "Pay",
+      "status": "Status"
+    },
+    "status": {
+      "Pending": "Pending",
+      "Approved": "Approved",
+      "Rejected": "Rejected",
+      "Cancelled": "Cancelled",
+      "Expired": "Expired"
+    },
+    "flags": {
+      "incomplete": "Incomplete",
+      "late": "Late",
+      "leftEarly": "Left Early"
+    },
+    "create": {
+      "button": "Assign Overtime",
+      "title": "Assign Overtime",
+      "description": "Create an OT assignment for an employee. A Manager's assignment waits for an Owner's approval.",
+      "employee": "Employee",
+      "employeePlaceholder": "Select employee...",
+      "date": "Date",
+      "weekdayHint": "Weekday: overtime always starts at 18:30.",
+      "dayOffHint": "Day off: pick the start; 12:00–13:00 lunch is deducted only when the whole hour is worked.",
+      "start": "Start",
+      "end": "End",
+      "windowHint": "An overtime past midnight counts on its start date and must end by 05:00.",
+      "confirm": "Assign Overtime",
+      "successTitle": "OT assignment created",
+      "successPending": "Waiting for an Owner's approval.",
+      "successApproved": "Approved.",
+      "errorTitle": "Could not create the OT assignment"
+    },
+    "edit": {
+      "title": "Edit End Time",
+      "description": "Move the end of {employee}'s overtime (starts {start}). The date cannot change — cancel and assign again.",
+      "hint": "Once there are punches, the end can only be extended. A Manager's edit goes back to the Owner.",
+      "confirm": "Save",
+      "successTitle": "OT assignment updated",
+      "successPending": "Waiting for an Owner's approval.",
+      "errorTitle": "Could not update the OT assignment"
+    },
+    "decide": {
+      "approve": {
+        "title": "Approve OT Assignment",
+        "description": "Approve {employee}'s overtime on {date}?",
+        "confirm": "Approve",
+        "successTitle": "OT assignment approved",
+        "errorTitle": "Could not approve"
+      },
+      "reject": {
+        "title": "Reject OT Assignment",
+        "description": "Reject {employee}'s overtime on {date}? Their punches go back to the regular day.",
+        "confirm": "Reject",
+        "successTitle": "OT assignment rejected",
+        "errorTitle": "Could not reject"
+      },
+      "cancel": {
+        "title": "Cancel OT Assignment",
+        "description": "Cancel {employee}'s overtime on {date}? This is not possible once there are punches.",
+        "confirm": "Cancel OT",
+        "successTitle": "OT assignment cancelled",
+        "errorTitle": "Could not cancel"
+      }
+    },
+    "correction": {
+      "button": "Request Correction",
+      "title": "Request Punch Correction",
+      "description": "Your {kind} for this overtime is missing (assigned {start}–{end}). Ask for it to be written, with proof.",
+      "kind": {
+        "TapIn": "OT Tap-In",
+        "TapOut": "OT Tap-Out"
+      },
+      "time": "{kind} Time",
+      "timeHint": "Must fall inside the assigned window, up to {end}.",
+      "reason": "Reason",
+      "reasonPlaceholder": "Why the punch is missing",
+      "proof": "Proof",
+      "confirm": "Submit Request",
+      "successTitle": "Correction requested",
+      "successDescription": "Your manager or an Owner will decide it.",
+      "errorTitle": "Could not request the correction"
+    },
+    "corrections": {
+      "empty": "No correction requests.",
+      "columns": {
+        "punch": "Punch",
+        "reason": "Reason",
+        "proof": "Proof"
+      },
+      "decide": {
+        "approve": {
+          "title": "Approve Correction",
+          "description": "Write {employee}'s {kind} at {time}?",
+          "confirm": "Approve",
+          "successTitle": "Correction approved",
+          "errorTitle": "Could not approve"
+        },
+        "reject": {
+          "title": "Reject Correction",
+          "description": "Reject {employee}'s {kind} correction at {time}?",
+          "confirm": "Reject",
+          "successTitle": "Correction rejected",
+          "errorTitle": "Could not reject"
+        }
+      }
+    },
+    "mine": {
+      "empty": "No overtime pay yet.",
+      "estimate": "Estimate, not final",
+      "columns": {
+        "period": "Period",
+        "payout": "Payout Date",
+        "hours": "Counted Hours",
+        "rapel": "Rapel",
+        "total": "Total"
+      },
+      "hoursUnit": "h",
+      "daysUnit": "days",
+      "rapelLine": "Rapel · OT {date}",
+      "rapelClaim": "Claim · OT {date}"
+    },
+    "rapel": {
+      "requestButton": "Request Rapel",
+      "requestTitle": "Request Rapel",
+      "requestDescription": "Claim an approved overtime of a closed period whose punches were missed. Say the times you worked; an Owner decides the amount.",
+      "addTitle": "Add Rapel",
+      "addDescription": "Add a rapel on an approved overtime of a closed period. It is paid on the next payout.",
+      "workDate": "Work Date",
+      "note": "Note",
+      "notePlaceholder": "What was worked",
+      "amount": "Amount (Rp)",
+      "proof": "WA Proof",
+      "requestConfirm": "Send Request",
+      "addConfirm": "Add Rapel",
+      "approveTitle": "Approve Rapel",
+      "approveDescription": "Pay {employee} this amount on the next payout. The suggestion can be changed.",
+      "approveConfirm": "Approve",
+      "rejectTitle": "Reject Rapel",
+      "rejectDescription": "Reject {employee}'s rapel claim?",
+      "rejectConfirm": "Reject",
+      "successTitle": "Rapel requested",
+      "successDescription": "An Owner will decide it.",
+      "errorTitle": "Rapel failed",
+      "addedTitle": "Rapel added",
+      "approvedTitle": "Rapel approved",
+      "rejectedTitle": "Rapel rejected",
+      "overtime": "Overtime",
+      "overtimePlaceholder": "Pick an overtime",
+      "noOvertime": "No approved overtime in this period.",
+      "from": "Worked From",
+      "to": "Worked Until",
+      "timesHint": "Prefilled with the assigned window. Before 05:00 means the next morning. Time outside the window does not count.",
+      "amountSuggestedPlaceholder": "Leave empty to use the suggested amount",
+      "claimSummary": "{date}, {from}–{to}: {hours} counted hours. Suggested {suggested} (tier minus what was already paid).",
+      "deadlinePassed": "The request deadline (one month after payout) has passed. Contact the Owner."
+    }
+  },
+  "gajiPremi": {
+    "title": "Gaji Premi",
+    "subtitle": "Overtime pay per two-month period.",
+    "period": "Period",
+    "addRapel": "Add Rapel",
+    "cannotClose": "A period closes only after it ends, and only after the earlier ones.",
+    "close": {
+      "button": "Close Period",
+      "title": "Close This Period?",
+      "description": "{period} will be frozen: counted hours and pay are fixed, undecided OT assignments and corrections expire, and nothing dated in it can be added afterwards except as a rapel. This cannot be undone.",
+      "confirm": "Close Period",
+      "successTitle": "Period closed",
+      "successDescription": "Counted hours and pay are now frozen.",
+      "errorTitle": "Could not close the period"
+    },
+    "closed": "Closed",
+    "open": "Open",
+    "payout": "Payout {date}",
+    "closedBy": "Closed by {name}",
+    "estimate": "Estimate, not final",
+    "total": "Total",
+    "empty": "No overtime in this period.",
+    "pendingRapel": "Rapel Requests",
+    "columns": {
+      "employee": "Employee",
+      "days": "OT Days ({month})",
+      "hours": "Hours ({month})",
+      "rapel": "Rapel",
+      "total": "Total"
+    },
+    "detail": {
+      "description": "Day by day: window, punches, counted hours, pay and status."
+    }
+  },
+  "calendarMarkers": {
+    "holiday": "Holiday",
+    "Leave": "Leave",
+    "LeavePending": "Leave (Pending)",
+    "Overtime": "OT",
+    "OvertimePending": "OT (Pending)"
   }
 }

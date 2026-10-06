@@ -611,6 +611,288 @@ namespace Erp.Infrastructure.Persistence.Migrations
                     b.ToTable("LeaveRequests", (string)null);
                 });
 
+            modelBuilder.Entity("Erp.Core.Aggregates.Overtime.GajiPremiPeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ClosedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at_utc");
+
+                    b.Property<string>("ClosedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("closed_by_name");
+
+                    b.Property<Guid>("ClosedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closed_by_user_id");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartDate")
+                        .IsUnique();
+
+                    b.ToTable("GajiPremiPeriods", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Overtime.OvertimeAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<DateTimeOffset?>("DecidedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at_utc");
+
+                    b.Property<string>("DecidedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("decided_by_name");
+
+                    b.Property<Guid?>("DecidedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_user_id");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_note");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time")
+                        .HasColumnName("end_time");
+
+                    b.Property<decimal?>("FrozenAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("frozen_amount");
+
+                    b.Property<DateTimeOffset?>("FrozenAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("frozen_at_utc");
+
+                    b.Property<int?>("FrozenHours")
+                        .HasColumnType("integer")
+                        .HasColumnName("frozen_hours");
+
+                    b.Property<bool>("IsDayOff")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_day_off");
+
+                    b.Property<DateTimeOffset>("RequestedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at_utc");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time")
+                        .HasColumnName("start_time");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date");
+
+                    b.HasIndex("EmployeeId", "Date")
+                        .IsUnique()
+                        .HasFilter("status IN ('Pending', 'Approved', 'Expired')");
+
+                    b.ToTable("OvertimeAssignments", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Overtime.OvertimeCorrectionRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssignmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignment_id");
+
+                    b.Property<DateTimeOffset?>("DecidedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at_utc");
+
+                    b.Property<string>("DecidedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("decided_by_name");
+
+                    b.Property<Guid?>("DecidedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_user_id");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_note");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<DateTimeOffset>("PunchedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("punched_at_utc");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("RequestedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at_utc");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<DateOnly>("WorkDate")
+                        .HasColumnType("date")
+                        .HasColumnName("work_date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("WorkDate");
+
+                    b.HasIndex("AssignmentId", "Status");
+
+                    b.ToTable("OvertimeCorrectionRequests", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Overtime.Rapel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid>("AssignmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignment_id");
+
+                    b.Property<TimeOnly>("ClaimedEnd")
+                        .HasColumnType("time")
+                        .HasColumnName("claimed_end");
+
+                    b.Property<int>("ClaimedHours")
+                        .HasColumnType("integer")
+                        .HasColumnName("claimed_hours");
+
+                    b.Property<TimeOnly>("ClaimedStart")
+                        .HasColumnType("time")
+                        .HasColumnName("claimed_start");
+
+                    b.Property<DateTimeOffset?>("DecidedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at_utc");
+
+                    b.Property<string>("DecidedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("decided_by_name");
+
+                    b.Property<Guid?>("DecidedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_user_id");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_note");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<DateOnly?>("PayoutPeriodStart")
+                        .HasColumnType("date")
+                        .HasColumnName("payout_period_start");
+
+                    b.Property<DateTimeOffset>("RequestedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at_utc");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("SuggestedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("suggested_amount");
+
+                    b.Property<DateOnly>("WorkDate")
+                        .HasColumnType("date")
+                        .HasColumnName("work_date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignmentId")
+                        .IsUnique()
+                        .HasFilter("status IN ('Pending', 'Approved')");
+
+                    b.HasIndex("PayoutPeriodStart");
+
+                    b.HasIndex("EmployeeId", "Status");
+
+                    b.ToTable("Rapels", (string)null);
+                });
+
             modelBuilder.Entity("Erp.Core.Aggregates.Probation.ProbationExtensionRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1045,6 +1327,127 @@ namespace Erp.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Attachment");
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Overtime.OvertimeAssignment", b =>
+                {
+                    b.HasOne("Erp.Core.Aggregates.Employees.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Overtime.OvertimeCorrectionRequest", b =>
+                {
+                    b.HasOne("Erp.Core.Aggregates.Overtime.OvertimeAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("AssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Erp.Core.Aggregates.Employees.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("Erp.Core.Aggregates.Leave.LeaveAttachment", "Attachment", b1 =>
+                        {
+                            b1.Property<Guid>("OvertimeCorrectionRequestId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("ContentType")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("attachment_content_type");
+
+                            b1.Property<string>("FileName")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("attachment_file_name");
+
+                            b1.Property<long>("SizeBytes")
+                                .HasColumnType("bigint")
+                                .HasColumnName("attachment_size_bytes");
+
+                            b1.Property<string>("StorageKey")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("attachment_storage_key");
+
+                            b1.HasKey("OvertimeCorrectionRequestId");
+
+                            b1.ToTable("OvertimeCorrectionRequests");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OvertimeCorrectionRequestId");
+                        });
+
+                    b.Navigation("Attachment")
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("Erp.Core.Aggregates.Overtime.Rapel", b =>
+                {
+                    b.HasOne("Erp.Core.Aggregates.Overtime.OvertimeAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("AssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Erp.Core.Aggregates.Employees.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("Erp.Core.Aggregates.Leave.LeaveAttachment", "Attachment", b1 =>
+                        {
+                            b1.Property<Guid>("RapelId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("ContentType")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("attachment_content_type");
+
+                            b1.Property<string>("FileName")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("attachment_file_name");
+
+                            b1.Property<long>("SizeBytes")
+                                .HasColumnType("bigint")
+                                .HasColumnName("attachment_size_bytes");
+
+                            b1.Property<string>("StorageKey")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("attachment_storage_key");
+
+                            b1.HasKey("RapelId");
+
+                            b1.ToTable("Rapels");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RapelId");
+                        });
+
+                    b.Navigation("Attachment")
+                        .IsRequired();
 
                     b.Navigation("Employee");
                 });

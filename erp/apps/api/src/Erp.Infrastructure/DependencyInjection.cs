@@ -8,6 +8,7 @@ using Erp.Infrastructure.Persistence;
 using Erp.Infrastructure.Persistence.Hierarchy;
 using Erp.Infrastructure.Storage;
 using Erp.SharedKernel.Identity;
+using Erp.UseCases.Overtime.Common;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Identity;
@@ -70,6 +71,13 @@ public static class DependencyInjection
                 Holidays = db.Holidays.AsNoTracking().Select(h => h.Date).ToHashSet(),
             };
         });
+
+        // The overtime pay tiers: appsettings/env only, never a UI (GSS08 decision 4).
+        services.AddOptions<OvertimeOptions>()
+            .Bind(configuration.GetSection(OvertimeOptions.SectionName))
+            .Validate(options => options.Tiers.Count > 0 && options.Tiers.All(t => t.MinHours > 0 && t.Amount >= 0),
+                "Overtime tiers must list at least one tier with positive MinHours and a non-negative Amount.")
+            .ValidateOnStart();
 
         services.AddOptions<LeaveAttachmentOptions>()
             .Bind(configuration.GetSection(LeaveAttachmentOptions.SectionName))
