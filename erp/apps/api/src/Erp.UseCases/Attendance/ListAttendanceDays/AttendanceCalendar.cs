@@ -1,9 +1,11 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.Common;
 using Erp.UseCases.Common;
+using Erp.UseCases.Overtime.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Attendance.ListAttendanceDays;
@@ -32,6 +34,8 @@ public static class AttendanceCalendar
         Caller caller,
         IReadRepository<AttendanceDay> attendanceDays,
         IReadRepository<Employee> employees,
+        IReadRepository<OvertimeAssignment> overtime,
+        IReadRepository<AttendanceLog> logs,
         AttendanceDayPolicy policy,
         IClock clock,
         CancellationToken ct)
@@ -44,6 +48,16 @@ public static class AttendanceCalendar
         var materialized = await attendanceDays.ListAsync(new AttendanceDaysInRangeSpec(from, to, visibleIds), ct);
         var dayByKey = materialized
             .ToDictionary(day => (day.EmployeeId, day.CalendarDate));
+
+        // OT assignments claim punches the regular day no longer holds, so they are read on their
+        // own and laid over the day rows. Hours come from the same calculator payroll uses.
+        var assignments = (await overtime.ListAsync(new PeriodOvertimeSpec(from, to), ct))
+            .Where(a => visibleIds.Contains(a.EmployeeId))
+            .ToList();
+        var punches = await OvertimeEvaluator.LoadPunchesAsync(assignments, logs, policy, ct);
+        var overtimeByKey = assignments.ToDictionary(
+            a => (a.EmployeeId, a.Date),
+            a => OvertimeInfo.From(a, OvertimeEvaluator.Evaluate(a, punches, policy, [])));
 
         var now = clock.GetCurrentInstant();
         var today = now.InZone(policy.TimeZone).Date;
@@ -72,7 +86,7 @@ public static class AttendanceCalendar
                 IsFuture = isFuture,
                 IsInProgress = isInProgress,
                 Employees = BuildEmployees(
-                    population, dayByKey, date, isWorkday, isFuture, isInProgress, caller),
+                    population, dayByKey, overtimeByKey, date, isWorkday, isFuture, isInProgress, caller),
             });
         }
 
@@ -82,6 +96,7 @@ public static class AttendanceCalendar
     private static List<AttendanceDayListItemResult> BuildEmployees(
         IReadOnlyList<Employee> population,
         IReadOnlyDictionary<(EmployeeId, LocalDate), AttendanceDay> dayByKey,
+        IReadOnlyDictionary<(EmployeeId, LocalDate), OvertimeInfo> overtimeByKey,
         LocalDate date,
         bool isWorkday,
         bool isFuture,
@@ -93,9 +108,18 @@ public static class AttendanceCalendar
         foreach (var employee in population)
         {
             var day = dayByKey.GetValueOrDefault((employee.Id, date));
+            var ot = overtimeByKey.GetValueOrDefault((employee.Id, date));
 
             if (day is null)
             {
+                // A day off whose punches all went to an OT assignment has no regular row, but
+                // the person worked — report it rather than hiding the day.
+                if (!isWorkday && ot is not null)
+                {
+                    items.Add(Missing(employee, date, isWorkday, isFuture, isInProgress, caller, ot));
+                    continue;
+                }
+
                 // Somebody hired next month is not absent today, and neither is somebody who
                 // left last year. Employment dates rather than EmployeeStatus, which holds only
                 // today's value and would shrink every historical denominator.
@@ -109,11 +133,11 @@ public static class AttendanceCalendar
                     continue;
                 }
 
-                items.Add(Missing(employee, date, isFuture, isInProgress, caller));
+                items.Add(Missing(employee, date, isWorkday, isFuture, isInProgress, caller, ot));
                 continue;
             }
 
-            items.Add(Present(employee, day, isWorkday, isInProgress, caller));
+            items.Add(Present(employee, day, isWorkday, isInProgress, caller, ot));
         }
 
         // Decision 13: problems first, alphabetical inside each group. OrderBy is stable and the
@@ -126,19 +150,29 @@ public static class AttendanceCalendar
     private static AttendanceDayListItemResult Missing(
         Employee employee,
         LocalDate date,
+        bool isWorkday,
         bool isFuture,
         bool isInProgress,
-        Caller caller) => new()
+        Caller caller,
+        OvertimeInfo? ot) => new()
         {
             EmployeeId = employee.Id.Value,
             EmployeeFullName = employee.FullName,
             Date = date.ToDateOnly(),
-            Status = isFuture
+            Status = !isWorkday
+                ? AttendanceCalendarStatus.Overtime
+                : isFuture
                 ? AttendanceCalendarStatus.Upcoming
                 : isInProgress
                     ? AttendanceCalendarStatus.NotInYet
                     : AttendanceCalendarStatus.Absent,
             CanWrite = AttendanceRules.CanWriteFor(caller, employee),
+            OvertimeStatus = ot?.Status,
+            OvertimeStart = ot?.Start,
+            OvertimeEnd = ot?.End,
+            OvertimeEndsNextDay = ot?.EndsNextDay ?? false,
+            OvertimeHours = ot?.Hours,
+            OvertimeIncomplete = ot?.Incomplete ?? false,
         };
 
     private static AttendanceDayListItemResult Present(
@@ -146,7 +180,8 @@ public static class AttendanceCalendar
         AttendanceDay day,
         bool isWorkday,
         bool isInProgress,
-        Caller caller) => new()
+        Caller caller,
+        OvertimeInfo? ot) => new()
         {
             EmployeeId = day.EmployeeId.Value,
             EmployeeFullName = employee.FullName,
@@ -176,5 +211,20 @@ public static class AttendanceCalendar
             LeaveRequestId = day.LeaveRequest?.Id.Value,
             LeaveAttachmentFileName = day.LeaveRequest?.Attachment?.FileName,
             CanWrite = AttendanceRules.CanWriteFor(caller, employee),
+            OvertimeStatus = ot?.Status,
+            OvertimeStart = ot?.Start,
+            OvertimeEnd = ot?.End,
+            OvertimeEndsNextDay = ot?.EndsNextDay ?? false,
+            OvertimeHours = ot?.Hours,
+            OvertimeIncomplete = ot?.Incomplete ?? false,
         };
+}
+
+/// <summary>What the calendar shows of one OT assignment: window, status, counted hours — never pay.</summary>
+internal sealed record OvertimeInfo(
+    string Status, TimeOnly Start, TimeOnly End, bool EndsNextDay, int Hours, bool Incomplete)
+{
+    internal static OvertimeInfo From(OvertimeAssignment a, OvertimeEvaluation e) => new(
+        a.Status.ToString(), a.StartTime.ToTimeOnly(), a.EndTime.ToTimeOnly(), a.EndDate != a.Date, e.Hours,
+        a.Status == OvertimeStatus.Approved && e.Count.Incomplete);
 }

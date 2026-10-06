@@ -2,6 +2,7 @@ using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Attendance.ListAttendanceDays;
@@ -20,6 +21,8 @@ public class AttendanceCalendarTests
 {
     private readonly IReadRepository<AttendanceDay> _days = Substitute.For<IReadRepository<AttendanceDay>>();
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
+    private readonly IReadRepository<OvertimeAssignment> _overtime = TestOvertime.None();
+    private readonly IReadRepository<AttendanceLog> _logs = Substitute.For<IReadRepository<AttendanceLog>>();
 
     private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Asia/Jakarta"];
 
@@ -66,7 +69,7 @@ public class AttendanceCalendarTests
 
     private Task<IReadOnlyList<AttendanceCalendarDateResult>> Build(LocalDate from, LocalDate to, IClock clock)
         => AttendanceCalendar.BuildAsync(
-            from, to, [], Owner, _days, _employees, Policy, clock, CancellationToken.None);
+            from, to, [], Owner, _days, _employees, _overtime, _logs, Policy, clock, CancellationToken.None);
 
     [Fact]
     public async Task Employee_with_no_row_on_a_settled_workday_is_absent()
@@ -98,7 +101,7 @@ public class AttendanceCalendarTests
         Given([MakeEmployee("Rina")], []);
 
         var dates = await AttendanceCalendar.BuildAsync(
-            Wednesday, Wednesday, [], Owner, _days, _employees,
+            Wednesday, Wednesday, [], Owner, _days, _employees, _overtime, _logs,
             Policy with { Holidays = new HashSet<LocalDate> { Wednesday } },
             ClockAt(new LocalDateTime(2026, 9, 10, 9, 0)), CancellationToken.None);
 
@@ -128,7 +131,7 @@ public class AttendanceCalendarTests
 
         var policy = holiday ? Policy with { Holidays = new HashSet<LocalDate> { Wednesday } } : Policy;
         var dates = await AttendanceCalendar.BuildAsync(
-            date, date, [], Owner, _days, _employees, policy,
+            date, date, [], Owner, _days, _employees, _overtime, _logs, policy,
             ClockAt(new LocalDateTime(2026, 9, 10, 9, 0)), CancellationToken.None);
 
         dates[0].Employees.Should().ContainSingle()
@@ -240,5 +243,55 @@ public class AttendanceCalendarTests
 
         dates.Select(d => d.Date).Should().Equal(
             Wednesday.PlusDays(2).ToDateOnly(), Wednesday.PlusDays(1).ToDateOnly(), Wednesday.ToDateOnly());
+    }
+
+    [Fact]
+    public async Task A_day_off_worked_as_approved_overtime_is_reported_with_its_counted_hours()
+    {
+        var worker = MakeEmployee("Zidan");
+        Given([worker], []);
+
+        // Sat 09:00–16:00, punched 09:00 → 16:00: 7h minus the full lunch hour = 6h.
+        var assignment = OvertimeAssignment.Create(
+            worker.Id, Saturday, new LocalTime(9, 0), new LocalTime(16, 0), true, Guid.NewGuid(), "Owner",
+            Instant.FromUtc(2026, 9, 1, 0, 0), autoApprove: true);
+        _overtime.ListAsync(Arg.Any<ISpecification<OvertimeAssignment>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<OvertimeAssignment> { assignment });
+        typeof(OvertimeAssignment).GetProperty(nameof(OvertimeAssignment.Employee))!.SetValue(assignment, worker);
+        _logs.ListAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>()).Returns(new List<AttendanceLog>
+        {
+            AttendanceLog.FromDevice(worker.Id, Saturday.At(new LocalTime(9, 0)).InZoneLeniently(Zone).ToInstant(), PunchType.In, "DEV-01"),
+            AttendanceLog.FromDevice(worker.Id, Saturday.At(new LocalTime(16, 0)).InZoneLeniently(Zone).ToInstant(), PunchType.Out, "DEV-01"),
+        });
+
+        var dates = await Build(Saturday, Saturday, ClockAt(new LocalDateTime(2026, 9, 10, 9, 0)));
+
+        var item = dates[0].Employees.Should().ContainSingle().Subject;
+        item.Status.Should().Be(AttendanceCalendarStatus.Overtime);
+        item.OvertimeStatus.Should().Be("Approved");
+        item.OvertimeHours.Should().Be(6);
+        item.OvertimeIncomplete.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_workday_with_overtime_keeps_its_regular_status_and_carries_the_overtime()
+    {
+        var worker = MakeEmployee("Rina");
+        Given([worker], []);
+        var assignment = OvertimeAssignment.Create(
+            worker.Id, Wednesday, null, new LocalTime(21, 0), false, Guid.NewGuid(), "Owner",
+            Instant.FromUtc(2026, 9, 1, 0, 0), autoApprove: true);
+        _overtime.ListAsync(Arg.Any<ISpecification<OvertimeAssignment>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<OvertimeAssignment> { assignment });
+        typeof(OvertimeAssignment).GetProperty(nameof(OvertimeAssignment.Employee))!.SetValue(assignment, worker);
+        _logs.ListAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>()).Returns(new List<AttendanceLog>());
+
+        var dates = await Build(Wednesday, Wednesday, ClockAt(new LocalDateTime(2026, 9, 10, 9, 0)));
+
+        var item = dates[0].Employees.Should().ContainSingle().Subject;
+        item.Status.Should().Be(AttendanceCalendarStatus.Absent);
+        item.OvertimeStatus.Should().Be("Approved");
+        item.OvertimeIncomplete.Should().BeTrue();
+        item.OvertimeHours.Should().Be(0);
     }
 }

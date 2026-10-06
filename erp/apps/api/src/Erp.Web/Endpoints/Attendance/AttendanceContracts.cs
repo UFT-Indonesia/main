@@ -103,6 +103,13 @@ public sealed class AttendanceDayListItemResponse
     /// <summary>Set alongside GET /api/leave/{id}/attachment, so the client knows which id to call.</summary>
     public Guid? LeaveRequestId { get; init; }
     public string? LeaveAttachmentFileName { get; init; }
+    /// <summary>The OT assignment on this date; all null/false when none. Never carries pay.</summary>
+    public string? OvertimeStatus { get; init; }
+    public TimeOnly? OvertimeStart { get; init; }
+    public TimeOnly? OvertimeEnd { get; init; }
+    public bool OvertimeEndsNextDay { get; init; }
+    public int? OvertimeHours { get; init; }
+    public bool OvertimeIncomplete { get; init; }
     /// <summary>Whether the calling user may create or alter this employee's records.</summary>
     public bool CanWrite { get; init; }
 }

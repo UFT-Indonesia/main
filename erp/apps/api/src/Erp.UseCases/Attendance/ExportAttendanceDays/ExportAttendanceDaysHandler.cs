@@ -2,6 +2,7 @@ using System.Text.Json;
 using Ardalis.Specification;
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
+using Erp.Core.Aggregates.Overtime;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
@@ -40,6 +41,7 @@ public static class ExportAttendanceDaysHandler
         IReadRepository<AttendanceDay> attendanceDays,
         IReadRepository<AttendanceLog> attendanceLogs,
         IReadRepository<Employee> employees,
+        IReadRepository<OvertimeAssignment> overtime,
         AttendanceDayPolicy policy,
         IClock clock,
         CancellationToken ct)
@@ -58,7 +60,7 @@ public static class ExportAttendanceDaysHandler
         // Which employees the caller may export is decided inside the calendar's employee spec,
         // the same rule the screen obeys. No separate check is needed here.
         var dates = await AttendanceCalendar.BuildAsync(
-            from, to, filters, query.Caller, attendanceDays, employees, policy, clock, ct);
+            from, to, filters, query.Caller, attendanceDays, employees, overtime, attendanceLogs, policy, clock, ct);
 
         if (query.ProblemsOnly)
         {
