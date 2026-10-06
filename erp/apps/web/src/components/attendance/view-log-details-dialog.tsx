@@ -32,6 +32,7 @@ import { DateTimePickerField } from '@/components/ui/date-picker';
 import { useFormatLeaveDate } from '@/components/leave/leave-dialogs';
 import { downloadLeaveAttachment } from '@/lib/api/leave';
 import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
+import { useDayMarkers } from '@/hooks/use-day-markers';
 import { useBlockedLeaveDates } from '@/hooks/use-leave';
 import { type DateLocale, useDateLocale } from '@/hooks/use-date-locale';
 import { useToast } from '@/hooks/use-toast';
@@ -104,6 +105,7 @@ export function ViewLogDetailsDialog({
   const timeZone = policy?.timeZoneId ?? APP_TIME_ZONE;
   // Same rule as the create dialog: a punch cannot be moved onto a day the employee is on leave.
   const blocked = useBlockedLeaveDates(day?.employeeId ?? null);
+  const markers = useDayMarkers(day?.employeeId ?? null);
 
   // Notes are re-read from the (refetched) query data each render so the
   // thread reflects adds/deletes without local copies to keep in sync.
@@ -316,6 +318,7 @@ export function ViewLogDetailsDialog({
                           onChange={(v) => setForm((s) => ({ ...s, punchedAtUtc: v }))}
                           timeZone={timeZone}
                           blockedDates={blocked.data?.blockedDates}
+                          markers={markers}
                           aria-label={t('manualLog.punchedAt')}
                           hideTrigger
                         />

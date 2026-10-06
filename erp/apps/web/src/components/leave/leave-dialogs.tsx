@@ -20,6 +20,7 @@ import { DateRangePickerField } from '@/components/ui/date-picker';
 import { FileDropzone } from '@/components/ui/file-dropzone';
 import { Switch } from '@/components/ui/switch';
 import { useBlockedLeaveDates, useLeaveBalance } from '@/hooks/use-leave';
+import { markedDates, useDayMarkers } from '@/hooks/use-day-markers';
 import { useAttendancePolicy, useHolidayCalendar } from '@/hooks/use-attendance-settings';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
 import { useDateLocale } from '@/hooks/use-date-locale';
@@ -193,6 +194,10 @@ export function CreateLeaveDialog({
     startHour: form.hourly && form.startHour !== '' ? form.startHour : null,
     endHour: form.hourly && form.endHour !== '' ? form.endHour : null,
   });
+  // Leave and OT dates for the same employee. OT wins a date, so those are refused here too —
+  // the server says so as well, this just keeps the picker honest.
+  const markers = useDayMarkers(form.employeeId || null);
+  const blockedDates = [...(blocked.data?.blockedDates ?? []), ...markedDates(markers, ['Overtime', 'OvertimePending'])];
   const quota = balance.data?.quotas.find((q) => q.type === form.type);
 
   const typesReady = !!form.employeeId && !!balance.data;
@@ -303,9 +308,10 @@ export function CreateLeaveDialog({
               start={form.startDate}
               end={form.endDate}
               onChange={(startDate, endDate) => setForm((s) => ({ ...s, startDate, endDate }))}
-              blockedDates={blocked.data?.blockedDates}
+              blockedDates={blockedDates}
               partialDates={blocked.data?.partialDates}
               holidayDates={holidays.dates}
+              markers={markers}
               isDisabled={!form.employeeId}
             />
           </div>

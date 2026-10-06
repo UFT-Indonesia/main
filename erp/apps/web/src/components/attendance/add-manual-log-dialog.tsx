@@ -17,6 +17,7 @@ import { Select } from '@/components/ui/select';
 import { DateTimePickerField } from '@/components/ui/date-picker';
 import { EmployeePicker } from '@/components/employees/employee-picker';
 import { useAttendancePolicy } from '@/hooks/use-attendance-settings';
+import { useDayMarkers } from '@/hooks/use-day-markers';
 import { useBlockedLeaveDates } from '@/hooks/use-leave';
 import { APP_TIME_ZONE } from '@/lib/constants';
 import type { PunchType } from '@/lib/api/types';
@@ -101,6 +102,8 @@ export function AddManualLogDialog({
   // Approved leave for the selected employee, greyed out in the calendar. The device still
   // records punches on those days; this only stops one being invented by hand.
   const blocked = useBlockedLeaveDates(form.employeeId || null);
+  // OT dates are marked, not blocked: correcting a punch on one is legitimate.
+  const markers = useDayMarkers(form.employeeId || null);
 
   const canSubmit = !!form.employeeId && !!form.punchedAtUtc;
 
@@ -133,6 +136,7 @@ export function AddManualLogDialog({
             onChange={(v) => setForm((s) => ({ ...s, punchedAtUtc: v }))}
             timeZone={timeZone}
             blockedDates={blocked.data?.blockedDates}
+            markers={markers}
           />
         </div>
 
