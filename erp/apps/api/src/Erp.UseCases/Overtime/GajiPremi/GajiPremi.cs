@@ -42,6 +42,9 @@ public static class GajiPremiRules
 {
     public static bool IsValidStart(LocalDate start) => start == GajiPremiPeriod.StartOf(start);
 
+    /// <summary>Last day an employee may request a rapel on this period: one month after its payout (GSS08 33c).</summary>
+    public static LocalDate RapelDeadline(LocalDate periodStart) => GajiPremiPeriod.PayoutDate(periodStart).PlusMonths(1);
+
     /// <summary>The first period not yet closed — where a rapel approved now gets paid. Closing is in order, so it follows the latest closed one.</summary>
     internal static async Task<LocalDate> NextPayoutStartAsync(IReadRepository<GajiPremiPeriod> periods, CancellationToken ct) =>
         (await periods.ListAsync(new ClosedPeriodsSpec(), ct)) is { Count: > 0 } closed
@@ -176,7 +179,8 @@ public static class GetMyGajiPremiHandler
             var isClosed = closedStarts.Contains(start);
             return new MyGajiPremiRow(
                 start.ToDateOnly(), end.ToDateOnly(), GajiPremiPeriod.PayoutDate(start).ToDateOnly(), isClosed, !isClosed,
-                d1, h1, d2, h2, overtime, rapelAmount, overtime + rapelAmount, CanRequestRapel: isClosed,
+                d1, h1, d2, h2, overtime, rapelAmount, overtime + rapelAmount,
+                CanRequestRapel: isClosed && DisplayZone.Today(clock) <= GajiPremiRules.RapelDeadline(start),
                 myRapel.Where(r => r.WorkDate >= start && r.WorkDate <= end).Select(r => OvertimeMapper.ToResult(r, r.Employee!)).ToList(),
                 paidLines.Select(r => OvertimeMapper.ToResult(r, r.Employee!)).ToList());
         }).ToList();

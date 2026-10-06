@@ -266,3 +266,13 @@ internal sealed class RapelForPayoutSpec : Specification<Rapel>
         Query.AsNoTracking();
     }
 }
+
+/// <summary>A pending or approved rapel on the assignment: one claim per overtime.</summary>
+internal sealed class LiveRapelForAssignmentSpec : Specification<Rapel>
+{
+    public LiveRapelForAssignmentSpec(OvertimeAssignmentId assignmentId)
+    {
+        Query.Where(r => r.AssignmentId == assignmentId
+            && (r.Status == OvertimeRequestStatus.Pending || r.Status == OvertimeRequestStatus.Approved));
+    }
+}

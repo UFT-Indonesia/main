@@ -26,7 +26,9 @@ public sealed class CloseGajiPremiRequest
 public sealed class ApproveRapelRequest
 {
     public Guid Id { get; init; }
-    public decimal Amount { get; init; }
+
+    /// <summary>Null keeps the suggested amount.</summary>
+    public decimal? Amount { get; init; }
 }
 
 public sealed class RejectRapelRequest
@@ -36,13 +38,14 @@ public sealed class RejectRapelRequest
 }
 
 /// <summary>
-/// Multipart (WA proof required). An employee files a claim and leaves <see cref="Amount"/> empty;
-/// an Owner adds one directly and sets it.
+/// Multipart (WA proof required). A claim on one overtime with the times worked. An employee leaves
+/// <see cref="Amount"/> empty; an Owner adding one directly may set it, or leave it to keep the suggestion.
 /// </summary>
 public sealed class CreateRapelRequest
 {
-    public Guid EmployeeId { get; init; }
-    public DateOnly WorkDate { get; init; }
+    public Guid AssignmentId { get; init; }
+    public TimeOnly From { get; init; }
+    public TimeOnly To { get; init; }
     public string Note { get; init; } = default!;
     public decimal? Amount { get; init; }
     public IFormFile? Attachment { get; init; }
@@ -125,7 +128,7 @@ public sealed class CreateRapelEndpoint(IMessageBus bus, ILeaveAttachmentStorage
 
         var attachment = await AttachmentUpload.SaveAsync(req.Attachment, attachments, ct);
         var result = await bus.InvokeAsync<Result<RapelResult>>(
-            new CreateRapelCommand(req.EmployeeId, req.WorkDate, req.Note, req.Amount, attachment, caller), ct);
+            new CreateRapelCommand(req.AssignmentId, req.From, req.To, req.Note, req.Amount, attachment, caller), ct);
 
         if (attachment is not null && result is not Result<RapelResult>.Success)
         {

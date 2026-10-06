@@ -29,6 +29,11 @@ public sealed class RapelConfiguration : IEntityTypeConfiguration<Rapel>
         builder.Ignore(x => x.DomainEvents);
         builder.Property(x => x.Id).HasConversion(new RapelIdConverter());
         builder.Property(x => x.EmployeeId).HasColumnName("employee_id").HasConversion(new EmployeeIdConverter()).IsRequired();
+        builder.Property(x => x.AssignmentId).HasColumnName("assignment_id").HasConversion(new OvertimeAssignmentIdConverter()).IsRequired();
+        builder.Property(x => x.ClaimedStart).HasColumnName("claimed_start").HasConversion(LocalTimeConverter).HasColumnType("time").IsRequired();
+        builder.Property(x => x.ClaimedEnd).HasColumnName("claimed_end").HasConversion(LocalTimeConverter).HasColumnType("time").IsRequired();
+        builder.Property(x => x.ClaimedHours).HasColumnName("claimed_hours").IsRequired();
+        builder.Property(x => x.SuggestedAmount).HasColumnName("suggested_amount").HasPrecision(18, 2).IsRequired();
         builder.Property(x => x.WorkDate).HasColumnName("work_date").HasConversion(LocalDateConverter).HasColumnType("date").IsRequired();
         builder.Property(x => x.Note).HasColumnName("note").HasMaxLength(LeaveRequest.ReasonMaxLength).IsRequired();
         // Owned, like leave's: a proof has no life apart from the one row it belongs to.
@@ -53,6 +58,10 @@ public sealed class RapelConfiguration : IEntityTypeConfiguration<Rapel>
         builder.HasIndex(x => new { x.EmployeeId, x.Status });
         builder.HasIndex(x => x.PayoutPeriodStart);
 
+        // One claim per overtime — a rejected one frees it for another try.
+        builder.HasIndex(x => x.AssignmentId).IsUnique().HasFilter("status IN ('Pending', 'Approved')");
+
+        builder.HasOne<OvertimeAssignment>().WithMany().HasForeignKey(x => x.AssignmentId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -52,9 +52,14 @@ public sealed record OvertimeCorrectionResult(
 
 public sealed record RapelResult(
     Guid Id,
+    Guid AssignmentId,
     Guid EmployeeId,
     string EmployeeFullName,
     DateOnly WorkDate,
+    TimeOnly ClaimedStart,
+    TimeOnly ClaimedEnd,
+    int ClaimedHours,
+    decimal SuggestedAmount,
     string Note,
     string AttachmentFileName,
     string Status,
@@ -113,7 +118,8 @@ internal static class OvertimeMapper
         c.DecidedByName, c.DecidedAtUtc?.ToDateTimeOffset(), c.DecisionNote, canDecide);
 
     public static RapelResult ToResult(Rapel r, Employee subject) => new(
-        r.Id.Value, r.EmployeeId.Value, subject.FullName, r.WorkDate.ToDateOnly(), r.Note, r.Attachment.FileName,
+        r.Id.Value, r.AssignmentId.Value, r.EmployeeId.Value, subject.FullName, r.WorkDate.ToDateOnly(),
+        r.ClaimedStart.ToTimeOnly(), r.ClaimedEnd.ToTimeOnly(), r.ClaimedHours, r.SuggestedAmount, r.Note, r.Attachment.FileName,
         r.Status.ToString(), r.Amount, r.PayoutPeriodStart?.ToDateOnly(), r.RequestedAtUtc.ToDateTimeOffset(),
         r.DecidedByName, r.DecidedAtUtc?.ToDateTimeOffset(), r.DecisionNote);
 }

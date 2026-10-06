@@ -1,3 +1,4 @@
+using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Aggregates.Overtime;
@@ -9,18 +10,22 @@ using Erp.UseCases.Common;
 using Erp.UseCases.Leave.GetLeaveAttachment;
 using Erp.UseCases.Overtime.Common;
 using Erp.UseCases.Overtime.GajiPremi;
+using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Erp.UseCases.Overtime.Rapels;
 
 /// <summary>
-/// An employee asks (<paramref name="Amount"/> must be null — they never name the figure); an
-/// Owner adds one directly and must say the amount, which approves it on the spot.
+/// A claim on one approved assignment of a closed period. <paramref name="From"/>/<paramref name="To"/>
+/// are the times worked (before 05:00 means the next morning). An employee leaves
+/// <paramref name="Amount"/> null — they never name the figure; an Owner adding one directly may
+/// set it, or leave it null to keep the suggested amount, and it is approved on the spot.
 /// </summary>
 public sealed record CreateRapelCommand(
-    Guid EmployeeId, DateOnly WorkDate, string Note, decimal? Amount, LeaveAttachment? Attachment, Caller Caller);
+    Guid AssignmentId, TimeOnly From, TimeOnly To, string Note, decimal? Amount, LeaveAttachment? Attachment, Caller Caller);
 
-public sealed record ApproveRapelCommand(Guid Id, decimal Amount, Caller Caller);
+/// <summary>Null <paramref name="Amount"/> keeps the suggested figure.</summary>
+public sealed record ApproveRapelCommand(Guid Id, decimal? Amount, Caller Caller);
 
 public sealed record RejectRapelCommand(Guid Id, string? Note, Caller Caller);
 
@@ -30,16 +35,18 @@ public static class CreateRapelHandler
 {
     public static async Task<Result<RapelResult>> Handle(
         CreateRapelCommand command,
-        IReadRepository<Employee> employees,
+        IReadRepository<OvertimeAssignment> assignments,
         IRepository<Core.Aggregates.Overtime.Rapel> rapels,
         IReadRepository<GajiPremiPeriod> periods,
+        AttendanceDayPolicy policy,
+        IOptions<OvertimeOptions> options,
         IClock clock,
         CancellationToken ct)
     {
-        var employee = await employees.GetByIdAsync(new EmployeeId(command.EmployeeId), ct);
-        if (employee is null)
+        var assignment = await assignments.FirstOrDefaultAsync(new OvertimeByIdSpec(new OvertimeAssignmentId(command.AssignmentId)), ct);
+        if (assignment?.Employee is not { } employee)
         {
-            return new Result<RapelResult>.NotFound("Employee was not found.");
+            return new Result<RapelResult>.NotFound("Overtime was not found.");
         }
 
         var isOwner = command.Caller.Role == EmployeeRole.Owner;
@@ -48,21 +55,32 @@ public static class CreateRapelHandler
             return new Result<RapelResult>.Error(ResultErrors.Forbidden, "You cannot file a rapel for this employee.");
         }
 
-        var workDate = LocalDate.FromDateOnly(command.WorkDate);
-        if (!await periods.AnyAsync(new ClosedPeriodByStartSpec(GajiPremiPeriod.StartOf(workDate)), ct))
+        if (!assignment.IsFrozen)
         {
             return new Result<RapelResult>.Error(
                 "rapel.period_open", "Only a closed period can be claimed. Use an overtime correction while it is still open.");
         }
 
+        // The Owner's own add is the route for anything later (GSS08 33c).
+        var today = DisplayZone.Today(clock);
+        if (!isOwner && today > GajiPremiRules.RapelDeadline(GajiPremiPeriod.StartOf(assignment.Date)))
+        {
+            return new Result<RapelResult>.Error(
+                "rapel.deadline_passed", "The deadline to request a rapel for this period has passed. Contact the Owner.");
+        }
+
+        if (await rapels.AnyAsync(new LiveRapelForAssignmentSpec(assignment.Id), ct))
+        {
+            return new Result<RapelResult>.Error("rapel.duplicate", "This overtime already has a rapel.");
+        }
+
         var now = clock.GetCurrentInstant();
         var rapel = Core.Aggregates.Overtime.Rapel.Create(
-            employee.Id, workDate, command.Note, command.Attachment, command.Caller.UserId, now);
+            assignment, LocalTime.FromTimeOnly(command.From), LocalTime.FromTimeOnly(command.To), command.Note,
+            command.Attachment, policy, options.Value.Tiers, command.Caller.UserId, now);
         if (isOwner)
         {
-            rapel.Approve(
-                command.Amount ?? throw new DomainException("rapel.amount", "An Owner adding a rapel must set the amount."),
-                await GajiPremiRules.NextPayoutStartAsync(periods, ct), command.Caller.UserId, command.Caller.Name, now);
+            rapel.Approve(command.Amount, await GajiPremiRules.NextPayoutStartAsync(periods, ct), command.Caller.UserId, command.Caller.Name, now);
         }
 
         await rapels.AddAsync(rapel, ct);

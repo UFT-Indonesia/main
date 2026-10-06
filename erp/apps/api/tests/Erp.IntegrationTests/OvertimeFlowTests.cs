@@ -4,7 +4,10 @@ using System.Net.Http.Json;
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
 namespace Erp.IntegrationTests;
@@ -36,7 +39,7 @@ public class OvertimeFlowTests : IntegrationTestBase
 
     private sealed record MyRow(string Start, bool Closed, bool CanRequestRapel, decimal Total, RapelItem[] RapelPaid);
 
-    private sealed record RapelItem(Guid Id, string Status, decimal? Amount);
+    private sealed record RapelItem(Guid Id, string Status, decimal? Amount, int ClaimedHours, decimal SuggestedAmount);
 
     private async Task<(Employee Owner, Employee Manager, Employee Staff, Employee Foreign)> TeamAsync()
     {
@@ -184,6 +187,9 @@ public class OvertimeFlowTests : IntegrationTestBase
         await OkAsync(await ownerClient.PostAsJsonAsync("/api/overtime/", Weekday(staff.Id.Value)));
         await PunchAsync(staff, $"{WorkDate} 18:31", PunchType.In);
         await PunchAsync(staff, $"{WorkDate} 21:35", PunchType.Out);
+        // A second evening with the tap-out never recorded: it closes at Rp0 and comes back as a rapel.
+        var forgotten = await OkAsync(await ownerClient.PostAsJsonAsync("/api/overtime/", Weekday(staff.Id.Value, date: "2026-07-14")));
+        await PunchAsync(staff, "2026-07-14 18:31", PunchType.In);
 
         var open = await (await ownerClient.GetAsync("/api/payroll/gaji-premi?periodStart=2026-07-01")).Content.ReadFromJsonAsync<Period>();
         open!.Closed.Should().BeFalse();
@@ -201,34 +207,95 @@ public class OvertimeFlowTests : IntegrationTestBase
         (await ownerClient.PostAsJsonAsync("/api/overtime/", Weekday(staff.Id.Value, date: "2026-07-08")))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        // The employee claims a late day through their own table; the Owner sets the amount.
-        using var form = new MultipartFormDataContent
+        // The request deadline runs a month past the Sep 15 payout, so pin "today" inside it.
+        await using var host = Pinned(SeptemberTwentieth);
+        var (staffAt, ownerAt) = (As(host, staffClient), As(host, ownerClient));
+
+        // The employee claims the forgotten evening with the times worked; the system suggests the amount.
+        var request = await staffAt.PostAsync("/api/overtime/rapel", RapelForm(forgotten.Id, "18:30", "21:30"));
+        request.StatusCode.Should().Be(HttpStatusCode.OK, await request.Content.ReadAsStringAsync());
+        var rapel = (await request.Content.ReadFromJsonAsync<RapelItem>())!;
+        rapel.Should().Match<RapelItem>(r => r.Status == "Pending" && r.ClaimedHours == 3 && r.SuggestedAmount == 25_000);
+
+        (await staffAt.PostAsync("/api/overtime/rapel", RapelForm(forgotten.Id, "18:30", "21:30")))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "one rapel per overtime");
+
+        (await staffAt.PostAsJsonAsync($"/api/payroll/rapel/{rapel.Id}/approve", new { amount = 50_000 }))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var approved = await ownerAt.PostAsJsonAsync($"/api/payroll/rapel/{rapel.Id}/approve", new { });
+        approved.StatusCode.Should().Be(HttpStatusCode.OK, await approved.Content.ReadAsStringAsync());
+        (await approved.Content.ReadFromJsonAsync<RapelItem>())!.Amount.Should().Be(25_000, "no amount keeps the suggestion");
+
+        var mine = await (await staffAt.GetAsync("/api/overtime/gaji-premi/me")).Content.ReadFromJsonAsync<MyRow[]>();
+        mine!.Single(r => r.Start == "2026-07-01").Should().Match<MyRow>(r => r.Closed && r.CanRequestRapel && r.Total == 25_000);
+        var payout = mine!.Single(r => r.Start == "2026-09-01");
+        payout.Total.Should().Be(25_000);
+        payout.RapelPaid.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task A_rapel_request_after_the_deadline_is_refused_but_the_owner_can_still_add_one()
+    {
+        var (owner, _, staff, _) = await TeamAsync();
+        var ownerClient = await CreateClientForAsync(owner);
+        var forgotten = await OkAsync(await ownerClient.PostAsJsonAsync("/api/overtime/", Weekday(staff.Id.Value)));
+        await PunchAsync(staff, $"{WorkDate} 18:31", PunchType.In);
+        (await ownerClient.PostAsJsonAsync("/api/payroll/gaji-premi/close", new { periodStart = "2026-07-01" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Payout Sep 15 → requests close Oct 15.
+        await using var host = Pinned(Clock(2026, 10, 16));
+        var (staffAt, ownerAt) = (As(host, await CreateClientForAsync(staff)), As(host, ownerClient));
+
+        var late = await staffAt.PostAsync("/api/overtime/rapel", RapelForm(forgotten.Id, "18:30", "21:30"));
+        late.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await late.Content.ReadAsStringAsync()).Should().Contain("rapel.deadline_passed");
+
+        var mine = await (await staffAt.GetAsync("/api/overtime/gaji-premi/me")).Content.ReadFromJsonAsync<MyRow[]>();
+        mine!.Single(r => r.Start == "2026-07-01").Should().Match<MyRow>(r => r.Closed && !r.CanRequestRapel);
+
+        var added = await ownerAt.PostAsync("/api/overtime/rapel", RapelForm(forgotten.Id, "18:30", "21:30"));
+        added.StatusCode.Should().Be(HttpStatusCode.OK, await added.Content.ReadAsStringAsync());
+        (await added.Content.ReadFromJsonAsync<RapelItem>())!.Should().Match<RapelItem>(r => r.Status == "Approved" && r.Amount == 25_000);
+    }
+
+    private static readonly Action<IServiceCollection> SeptemberTwentieth = Clock(2026, 9, 20);
+
+    /// <summary>A second host over the same database with the clock swapped; the caller disposes it.</summary>
+    private WebApplicationFactory<Program> Pinned(Action<IServiceCollection> clock) =>
+        Factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(clock));
+
+    /// <summary>A client on <paramref name="host"/> carrying the token of one from the shared host — both sign with the same test key.</summary>
+    private static HttpClient As(WebApplicationFactory<Program> host, HttpClient signedIn)
+    {
+        var client = host.CreateClient();
+        client.DefaultRequestHeaders.Authorization = signedIn.DefaultRequestHeaders.Authorization;
+        return client;
+    }
+
+    /// <summary>Pins the host's "today" (10:00 Jakarta) for deadline checks; tokens and HMAC stay on real time.</summary>
+    private static Action<IServiceCollection> Clock(int year, int month, int day) =>
+        services => services.AddSingleton<IClock>(new FixedClock(Instant.FromUtc(year, month, day, 3, 0)));
+
+    private sealed class FixedClock(Instant now) : IClock
+    {
+        public Instant GetCurrentInstant() => now;
+    }
+
+    private static MultipartFormDataContent RapelForm(Guid assignmentId, string from, string to)
+    {
+        var form = new MultipartFormDataContent
         {
-            { new StringContent(staff.Id.Value.ToString()), "EmployeeId" },
-            { new StringContent("2026-07-14"), "WorkDate" },
-            { new StringContent("lembur lupa dicatat"), "Note" },
+            { new StringContent(assignmentId.ToString()), "AssignmentId" },
+            { new StringContent(from), "From" },
+            { new StringContent(to), "To" },
+            { new StringContent("lupa tap out, ada chat WA"), "Note" },
         };
         var proof = new ByteArrayContent(Png);
         proof.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         form.Add(proof, "Attachment", "wa.png");
-        var request = await staffClient.PostAsync("/api/overtime/rapel", form);
-        request.StatusCode.Should().Be(HttpStatusCode.OK, await request.Content.ReadAsStringAsync());
-        var rapel = (await request.Content.ReadFromJsonAsync<RapelItem>())!;
-        rapel.Status.Should().Be("Pending");
-
-        (await staffClient.PostAsJsonAsync($"/api/payroll/rapel/{rapel.Id}/approve", new { amount = 50_000 }))
-            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await ownerClient.PostAsJsonAsync($"/api/payroll/rapel/{rapel.Id}/approve", new { amount = 50_000 }))
-            .StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var mine = await (await staffClient.GetAsync("/api/overtime/gaji-premi/me")).Content.ReadFromJsonAsync<MyRow[]>();
-        mine!.Single(r => r.Start == "2026-07-01").Should().Match<MyRow>(r => r.Closed && r.CanRequestRapel && r.Total == 25_000);
-        var payout = mine!.Single(r => r.Start == "2026-09-01");
-        payout.Total.Should().Be(50_000);
-        payout.RapelPaid.Should().ContainSingle();
+        return form;
     }
-
-
 
     [Fact]
     public async Task Day_markers_flag_overtime_and_leave_dates_as_bare_kinds_and_the_calendar_shows_the_overtime()
