@@ -221,8 +221,10 @@ internal static class OvertimeCorrectionRules
 
     /// <summary>
     /// Null when the punch can be written: the assignment is approved and open, the punch is
-    /// really missing (a tap-in needs none, a tap-out needs exactly the tap-in), and the instant
-    /// falls inside the window — after the tap-in for a tap-out.
+    /// missing or cut short (a tap-in needs none; a tap-out needs the tap-in and, if a tap-out
+    /// exists, one that left early: before the assigned end, beyond grace — GSS08 29a), and the instant falls inside the
+    /// window, after the last owned punch for a tap-out. The new Out becomes the last punch, so
+    /// it is the tap-out; the stray early one stays in the log.
     /// </summary>
     internal static (string Code, string Message)? Check(
         OvertimeAssignment a, OvertimeCorrectionKind kind, Instant at, IReadOnlyList<AttendanceLog> owned,
@@ -233,19 +235,22 @@ internal static class OvertimeCorrectionRules
             return ("overtime_correction.not_open", "Only an approved overtime in an open period can be corrected.");
         }
 
-        if (!(kind == OvertimeCorrectionKind.TapIn ? owned.Count == 0 : owned.Count == 1))
+        var end = a.EndAt(policy.TimeZone);
+        if (!(kind == OvertimeCorrectionKind.TapIn
+                ? owned.Count == 0
+                : owned.Count == 1 || (owned.Count > 1 && owned[^1].PunchedAtUtc < end.Minus(Duration.FromMinutes(policy.ClockOutGraceMinutes)))))
         {
             return ("overtime_correction.not_missing",
                 $"This overtime is not missing its {(kind == OvertimeCorrectionKind.TapIn ? "tap-in" : "tap-out")}.");
         }
 
-        if (at < a.StartAt(policy.TimeZone) || at > a.EndAt(policy.TimeZone))
+        if (at < a.StartAt(policy.TimeZone) || at > end)
         {
             return ("overtime_correction.outside_window", "The time must fall inside the assigned window.");
         }
 
-        return kind == OvertimeCorrectionKind.TapOut && at <= owned[0].PunchedAtUtc
-            ? ("overtime_correction.before_tap_in", "The tap-out must be after the tap-in.")
+        return kind == OvertimeCorrectionKind.TapOut && at <= owned[^1].PunchedAtUtc
+            ? ("overtime_correction.before_tap_in", "The tap-out must be after the last recorded punch.")
             : null;
     }
 }

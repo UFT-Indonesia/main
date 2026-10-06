@@ -269,6 +269,24 @@ public class OvertimeHandlersTests
     }
 
     [Fact]
+    public async Task A_tap_out_correction_is_allowed_after_an_early_tap_out_and_the_new_punch_becomes_the_tap_out()
+    {
+        var (request, _) = FiledTapOutCorrection();
+        var logWriter = Substitute.For<IRepository<AttendanceLog>>();
+        _logs.ListAsync(Arg.Any<ISpecification<AttendanceLog>>(), Arg.Any<CancellationToken>()).Returns(new List<AttendanceLog>
+        {
+            AttendanceLog.Manual(_staff.Id, Instant.FromUtc(2026, 10, 6, 11, 31), PunchType.In, Guid.NewGuid()),
+            AttendanceLog.Manual(_staff.Id, Instant.FromUtc(2026, 10, 6, 13, 15), PunchType.Out, Guid.NewGuid()), // 20:15, by mistake
+        });
+
+        (await DecideCorrectionAsync(request, _manager, approve: true, logWriter))
+            .Should().BeOfType<Result<OvertimeCorrectionResult>.Success>();
+        await logWriter.Received(1).AddAsync(
+            Arg.Is<AttendanceLog>(l => l.PunchType == PunchType.Out && l.PunchedAtUtc == Instant.FromUtc(2026, 10, 6, 14, 30)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task A_correction_is_refused_when_the_punch_is_not_actually_missing_or_outside_the_window()
     {
         var (request, _) = FiledTapOutCorrection();

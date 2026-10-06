@@ -103,7 +103,7 @@ internal static class OvertimeMapper
             a.IsFrozen,
             CanDecide: a.Status == OvertimeStatus.Pending && !a.IsFrozen && OvertimeRules.CanDecide(caller),
             CanManage: editable && OvertimeRules.CanAssign(caller, subject),
-            CanFileCorrection: a.Status == OvertimeStatus.Approved && !a.IsFrozen && e.Count.Incomplete
+            CanFileCorrection: a.Status == OvertimeStatus.Approved && !a.IsFrozen && (e.Count.Incomplete || e.Count.LeftEarly)
                 && OrgScope.IsSelf(caller, subject));
     }
 
