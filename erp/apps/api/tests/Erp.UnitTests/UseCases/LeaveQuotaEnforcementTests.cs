@@ -105,7 +105,7 @@ public class LeaveQuotaEnforcementTests
                 subject.Id.Value, type.ToString(), start, end, "alasan", AttachmentFor(type),
                 HalfDayPeriod: null, StartHour: null, EndHour: null, HalfDay: false,
                 Caller: caller ?? _managerCaller),
-            _employees, _leaveRequests, _policy, _clock, _bus, CancellationToken.None);
+            _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
     [Fact]
     public async Task Unpaid_is_rejected_for_a_confirmed_employee()

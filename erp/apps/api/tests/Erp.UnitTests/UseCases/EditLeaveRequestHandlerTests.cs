@@ -108,7 +108,7 @@ public class EditLeaveRequestHandlerTests
                 StartHour: null,
                 EndHour: null,
                 caller),
-            _leaveRequests, _employees, _attendanceDays, TestPolicies.Standard,
+            _leaveRequests, _employees, _attendanceDays, TestOvertime.None(), TestPolicies.Standard,
             _leaveRequestsRead, _clock, CancellationToken.None);
 
     // ---- authority --------------------------------------------------------
