@@ -28,7 +28,9 @@
     "accounts": "Akun",
     "attendanceDevices": "Perangkat presensi",
     "employeeAuditLog": "Log Aktivitas",
-    "probation": "Probation"
+    "probation": "Probation",
+    "overtime": "Lembur",
+    "gajiPremi": "Gaji Premi"
   },
   "home": {
     "title": "Selamat datang",
@@ -218,7 +220,8 @@
       "ClockedIn": "Sudah Masuk",
       "NotInYet": "Belum Masuk",
       "Upcoming": "Belum Berlangsung",
-      "WorkedOnDayOff": "Masuk Di Hari Libur"
+      "WorkedOnDayOff": "Masuk Di Hari Libur",
+      "Overtime": "Lembur"
     },
     "holidayKind": {
       "National": "Libur Nasional",
@@ -278,7 +281,12 @@
       "clockedIn": "{count} sudah masuk",
       "notInYet": "{count} belum masuk",
       "inProgress": "Sedang berlangsung",
-      "nothingYet": "—"
+      "nothingYet": "—",
+      "overtime": "{count} lembur"
+    },
+    "overtime": {
+      "badge": "Lembur {start}–{end}{next} · {status, select, Approved {{hours} jam terhitung} Pending {menunggu persetujuan} other {{status}}}",
+      "incomplete": "Absen Kurang"
     }
   },
   "attendanceSettings": {
@@ -733,5 +741,221 @@
       "gt": "lebih dari",
       "lt": "kurang dari"
     }
+  },
+  "overtime": {
+    "title": "Lembur",
+    "subtitle": "Penugasan lembur, koreksi absen yang terlewat, dan Gaji Premi Anda.",
+    "month": "Bulan",
+    "allMonths": "Semua Bulan",
+    "empty": "Belum ada penugasan lembur.",
+    "dayOff": "Hari Libur",
+    "weekday": "Hari Kerja",
+    "assignedUntil": "ditugaskan sampai {end}",
+    "pagination": "{from}–{to} dari {total}",
+    "note": "Catatan",
+    "notePlaceholder": "Catatan (opsional)",
+    "proofHint": "PDF, JPG atau PNG · maks 10MB",
+    "proofError": "Gagal mengunduh bukti",
+    "tabs": {
+      "assignments": "Penugasan Lembur",
+      "corrections": "Koreksi",
+      "mine": "Gaji Premi Saya"
+    },
+    "columns": {
+      "employee": "Karyawan",
+      "date": "Tanggal",
+      "window": "Jam Lembur",
+      "punches": "Tap-In / Tap-Out Lembur",
+      "hours": "Jam Terhitung",
+      "pay": "Bayaran",
+      "status": "Status"
+    },
+    "status": {
+      "Pending": "Menunggu",
+      "Approved": "Disetujui",
+      "Rejected": "Ditolak",
+      "Cancelled": "Dibatalkan",
+      "Expired": "Kedaluwarsa"
+    },
+    "flags": {
+      "incomplete": "Tidak Lengkap",
+      "late": "Terlambat",
+      "leftEarly": "Pulang Awal"
+    },
+    "create": {
+      "button": "Tugaskan Lembur",
+      "title": "Tugaskan Lembur",
+      "description": "Buat penugasan lembur untuk karyawan. Penugasan dari Manajer menunggu persetujuan Owner.",
+      "employee": "Karyawan",
+      "employeePlaceholder": "Pilih karyawan...",
+      "date": "Tanggal",
+      "weekdayHint": "Hari kerja: lembur selalu mulai pukul 18:30.",
+      "dayOffHint": "Hari libur: pilih jam mulai; istirahat 12:00–13:00 dipotong hanya jika satu jam penuh itu dikerjakan.",
+      "start": "Mulai",
+      "end": "Selesai",
+      "windowHint": "Lembur melewati tengah malam dihitung pada tanggal mulainya dan harus selesai paling lambat pukul 05:00.",
+      "confirm": "Tugaskan Lembur",
+      "successTitle": "Penugasan lembur dibuat",
+      "successPending": "Menunggu persetujuan Owner.",
+      "successApproved": "Disetujui.",
+      "errorTitle": "Gagal membuat penugasan lembur"
+    },
+    "edit": {
+      "title": "Ubah Jam Selesai",
+      "description": "Ubah jam selesai lembur {employee} (mulai {start}). Tanggal tidak bisa diubah — batalkan lalu tugaskan lagi.",
+      "hint": "Jika sudah ada absen, jam selesai hanya bisa diperpanjang. Perubahan oleh Manajer kembali ke Owner.",
+      "confirm": "Simpan",
+      "successTitle": "Penugasan lembur diperbarui",
+      "successPending": "Menunggu persetujuan Owner.",
+      "errorTitle": "Gagal memperbarui penugasan lembur"
+    },
+    "decide": {
+      "approve": {
+        "title": "Setujui Penugasan Lembur",
+        "description": "Setujui lembur {employee} pada {date}?",
+        "confirm": "Setujui",
+        "successTitle": "Penugasan lembur disetujui",
+        "errorTitle": "Gagal menyetujui"
+      },
+      "reject": {
+        "title": "Tolak Penugasan Lembur",
+        "description": "Tolak lembur {employee} pada {date}? Absen mereka kembali ke hari kerja biasa.",
+        "confirm": "Tolak",
+        "successTitle": "Penugasan lembur ditolak",
+        "errorTitle": "Gagal menolak"
+      },
+      "cancel": {
+        "title": "Batalkan Penugasan Lembur",
+        "description": "Batalkan lembur {employee} pada {date}? Tidak bisa jika sudah ada absen.",
+        "confirm": "Batalkan Lembur",
+        "successTitle": "Penugasan lembur dibatalkan",
+        "errorTitle": "Gagal membatalkan"
+      }
+    },
+    "correction": {
+      "button": "Ajukan Koreksi",
+      "title": "Ajukan Koreksi Absen",
+      "description": "{kind} lembur ini belum tercatat (ditugaskan {start}–{end}). Ajukan agar dicatat, lengkap dengan bukti.",
+      "kind": {
+        "TapIn": "Tap-In Lembur",
+        "TapOut": "Tap-Out Lembur"
+      },
+      "time": "Jam {kind}",
+      "timeHint": "Harus berada di dalam jam penugasan, paling lambat {end}.",
+      "reason": "Alasan",
+      "reasonPlaceholder": "Mengapa absen tidak tercatat",
+      "proof": "Bukti",
+      "confirm": "Kirim Pengajuan",
+      "successTitle": "Koreksi diajukan",
+      "successDescription": "Manajer atau Owner akan memutuskannya.",
+      "errorTitle": "Gagal mengajukan koreksi"
+    },
+    "corrections": {
+      "empty": "Belum ada pengajuan koreksi.",
+      "columns": {
+        "punch": "Absen",
+        "reason": "Alasan",
+        "proof": "Bukti"
+      },
+      "decide": {
+        "approve": {
+          "title": "Setujui Koreksi",
+          "description": "Catat {kind} {employee} pukul {time}?",
+          "confirm": "Setujui",
+          "successTitle": "Koreksi disetujui",
+          "errorTitle": "Gagal menyetujui"
+        },
+        "reject": {
+          "title": "Tolak Koreksi",
+          "description": "Tolak koreksi {kind} {employee} pukul {time}?",
+          "confirm": "Tolak",
+          "successTitle": "Koreksi ditolak",
+          "errorTitle": "Gagal menolak"
+        }
+      }
+    },
+    "mine": {
+      "empty": "Belum ada bayaran lembur.",
+      "estimate": "Perkiraan, belum final",
+      "columns": {
+        "period": "Periode",
+        "payout": "Tanggal Pembayaran",
+        "hours": "Jam Terhitung",
+        "rapel": "Rapel",
+        "total": "Total"
+      },
+      "hoursUnit": "jam",
+      "daysUnit": "hari",
+      "rapelLine": "Rapel · Lembur {date}",
+      "rapelClaim": "Klaim · Lembur {date}"
+    },
+    "rapel": {
+      "requestButton": "Ajukan Rapel",
+      "requestTitle": "Ajukan Rapel",
+      "requestDescription": "Klaim lembur yang terlewat di periode yang sudah ditutup. Hanya Owner yang memutuskan dan menentukan nominalnya.",
+      "addTitle": "Tambah Rapel",
+      "addDescription": "Tambahkan rapel untuk periode yang sudah ditutup. Dibayar pada pembayaran berikutnya.",
+      "workDate": "Tanggal Kerja",
+      "outsidePeriod": "Tanggal berada di luar periode ini.",
+      "note": "Catatan",
+      "notePlaceholder": "Apa yang dikerjakan",
+      "amount": "Nominal (Rp)",
+      "proof": "Bukti WA",
+      "requestConfirm": "Kirim Pengajuan",
+      "addConfirm": "Tambah Rapel",
+      "approveTitle": "Setujui Rapel",
+      "approveDescription": "Tentukan nominal yang dibayarkan kepada {employee} pada pembayaran berikutnya.",
+      "approveConfirm": "Setujui",
+      "rejectTitle": "Tolak Rapel",
+      "rejectDescription": "Tolak klaim rapel {employee}?",
+      "rejectConfirm": "Tolak",
+      "successTitle": "Rapel diajukan",
+      "successDescription": "Owner akan memutuskannya.",
+      "errorTitle": "Rapel gagal",
+      "addedTitle": "Rapel ditambahkan",
+      "approvedTitle": "Rapel disetujui",
+      "rejectedTitle": "Rapel ditolak"
+    }
+  },
+  "gajiPremi": {
+    "title": "Gaji Premi",
+    "subtitle": "Bayaran lembur per periode dua bulan.",
+    "period": "Periode",
+    "addRapel": "Tambah Rapel",
+    "cannotClose": "Periode baru bisa ditutup setelah berakhir, dan setelah periode sebelumnya ditutup.",
+    "close": {
+      "button": "Tutup Periode",
+      "title": "Tutup Periode Ini?",
+      "description": "{period} akan dibekukan: jam terhitung dan bayaran dikunci, penugasan lembur dan koreksi yang belum diputuskan kedaluwarsa, dan tidak ada lagi yang bisa ditambahkan di periode ini kecuali lewat rapel. Tidak bisa dibatalkan.",
+      "confirm": "Tutup Periode",
+      "successTitle": "Periode ditutup",
+      "successDescription": "Jam terhitung dan bayaran kini dibekukan.",
+      "errorTitle": "Gagal menutup periode"
+    },
+    "closed": "Ditutup",
+    "open": "Terbuka",
+    "payout": "Dibayar {date}",
+    "closedBy": "Ditutup oleh {name}",
+    "estimate": "Perkiraan, belum final",
+    "total": "Total",
+    "empty": "Belum ada lembur di periode ini.",
+    "pendingRapel": "Pengajuan Rapel",
+    "columns": {
+      "employee": "Karyawan",
+      "days": "Hari Lembur ({month})",
+      "hours": "Jam ({month})",
+      "rapel": "Rapel",
+      "total": "Total"
+    },
+    "detail": {
+      "description": "Per hari: jam penugasan, absen, jam terhitung, bayaran dan status."
+    }
+  },
+  "calendarMarkers": {
+    "holiday": "Libur",
+    "Leave": "Cuti",
+    "LeavePending": "Cuti (Menunggu)",
+    "Overtime": "Lembur",
+    "OvertimePending": "Lembur (Menunggu)"
   }
 }

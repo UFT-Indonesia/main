@@ -233,7 +233,9 @@ export type AttendanceDayStatus =
   /** A date after today. Nothing has happened, so nothing is claimed. */
   | 'Upcoming'
   /** Punched on a weekend or holiday. No shift to complete, so reported, never judged. */
-  | 'WorkedOnDayOff';
+  | 'WorkedOnDayOff'
+  /** A day off whose only punches belong to an OT assignment. See the overtime* fields. */
+  | 'Overtime';
 
 export interface AttendanceDayListItem {
   employeeId: string;
@@ -256,6 +258,15 @@ export interface AttendanceDayListItem {
   /** Set together — the id GET /api/leave/{id}/attachment takes, and the file it returns. */
   leaveRequestId: string | null;
   leaveAttachmentFileName: string | null;
+  /** The OT assignment on this date; null when none. Never carries pay. */
+  overtimeStatus: OvertimeStatus | null;
+  overtimeStart: string | null;
+  overtimeEnd: string | null;
+  overtimeEndsNextDay: boolean;
+  /** Counted hours; zero until the OT is Approved. */
+  overtimeHours: number | null;
+  /** Approved but missing its OT tap-in or tap-out. */
+  overtimeIncomplete: boolean;
   /** Server-computed: whether the caller may alter this employee's records. */
   canWrite: boolean;
 }
@@ -568,4 +579,182 @@ export interface UpdateAttendancePolicyBody {
   clockOutGraceMinutes: number;
   timeZoneId: string;
   maxIzinHours: number;
+}
+
+// ---------------------------------------------------------------------------
+// Overtime (Lembur) and Gaji Premi
+// ---------------------------------------------------------------------------
+
+export type OvertimeStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled' | 'Expired';
+
+/** Lifecycle shared by correction requests and rapel. */
+export type OvertimeRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Expired';
+
+export type OvertimeCorrectionKind = 'TapIn' | 'TapOut';
+
+/** One employee's overtime on one date. Times are "HH:mm:ss"; `endsNextDay` when the window runs past midnight. */
+export interface OvertimeAssignment {
+  id: string;
+  employeeId: string;
+  employeeFullName: string;
+  /** "YYYY-MM-DD" — the start date; a window past midnight still counts here. */
+  date: string;
+  startTime: string;
+  endTime: string;
+  endsNextDay: boolean;
+  isDayOff: boolean;
+  status: OvertimeStatus;
+  decidedByName: string | null;
+  decidedAtUtc: string | null;
+  decisionNote: string | null;
+  tapInUtc: string | null;
+  tapOutUtc: string | null;
+  /** Counted whole hours that pay; zero unless Approved. */
+  hours: number;
+  late: boolean;
+  leftEarly: boolean;
+  /** No OT tap-in or tap-out: pays nothing until a correction is approved. */
+  incomplete: boolean;
+  /** Null when the caller may not see pay — a Manager. */
+  amount: number | null;
+  isFrozen: boolean;
+  canDecide: boolean;
+  canManage: boolean;
+  canFileCorrection: boolean;
+}
+
+export interface ListOvertimeParams {
+  page?: number;
+  pageSize?: number;
+  /** "YYYY-MM-DD", inclusive. */
+  from?: string;
+  to?: string;
+  employeeId?: string;
+  status?: OvertimeStatus;
+}
+
+export interface ListOvertimeResponse {
+  items: OvertimeAssignment[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface CreateOvertimeBody {
+  employeeId: string;
+  date: string;
+  /** Required on a day off; a weekday always starts at 18:30. */
+  startTime?: string | null;
+  endTime: string;
+}
+
+export interface OvertimeCorrection {
+  id: string;
+  assignmentId: string;
+  employeeId: string;
+  employeeFullName: string;
+  workDate: string;
+  kind: OvertimeCorrectionKind;
+  punchedAtUtc: string;
+  reason: string;
+  attachmentFileName: string;
+  status: OvertimeRequestStatus;
+  requestedAtUtc: string;
+  decidedByName: string | null;
+  decidedAtUtc: string | null;
+  decisionNote: string | null;
+  canDecide: boolean;
+}
+
+export interface CreateOvertimeCorrectionBody {
+  assignmentId: string;
+  kind: OvertimeCorrectionKind;
+  /** "HH:mm" — before 05:00 means the small hours after the work date. */
+  time: string;
+  reason: string;
+  attachment: File;
+}
+
+export interface Rapel {
+  id: string;
+  employeeId: string;
+  employeeFullName: string;
+  workDate: string;
+  note: string;
+  attachmentFileName: string;
+  status: OvertimeRequestStatus;
+  amount: number | null;
+  payoutPeriodStart: string | null;
+  requestedAtUtc: string;
+  decidedByName: string | null;
+  decidedAtUtc: string | null;
+  decisionNote: string | null;
+}
+
+export interface CreateRapelBody {
+  employeeId: string;
+  workDate: string;
+  note: string;
+  attachment: File;
+  /** Owner only: sets the figure and approves on the spot. */
+  amount?: number | null;
+}
+
+/** One row of "Gaji Premi Saya": an employee's own OT disbursement for one period. */
+export interface MyGajiPremiRow {
+  start: string;
+  end: string;
+  payoutDate: string;
+  closed: boolean;
+  /** The open period — its figures still move. */
+  estimate: boolean;
+  days1: number;
+  hours1: number;
+  days2: number;
+  hours2: number;
+  overtimeAmount: number;
+  rapelAmount: number;
+  total: number;
+  canRequestRapel: boolean;
+  /** Claims about this period's work, any status. */
+  rapelClaims: Rapel[];
+  /** Lines this period's payout carries. */
+  rapelPaid: Rapel[];
+}
+
+export interface GajiPremiEmployeeRow {
+  employeeId: string;
+  fullName: string;
+  days1: number;
+  hours1: number;
+  days2: number;
+  hours2: number;
+  overtimeAmount: number;
+  rapelAmount: number;
+  total: number;
+}
+
+export interface GajiPremiPeriod {
+  start: string;
+  end: string;
+  payoutDate: string;
+  closed: boolean;
+  closedAtUtc: string | null;
+  closedByName: string | null;
+  canClose: boolean;
+  total: number;
+  rows: GajiPremiEmployeeRow[];
+  /** Approved lines this payout carries. */
+  rapel: Rapel[];
+  /** Every undecided claim, whatever period it is about. */
+  pendingRapel: Rapel[];
+}
+
+/** What a date picker marks on an employee's date. Generic on purpose: no type, reason or hours. */
+export type DayMarkerKind = 'Leave' | 'LeavePending' | 'Overtime' | 'OvertimePending';
+
+export interface DayMarker {
+  /** "YYYY-MM-DD". */
+  date: string;
+  kind: DayMarkerKind;
 }

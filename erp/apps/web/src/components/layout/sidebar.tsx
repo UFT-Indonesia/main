@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound, Cpu, History, UserCheck } from 'lucide-react';
+import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound, Cpu, History, UserCheck, Timer, Wallet } from 'lucide-react';
 import type { Route } from 'next';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/lib/constants';
@@ -18,6 +18,8 @@ interface NavItem {
     | 'attendanceSettings'
     | 'attendanceDevices'
     | 'leave'
+    | 'overtime'
+    | 'gajiPremi'
     | 'probation'
     | 'accounts'
     | 'employeeAuditLog';
@@ -40,6 +42,11 @@ const NAV: NavItem[] = [
   { href: '/attendance' as Route, labelKey: 'attendance', icon: Clock },
   // Everyone can reach leave now — Staff file their own; the list is scoped server-side.
   { href: '/leave' as Route, labelKey: 'leave', icon: CalendarDays },
+  // Everyone reaches overtime — Staff see their own and file corrections, Managers assign to
+  // their Staff, Owners see and decide everything. Scoping is server-side.
+  { href: '/overtime' as Route, labelKey: 'overtime', icon: Timer },
+  // Payroll is Owner-only. Gaji Premi is its first page; the salary run will join it.
+  { href: '/payroll/gaji-premi' as Route, labelKey: 'gajiPremi', icon: Wallet, roles: ['Owner'] },
   // A manager files extension requests, an owner decides them. Staff are not shown the file
   // on themselves being discussed, so they get no entry.
   {
