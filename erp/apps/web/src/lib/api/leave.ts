@@ -5,6 +5,7 @@ import type {
   BlockedLeaveDatesResponse,
   CreateLeaveRequestBody,
   LeaveBalance,
+  LeaveOverQuotaParams,
   LeaveRequest,
   ListLeaveRequestsParams,
   ListLeaveRequestsResponse,
@@ -119,4 +120,10 @@ export async function getBlockedLeaveDates(
     },
   });
   return data;
+}
+
+/** Days of a leave not yet filed that would go past the quota and be cut from salary. Days only. */
+export async function getLeaveOverQuota(params: LeaveOverQuotaParams): Promise<number> {
+  const { data } = await apiClient.get<{ overQuotaDays: number }>('/api/leave/over-quota', { params });
+  return data.overQuotaDays;
 }

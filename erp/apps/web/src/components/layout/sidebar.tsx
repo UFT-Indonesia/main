@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound, Cpu, History, UserCheck, Timer, Wallet } from 'lucide-react';
+import { Users, LayoutDashboard, Clock, Settings, CalendarDays, KeyRound, Cpu, History, UserCheck, Timer, Wallet, Scissors } from 'lucide-react';
 import type { Route } from 'next';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/lib/constants';
@@ -20,6 +20,7 @@ interface NavItem {
     | 'leave'
     | 'overtime'
     | 'gajiPremi'
+    | 'potonganCuti'
     | 'probation'
     | 'accounts'
     | 'employeeAuditLog';
@@ -47,6 +48,8 @@ const NAV: NavItem[] = [
   { href: '/overtime' as Route, labelKey: 'overtime', icon: Timer },
   // Payroll is Owner-only. Gaji Premi is its first page; the salary run will join it.
   { href: '/payroll/gaji-premi' as Route, labelKey: 'gajiPremi', icon: Wallet, roles: ['Owner'] },
+  // Leave that costs salary, monthly. Rupiah, so Owner-only like the rest of Payroll.
+  { href: '/payroll/potongan-cuti' as Route, labelKey: 'potonganCuti', icon: Scissors, roles: ['Owner'] },
   // A manager files extension requests, an owner decides them. Staff are not shown the file
   // on themselves being discussed, so they get no entry.
   {

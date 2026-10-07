@@ -15,15 +15,40 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DatePickerField } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { LEAVE_TYPES, useFormatLeaveDate } from '@/components/leave/leave-dialogs';
 import { CreateProbationExtensionDialog } from '@/components/probation/probation-dialogs';
-import { useSetLeaveQuota, useSetProbationEnd } from '@/hooks/use-employees';
+import { useSetLeaveDeductionException, useSetLeaveQuota, useSetProbationEnd } from '@/hooks/use-employees';
 import { useCreateProbationExtension } from '@/hooks/use-probation';
 import { useLeaveBalance } from '@/hooks/use-leave';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
 import type { Employee, LeaveType } from '@/lib/api/types';
+
+type DeductionMode = 'none' | 'flat' | 'divisor';
+type DeductionState = { mode: DeductionMode; flat: string; divisor: string };
+
+/** A month has at most 31 days; the server refuses a divisor above it. */
+const MAX_DEDUCTION_DIVISOR = 31;
+
+function deductionIsValid({ mode, flat, divisor }: DeductionState): boolean {
+  if (mode === 'none') return true;
+  if (mode === 'flat') return flat.trim() !== '' && Number.isFinite(Number(flat)) && Number(flat) >= 0;
+  const days = Number(divisor);
+  return divisor.trim() !== '' && Number.isInteger(days) && days >= 1 && days <= MAX_DEDUCTION_DIVISOR;
+}
+
+/** How the employee's cut leave days are priced today, read off the employee. */
+function deductionStateOf(employee: Employee): DeductionState {
+  if (employee.leaveDeductionFlatAmount != null) {
+    return { mode: 'flat', flat: String(employee.leaveDeductionFlatAmount), divisor: '' };
+  }
+  if (employee.leaveDeductionDivisor != null) {
+    return { mode: 'divisor', flat: '', divisor: String(employee.leaveDeductionDivisor) };
+  }
+  return { mode: 'none', flat: '', divisor: '' };
+}
 
 interface ProbationQuotaCardProps {
   employee: Employee;
@@ -66,11 +91,16 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
     ?? balance.data?.quotas.find((q) => q.type === type)?.entitledDays
     ?? null;
 
+  // null = untouched, so the box keeps following the employee until the Owner edits it.
+  const [deductionEdit, setDeductionEdit] = useState<DeductionState | null>(null);
+  const deduction = deductionEdit ?? deductionStateOf(employee);
+  const deductionMutation = useSetLeaveDeductionException(employee.id);
+
   const [quotas, setQuotas] = useState<Partial<Record<LeaveType, string>>>({});
   const quotaValue = (type: LeaveType) =>
     quotas[type] ?? (effectiveQuota(type)?.toString() ?? '');
 
-  const saving = probationMutation.isPending || quotaMutation.isPending;
+  const saving = probationMutation.isPending || quotaMutation.isPending || deductionMutation.isPending;
 
   /**
    * One button, several writes: probation end and each changed quota have their own endpoint.
@@ -78,6 +108,13 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
    * a failure stops rather than half-applying the rest.
    */
   const saveAll = async () => {
+    // Checked before any write: a bad entry must stop the save and say so, not be dropped while the
+    // rest is saved and "saved" is shown.
+    if (deductionEdit && !deductionIsValid(deductionEdit)) {
+      toast.error(t('saveErrorTitle'), t('deductionInvalid'));
+      return;
+    }
+
     try {
       const target = employee.probationEndsOnOverride ?? '';
       if (endsOn !== target) {
@@ -98,10 +135,26 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
         await quotaMutation.mutateAsync({ type, days });
       }
 
+      if (deductionEdit) {
+        await mutateDeduction(deductionEdit);
+      }
+
       setQuotas({});
+      setDeductionEdit(null);
       toast.success(t('saveSuccessTitle'));
     } catch (err) {
       toast.error(t('saveErrorTitle'), extractApiError(err).message);
+    }
+  };
+
+  const mutateDeduction = async (edit: DeductionState) => {
+    const flat = edit.mode === 'flat' ? Number(edit.flat) : null;
+    const divisor = edit.mode === 'divisor' ? Number(edit.divisor) : null;
+    const unchanged =
+      flat === (employee.leaveDeductionFlatAmount ?? null) && divisor === (employee.leaveDeductionDivisor ?? null);
+
+    if (!unchanged) {
+      await deductionMutation.mutateAsync({ flatAmountPerDay: flat, divisor });
     }
   };
 
@@ -195,6 +248,58 @@ export function ProbationQuotaCard({ employee }: ProbationQuotaCardProps) {
                   />
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {isOwner && (
+          <div className="space-y-3">
+            <div>
+              <Label>{t('deductionLabel')}</Label>
+              <p className="text-xs text-muted-foreground">{t('deductionHint')}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs">{t('deductionMode')}</Label>
+                <Select
+                  value={deduction.mode}
+                  disabled={saving}
+                  onChange={(e) => setDeductionEdit({ ...deduction, mode: e.target.value as DeductionMode })}
+                >
+                  <option value="none">{t('deductionNone')}</option>
+                  <option value="flat">{t('deductionFlat')}</option>
+                  <option value="divisor">{t('deductionDivisor')}</option>
+                </Select>
+              </div>
+              {deduction.mode === 'flat' && (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs">{t('deductionFlatLabel')}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={deduction.flat}
+                    disabled={saving}
+                    onChange={(e) => setDeductionEdit({ ...deduction, flat: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('deductionFlatHint')}</p>
+                </div>
+              )}
+              {deduction.mode === 'divisor' && (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs">{t('deductionDivisorLabel')}</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={MAX_DEDUCTION_DIVISOR}
+                    step="1"
+                    value={deduction.divisor}
+                    disabled={saving}
+                    onChange={(e) => setDeductionEdit({ ...deduction, divisor: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('deductionDivisorHint')}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
