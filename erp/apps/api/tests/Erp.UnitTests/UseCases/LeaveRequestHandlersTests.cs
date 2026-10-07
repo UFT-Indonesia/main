@@ -84,7 +84,7 @@ public class LeaveRequestHandlersTests
 
     private Task<Result<LeaveRequestResult>> CreateAsync(Employee subject, Caller caller) =>
         CreateLeaveRequestHandler.Handle(
-            CommandFor(subject, caller), _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+            CommandFor(subject, caller), _employees, _leaveRequests, TestPayroll.NoMonths(), TestPayroll.NoLines(), TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
     private LeaveRequest PendingFor(Employee subject, Guid requestedByUserId)
     {
@@ -191,7 +191,7 @@ public class LeaveRequestHandlersTests
         var command = CommandFor(_staff, _staffCaller) with { Type = "Vacation" };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+            command, _employees, _leaveRequests, TestPayroll.NoMonths(), TestPayroll.NoLines(), TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
             .Which.Code.Should().Be("leave.type");
@@ -203,7 +203,7 @@ public class LeaveRequestHandlersTests
         var command = CommandFor(_staff, _staffCaller) with { EmployeeId = Guid.NewGuid() };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+            command, _employees, _leaveRequests, TestPayroll.NoMonths(), TestPayroll.NoLines(), TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.NotFound>();
     }
@@ -270,7 +270,7 @@ public class LeaveRequestHandlersTests
         };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+            command, _employees, _leaveRequests, TestPayroll.NoMonths(), TestPayroll.NoLines(), TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Success>();
     }
@@ -287,7 +287,7 @@ public class LeaveRequestHandlersTests
         };
 
         var result = await CreateLeaveRequestHandler.Handle(
-            command, _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+            command, _employees, _leaveRequests, TestPayroll.NoMonths(), TestPayroll.NoLines(), TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
             .Which.Code.Should().Be("leave.izin_hours_exceeded");
@@ -312,7 +312,7 @@ public class LeaveRequestHandlersTests
     private Task<Result<LeaveRequestResult>> ApproveAsync(LeaveRequest request, Caller caller) =>
         ApproveLeaveRequestHandler.Handle(
             new ApproveLeaveRequestCommand(request.Id.Value, caller),
-            _leaveRequests, _employees, _policy, _clock, _bus, CancellationToken.None);
+            _leaveRequests, _employees, TestPayroll.NoMonths(), TestPayroll.NoLines(), _policy, _clock, _bus, Substitute.For<IPayrollLock>(), CancellationToken.None);
 
     [Fact]
     public async Task A_managers_own_staff_leave_is_approvable_by_that_manager()
@@ -404,7 +404,7 @@ public class LeaveRequestHandlersTests
     private Task<Result<LeaveRequestResult>> CancelAsync(LeaveRequest request, Caller caller, string? note) =>
         CancelLeaveRequestHandler.Handle(
             new CancelLeaveRequestCommand(request.Id.Value, caller, note),
-            _leaveRequests, _employees, _policy, _clock, _bus, CancellationToken.None);
+            _leaveRequests, _employees, TestPayroll.NoMonths(), _policy, _clock, _bus, Substitute.For<IPayrollLock>(), CancellationToken.None);
 
     [Fact]
     public async Task The_subject_can_cancel_their_own_approved_leave()
