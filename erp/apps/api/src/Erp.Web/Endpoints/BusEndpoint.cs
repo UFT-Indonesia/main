@@ -5,7 +5,7 @@ using FastEndpoints;
 using Microsoft.AspNetCore.Authorization;
 using Wolverine;
 
-namespace Erp.Web.Endpoints.Overtime;
+namespace Erp.Web.Endpoints;
 
 /// <summary>
 /// The plumbing every overtime/payroll endpoint repeats: resolve the caller, send one message,
