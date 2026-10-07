@@ -29,4 +29,10 @@ public sealed class EmployeeResult
     /// <summary>Leave-type name to overridden entitlement. Types with no override are absent.</summary>
     public IReadOnlyDictionary<string, decimal> LeaveQuotaOverrides { get; init; } =
         new Dictionary<string, decimal>();
+
+    /// <summary>Flat rupiah per cut leave day (0 = exempt). Null unless the Owner set one; excludes the divisor.</summary>
+    public decimal? LeaveDeductionFlatAmount { get; init; }
+
+    /// <summary>Custom divisor for pricing a cut leave day. Null unless the Owner set one.</summary>
+    public int? LeaveDeductionDivisor { get; init; }
 }

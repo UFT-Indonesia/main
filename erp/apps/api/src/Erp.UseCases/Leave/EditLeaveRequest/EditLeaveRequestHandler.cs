@@ -2,6 +2,7 @@ using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Aggregates.Overtime;
+using Erp.Core.Aggregates.Payroll;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
@@ -30,14 +31,19 @@ public static class EditLeaveRequestHandler
         IRepository<LeaveRequest> leaveRequests,
         IRepository<Employee> employees,
         IRepository<AttendanceDay> attendanceDays,
+        IReadRepository<LeaveDeductionMonth> months,
+        IReadRepository<LeaveDeductionLine> lines,
         IReadRepository<OvertimeAssignment> overtime,
         AttendanceDayPolicy policy,
         // ReconcileEmployeeStatusAsync wants the read interface specifically; IRepository and
         // IReadRepository are siblings here, not parent and child.
         IReadRepository<LeaveRequest> leaveRequestsRead,
         IClock clock,
+        IPayrollLock payrollLock,
         CancellationToken ct)
     {
+        await payrollLock.AcquireSharedAsync(ct);
+
         var requestId = new LeaveRequestId(command.LeaveRequestId);
         var request = await leaveRequests.FirstOrDefaultAsync(new LeaveRequestByIdSpec(requestId), ct);
         if (request is null)
@@ -62,6 +68,14 @@ public static class EditLeaveRequestHandler
         var startDate = LocalDate.FromDateOnly(command.StartDate);
         var endDate = LocalDate.FromDateOnly(command.EndDate);
         var today = DisplayZone.Today(clock);
+
+        // A closed payroll month is frozen: neither the dates it was filed on nor the ones it moves to
+        // may touch it (GSS03 decision 3).
+        if (await LeavePayrollLock.TouchesClosedMonthAsync(request.StartDate, request.EndDate, policy, months, ct)
+            || await LeavePayrollLock.TouchesClosedMonthAsync(startDate, endDate, policy, months, ct))
+        {
+            return new Result<LeaveRequestResult>.Error(LeavePayrollLock.Code, LeavePayrollLock.Message);
+        }
 
         // Every gate a new request clears, the edited shape clears too — otherwise editing is a
         // way around all of them. The one difference is excluding this request from both checks:
@@ -92,11 +106,11 @@ public static class EditLeaveRequestHandler
                 "leave.overlaps_approved", "The requested dates overlap an already approved leave.");
         }
 
-        var overQuota = await LeaveQuotaGuard.CheckAsync(
+        var quotaCheck = await LeaveQuotaGuard.CheckAsync(
             subject, request.Type, startDate, endDate,
             command.HalfDay, command.StartHour, command.EndHour, policy,
-            leaveRequests, today, ct, excludeRequestId: requestId);
-        if (overQuota is { } violation)
+            leaveRequests, months, lines, today, clock.GetCurrentInstant(), ct, excludeRequestId: requestId);
+        if (quotaCheck.Violation is { } violation)
         {
             return new Result<LeaveRequestResult>.Error(violation.Code, violation.Message);
         }
@@ -170,6 +184,7 @@ public static class EditLeaveRequestHandler
                 canCancel: canCancel,
                 canEdit: canEdit,
                 // Standing to edit implies standing to read what was edited.
-                canReadDetails: true));
+                canReadDetails: true,
+                overQuotaDays: quotaCheck.OverQuotaDays));
     }
 }

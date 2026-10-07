@@ -1,6 +1,7 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
+using Erp.Core.Aggregates.Payroll;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
@@ -16,15 +17,22 @@ namespace Erp.UseCases.Leave.DecideLeaveRequest;
 
 public static class ApproveLeaveRequestHandler
 {
-    public static Task<Result<LeaveRequestResult>> Handle(
+    public static async Task<Result<LeaveRequestResult>> Handle(
         ApproveLeaveRequestCommand command,
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
+        IReadRepository<LeaveDeductionMonth> months,
+        IReadRepository<LeaveDeductionLine> lines,
         AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
-        CancellationToken ct) =>
-        DecideLeaveRequestService.DecideAsync(
+        IPayrollLock payrollLock,
+        CancellationToken ct)
+    {
+        // Waits out a month being closed, then reads the closed months fresh.
+        await payrollLock.AcquireSharedAsync(ct);
+
+        return await DecideLeaveRequestService.DecideAsync(
             command.LeaveRequestId,
             command.Caller,
             DecisionKind.Approval,
@@ -39,7 +47,9 @@ public static class ApproveLeaveRequestHandler
             // override lowered or a probation extended since then must still stop it here.
             guard: (request, subject, today) => LeaveQuotaGuard.CheckAsync(
                 subject, request.Type, request.StartDate, request.EndDate,
-                request.HalfDay, request.StartHour, request.EndHour, policy, leaveRequests, today, ct));
+                request.HalfDay, request.StartHour, request.EndHour, policy, leaveRequests, months, lines, today,
+                clock.GetCurrentInstant(), ct));
+    }
 }
 
 public static class DenyLeaveRequestHandler
@@ -67,15 +77,21 @@ public static class DenyLeaveRequestHandler
 
 public static class CancelLeaveRequestHandler
 {
-    public static Task<Result<LeaveRequestResult>> Handle(
+    public static async Task<Result<LeaveRequestResult>> Handle(
         CancelLeaveRequestCommand command,
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
+        IReadRepository<LeaveDeductionMonth> months,
         AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
-        CancellationToken ct) =>
-        DecideLeaveRequestService.DecideAsync(
+        IPayrollLock payrollLock,
+        CancellationToken ct)
+    {
+        // Waits out a month being closed, then reads the closed months fresh.
+        await payrollLock.AcquireSharedAsync(ct);
+
+        return await DecideLeaveRequestService.DecideAsync(
             command.LeaveRequestId,
             command.Caller,
             DecisionKind.Cancellation,
@@ -95,7 +111,13 @@ public static class CancelLeaveRequestHandler
             policy,
             clock,
             bus,
-            ct);
+            ct,
+            // Approved leave in a closed payroll month is frozen. A Pending one costs nothing yet, so
+            // withdrawing it stays allowed.
+            isLocked: request => request.Status == LeaveRequestStatus.Approved
+                ? LeavePayrollLock.TouchesClosedMonthAsync(request.StartDate, request.EndDate, policy, months, ct)
+                : Task.FromResult(false));
+    }
 }
 
 internal enum DecisionKind
@@ -120,7 +142,8 @@ internal static class DecideLeaveRequestService
         IClock clock,
         IMessageBus bus,
         CancellationToken ct,
-        Func<LeaveRequest, Employee, LocalDate, Task<(string Code, string Message)?>>? guard = null)
+        Func<LeaveRequest, Employee, LocalDate, Task<QuotaCheck>>? guard = null,
+        Func<LeaveRequest, Task<bool>>? isLocked = null)
     {
         var request = await leaveRequests.FirstOrDefaultAsync(
             new LeaveRequestByIdSpec(new LeaveRequestId(leaveRequestId)), ct);
@@ -148,13 +171,21 @@ internal static class DecideLeaveRequestService
                 ResultErrors.Forbidden, "You cannot decide this leave request.");
         }
 
+        if (isLocked is not null && await isLocked(request))
+        {
+            return new Result<LeaveRequestResult>.Error(LeavePayrollLock.Code, LeavePayrollLock.Message);
+        }
+
+        decimal? overQuotaDays = null;
         if (guard is not null)
         {
-            var blocked = await guard(request, subject, DisplayZone.Today(clock));
-            if (blocked is { } violation)
+            var check = await guard(request, subject, DisplayZone.Today(clock));
+            if (check.Violation is { } violation)
             {
                 return new Result<LeaveRequestResult>.Error(violation.Code, violation.Message);
             }
+
+            overQuotaDays = check.OverQuotaDays;
         }
 
         decide(request, subject, clock.GetCurrentInstant());
@@ -173,6 +204,7 @@ internal static class DecideLeaveRequestService
                 canCancel: canCancel,
                 canEdit: canEdit,
                 // Only reachable once authority to decide or cancel has been established.
-                canReadDetails: true));
+                canReadDetails: true,
+                overQuotaDays: overQuotaDays));
     }
 }
