@@ -5,6 +5,7 @@ import type {
   Employee,
   ListEmployeesParams,
   ListEmployeesResponse,
+  SetLeaveDeductionExceptionBody,
   SetLeaveQuotaBody,
   SetProbationEndBody,
   UpdateEmployeeBody,
@@ -52,5 +53,14 @@ export async function setProbationEnd(id: string, body: SetProbationEndBody): Pr
 /** Owner-only, one leave type per call. Null days clears the override. */
 export async function setLeaveQuota(id: string, body: SetLeaveQuotaBody): Promise<Employee> {
   const { data } = await apiClient.put<Employee>(`/api/employees/${id}/quota`, body);
+  return data;
+}
+
+/** Owner-only. A flat amount per cut leave day or a custom divisor, not both; both null clears it. */
+export async function setLeaveDeductionException(
+  id: string,
+  body: SetLeaveDeductionExceptionBody,
+): Promise<Employee> {
+  const { data } = await apiClient.put<Employee>(`/api/employees/${id}/deduction-exception`, body);
   return data;
 }

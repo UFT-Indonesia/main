@@ -19,7 +19,7 @@ import { EmployeePicker } from '@/components/employees/employee-picker';
 import { DateRangePickerField } from '@/components/ui/date-picker';
 import { FileDropzone } from '@/components/ui/file-dropzone';
 import { Switch } from '@/components/ui/switch';
-import { useBlockedLeaveDates, useLeaveBalance } from '@/hooks/use-leave';
+import { useBlockedLeaveDates, useLeaveBalance, useLeaveOverQuota } from '@/hooks/use-leave';
 import { markedDates, useDayMarkers } from '@/hooks/use-day-markers';
 import { useAttendancePolicy, useHolidayCalendar } from '@/hooks/use-attendance-settings';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
@@ -184,6 +184,23 @@ export function CreateLeaveDialog({
       ? (form.endHour - form.startHour) / netWorkingHours
       : 1;
   const chargedDays = workdays * chargePerWorkday;
+
+  // Days past the cap are cut from salary, not refused (GSS03). Days only — the employee never
+  // sees the rupiah. Asked of the server so it counts exactly as approval would.
+  const overQuota = useLeaveOverQuota(
+    form.employeeId && form.type && workdays > 0 && hourlyValid
+      ? {
+          employeeId: form.employeeId,
+          type: form.type,
+          startDate: form.startDate,
+          endDate: form.endDate,
+          halfDay: form.halfDay,
+          startHour: form.hourly && form.startHour !== '' ? form.startHour : null,
+          endHour: form.hourly && form.endHour !== '' ? form.endHour : null,
+        }
+      : null,
+  );
+  const overQuotaDays = overQuota.data ?? 0;
 
   // Already-approved leave only conflicts when its hours actually overlap what's being built
   // here — the candidate window recomputes as half-day/hourly fields change, so the picker's
@@ -437,6 +454,18 @@ export function CreateLeaveDialog({
                 })
               : t('create.workdayPreview', { count: workdays })}
         </p>
+
+        {overQuotaDays > 0 && form.type && (
+          <p className="rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 text-sm" role="status">
+            {form.employeeId === self?.employeeId
+              ? t('overQuota.form', { count: overQuotaDays, type: t(`type.${form.type}`) })
+              : t('overQuota.formOther', {
+                  count: overQuotaDays,
+                  type: t(`type.${form.type}`),
+                  employee: balance.data?.employeeFullName ?? '',
+                })}
+          </p>
+        )}
       </div>
 
       <DialogFooter>
@@ -478,13 +507,18 @@ function QuotaHint({ quota }: { quota: LeaveQuota }) {
   }
 
   return (
-    <p className={quota.remainingDays > 0 ? 'text-xs text-muted-foreground' : 'text-xs text-destructive'}>
-      {t('quota.remaining', {
-        remaining: quota.remainingDays,
-        used: quota.usedDays,
-        entitled: quota.entitledDays ?? 0,
-      })}
-    </p>
+    <>
+      <p className={quota.remainingDays > 0 ? 'text-xs text-muted-foreground' : 'text-xs text-destructive'}>
+        {t('quota.remaining', {
+          remaining: quota.remainingDays,
+          used: quota.usedDays,
+          entitled: quota.entitledDays ?? 0,
+        })}
+      </p>
+      {quota.overQuotaDays > 0 && (
+        <p className="text-xs text-destructive">{t('quota.over', { count: quota.overQuotaDays })}</p>
+      )}
+    </>
   );
 }
 
@@ -534,6 +568,12 @@ export function DecideLeaveDialog({
           })}
         </DialogDescription>
       </DialogHeader>
+
+      {action === 'approve' && !!request.overQuotaDays && request.overQuotaDays > 0 && (
+        <p className="mt-3 rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 text-sm" role="status">
+          {t('overQuota.badge', { count: request.overQuotaDays })}
+        </p>
+      )}
 
       {action !== 'approve' && (
         <div className="mt-4 flex flex-col gap-1.5">
@@ -595,6 +635,10 @@ export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialog
         ? ([[t('details.chargedDays'), `${formatHour(request.startHour)} – ${formatHour(request.endHour)}`]] as [string, string][])
         : []),
     [t('columns.approvedThisYear'), request.approvedWorkdaysThisYear?.toString() ?? withheld],
+    // Days only: whoever may read this request sees how many days cost salary, never the rupiah.
+    ...(request.overQuotaDays
+      ? ([[t('details.overQuota'), t('overQuota.badge', { count: request.overQuotaDays })]] as [string, string][])
+      : []),
     // The quota block is for this row's own type, unlike the all-types tally above it.
     ...(request.quota
       ? ([[

@@ -7,12 +7,14 @@ import {
   editLeaveRequest,
   getBlockedLeaveDates,
   getLeaveBalance,
+  getLeaveOverQuota,
   listLeaveRequests,
 } from '@/lib/api/leave';
 import type {
   BlockedLeaveDatesParams,
   CreateLeaveRequestBody,
   EditLeaveRequestBody,
+  LeaveOverQuotaParams,
   ListLeaveRequestsParams,
 } from '@/lib/api/types';
 
@@ -61,6 +63,7 @@ export function useCreateLeaveRequest() {
     mutationFn: (body: CreateLeaveRequestBody) => createLeaveRequest(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: leaveKeys.all });
+      qc.invalidateQueries({ queryKey: ['payroll'] });
     },
   });
 }
@@ -74,6 +77,7 @@ export function useEditLeaveRequest() {
       // Dates moving re-materializes attendance, so the attendance keys go too.
       qc.invalidateQueries({ queryKey: leaveKeys.all });
       qc.invalidateQueries({ queryKey: ['attendance'] });
+      qc.invalidateQueries({ queryKey: ['payroll'] });
     },
   });
 }
@@ -88,6 +92,8 @@ export function useDecideLeaveRequest() {
     }) => decideLeaveRequest(id, action, note),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: leaveKeys.all });
+      // Approving or cancelling leave moves the open month's Potongan Cuti figures.
+      qc.invalidateQueries({ queryKey: ['payroll'] });
     },
   });
 }
@@ -111,5 +117,18 @@ export function useBlockedLeaveDates(
     queryKey: leaveKeys.blockedDates(employeeId ?? '', from, to, candidate),
     queryFn: () => getBlockedLeaveDates(employeeId!, from, to, candidate),
     enabled: !!employeeId,
+  });
+}
+
+/**
+ * Days of the leave being filled in that would go past the quota and be cut from salary. Disabled
+ * until the form holds a complete, ordered range; shares the leave keys, so any decision refreshes it.
+ */
+export function useLeaveOverQuota(params: LeaveOverQuotaParams | null) {
+  return useQuery({
+    queryKey: [...leaveKeys.all, 'over-quota', params] as const,
+    queryFn: () => getLeaveOverQuota(params!),
+    enabled: !!params,
+    placeholderData: (prev) => prev,
   });
 }

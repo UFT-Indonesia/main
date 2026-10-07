@@ -30,7 +30,8 @@
     "employeeAuditLog": "Log Aktivitas",
     "probation": "Probation",
     "overtime": "Lembur",
-    "gajiPremi": "Gaji Premi"
+    "gajiPremi": "Gaji Premi",
+    "potonganCuti": "Potongan Cuti"
   },
   "home": {
     "title": "Selamat datang",
@@ -159,7 +160,18 @@
       "saveErrorTitle": "Gagal menyimpan",
       "requestSuccessTitle": "Pengajuan terkirim",
       "requestSuccessDescription": "Pemilik akan memutuskan perpanjangan ini.",
-      "requestErrorTitle": "Gagal mengirim pengajuan"
+      "requestErrorTitle": "Gagal mengirim pengajuan",
+      "deductionLabel": "Perhitungan Potongan Cuti",
+      "deductionHint": "Cara menghitung harga satu hari cuti yang dipotong untuk karyawan ini. Satu pengaturan berlaku untuk semua jenis cuti.",
+      "deductionMode": "Perhitungan",
+      "deductionNone": "Pembagi Perusahaan",
+      "deductionFlat": "Nominal Tetap per Hari Dipotong",
+      "deductionDivisor": "Pembagi Khusus",
+      "deductionFlatLabel": "Nominal per Hari Dipotong (Rp)",
+      "deductionFlatHint": "Rp 0 membebaskan karyawan ini dari potongan cuti.",
+      "deductionDivisorLabel": "Pembagi",
+      "deductionDivisorHint": "Gaji dibagi angka ini, bukan pembagi perusahaan.",
+      "deductionInvalid": "Isi jumlah tetap 0 atau lebih, atau pembagi 1 sampai 31. Tidak ada yang disimpan."
     }
   },
   "attendance": {
@@ -439,7 +451,8 @@
       "attachmentError": "Gagal mengunduh berkas",
       "chargedDays": "Rincian Jenis",
       "editedBy": "Diubah Oleh",
-      "editedValue": "{name} pada {at} — sebelumnya {from} – {to}"
+      "editedValue": "{name} pada {at} — sebelumnya {from} – {to}",
+      "overQuota": "Melebihi Kuota"
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
@@ -447,7 +460,8 @@
     "subtitleStaff": "Ajukan cuti dan lihat riwayat pengajuan Anda, termasuk yang sudah lewat atau ditolak.",
     "quota": {
       "uncapped": "Jenis ini tidak dibatasi.",
-      "remaining": "Sisa {remaining} dari {entitled} hari ({used} terpakai)."
+      "remaining": "Sisa {remaining} dari {entitled} hari ({used} terpakai).",
+      "over": "{count, plural, other {# hari}} melebihi kuota tahun ini (potong gaji)."
     },
     "edit": {
       "title": "Ubah Tanggal Cuti",
@@ -456,6 +470,11 @@
       "successTitle": "Cuti diubah",
       "successDescription": "Tanggal cuti berhasil diperbarui.",
       "errorTitle": "Gagal mengubah cuti"
+    },
+    "overQuota": {
+      "form": "{count, plural, other {# hari dari cuti ini}} melebihi kuota {type} Anda dan akan dipotong dari gaji.",
+      "formOther": "{count, plural, other {# hari dari cuti ini}} melebihi kuota {type} {employee} dan akan dipotong dari gajinya.",
+      "badge": "{count, plural, other {# hari}} melebihi kuota (potong gaji)"
     }
   },
   "changePassword": {
@@ -957,6 +976,60 @@
     },
     "detail": {
       "description": "Per hari: jam penugasan, absen, jam terhitung, bayaran dan status."
+    }
+  },
+  "potonganCuti": {
+    "title": "Potongan Cuti",
+    "subtitle": "Cuti yang memotong gaji, per bulan. Rupiah hanya terlihat oleh Owner.",
+    "month": "Bulan",
+    "cannotClose": "Bulan baru bisa ditutup setelah berakhir, setelah bulan sebelumnya ditutup, dan tanpa cuti yang menunggu keputusan.",
+    "close": {
+      "button": "Tutup Bulan",
+      "title": "Tutup Bulan Ini?",
+      "description": "{month} akan dibekukan: setiap hari cuti diberi label gratis atau dipotong, nominal dikunci, dan cuti yang disetujui, potongan baru, serta hari libur di bulan ini tidak bisa diubah lagi. Tidak bisa dibatalkan.",
+      "confirm": "Tutup Bulan",
+      "successTitle": "Bulan ditutup",
+      "successDescription": "Hari dipotong dan nominal kini dibekukan.",
+      "errorTitle": "Gagal menutup bulan"
+    },
+    "divisor": {
+      "label": "Pembagi",
+      "hint": "Gaji ÷ pembagi adalah harga satu hari cuti yang dipotong. Bulan terbuka mengikuti perubahan; bulan yang sudah ditutup tetap.",
+      "confirmTitle": "Ubah pembagi?",
+      "confirmDescription": "Harga satu hari cuti yang dipotong untuk semua karyawan di semua bulan terbuka akan dihitung ulang, dari gaji ÷ {from} menjadi gaji ÷ {to}. Bulan yang sudah ditutup tetap.",
+      "save": "Simpan",
+      "successTitle": "Pembagi diperbarui",
+      "errorTitle": "Gagal memperbarui pembagi"
+    },
+    "closed": "Ditutup",
+    "open": "Terbuka",
+    "closedBy": "Ditutup oleh {name}",
+    "estimate": "Perkiraan, belum final",
+    "total": "Total",
+    "empty": "Belum ada cuti di bulan ini.",
+    "beforeLaunch": "Bulan ini sebelum peluncuran: saat itu cuti melebihi kuota ditolak, jadi tidak ada yang dipotong.",
+    "pending": {
+      "title": "Cuti Menunggu Keputusan",
+      "description": "Putuskan ini dulu sebelum menutup bulan."
+    },
+    "columns": {
+      "employee": "Karyawan",
+      "cutDays": "Hari Dipotong",
+      "total": "Total",
+      "date": "Tanggal",
+      "type": "Jenis",
+      "request": "Pengajuan",
+      "status": "Status",
+      "salary": "Gaji",
+      "rate": "Tarif Harian",
+      "amount": "Nominal"
+    },
+    "free": "Gratis",
+    "cut": "Dipotong",
+    "partial": "Gratis {free}, Dipotong {cut}",
+    "detail": {
+      "open": "Lihat hari cuti {name}",
+      "description": "Per hari: gratis atau dipotong, gaji yang dipakai, tarif harian dan nominal."
     }
   },
   "calendarMarkers": {

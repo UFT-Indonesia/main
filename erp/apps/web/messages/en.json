@@ -30,7 +30,8 @@
     "employeeAuditLog": "Employee audit log",
     "probation": "Probation",
     "overtime": "Overtime",
-    "gajiPremi": "Gaji Premi"
+    "gajiPremi": "Gaji Premi",
+    "potonganCuti": "Potongan Cuti"
   },
   "home": {
     "title": "Welcome",
@@ -159,7 +160,18 @@
       "saveErrorTitle": "Failed to save",
       "requestSuccessTitle": "Request submitted",
       "requestSuccessDescription": "An owner will decide on the extension.",
-      "requestErrorTitle": "Failed to submit request"
+      "requestErrorTitle": "Failed to submit request",
+      "deductionLabel": "Leave Deduction Pricing",
+      "deductionHint": "How a cut leave day is priced for this employee. One setting covers every leave type.",
+      "deductionMode": "Pricing",
+      "deductionNone": "Company Divisor",
+      "deductionFlat": "Flat Amount per Cut Day",
+      "deductionDivisor": "Custom Divisor",
+      "deductionFlatLabel": "Amount per Cut Day (Rp)",
+      "deductionFlatHint": "Rp 0 exempts this employee from leave cuts.",
+      "deductionDivisorLabel": "Divisor",
+      "deductionDivisorHint": "Salary is divided by this instead of the company divisor.",
+      "deductionInvalid": "Enter a flat amount of 0 or more, or a divisor from 1 to 31. Nothing was saved."
     }
   },
   "attendance": {
@@ -439,7 +451,8 @@
       "attachmentError": "Could not download the file",
       "chargedDays": "Type Detail",
       "editedBy": "Edited By",
-      "editedValue": "{name} on {at} — previously {from} – {to}"
+      "editedValue": "{name} on {at} — previously {from} – {to}",
+      "overQuota": "Over Quota"
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
@@ -447,7 +460,8 @@
     "subtitleStaff": "Submit leave and track your own requests, including past and rejected ones.",
     "quota": {
       "uncapped": "No limit on this type.",
-      "remaining": "{remaining} of {entitled} days left ({used} used)."
+      "remaining": "{remaining} of {entitled} days left ({used} used).",
+      "over": "{count, plural, one {# day} other {# days}} over quota this year (salary cut)."
     },
     "edit": {
       "title": "Edit Leave Dates",
@@ -456,6 +470,11 @@
       "successTitle": "Leave updated",
       "successDescription": "The leave dates were updated.",
       "errorTitle": "Could not update leave"
+    },
+    "overQuota": {
+      "form": "{count, plural, one {# of these days is} other {# of these days are}} over your {type} quota and will be cut from your salary.",
+      "formOther": "{count, plural, one {# of these days is} other {# of these days are}} over {employee}'s {type} quota and will be cut from their salary.",
+      "badge": "{count, plural, one {# day} other {# days}} over quota (salary cut)"
     }
   },
   "changePassword": {
@@ -957,6 +976,60 @@
     },
     "detail": {
       "description": "Day by day: window, punches, counted hours, pay and status."
+    }
+  },
+  "potonganCuti": {
+    "title": "Potongan Cuti",
+    "subtitle": "Leave that costs salary, per month. Rupiah is visible to Owners only.",
+    "month": "Month",
+    "cannotClose": "A month closes only after it ends, after the earlier ones, and with no leave waiting for a decision.",
+    "close": {
+      "button": "Close Month",
+      "title": "Close This Month?",
+      "description": "{month} will be frozen: every leave day is stamped free or cut, the amounts are fixed, and approved leave, new cuts and holidays in it can no longer change. This cannot be undone.",
+      "confirm": "Close Month",
+      "successTitle": "Month closed",
+      "successDescription": "Cut days and amounts are now frozen.",
+      "errorTitle": "Could not close the month"
+    },
+    "divisor": {
+      "label": "Divisor",
+      "hint": "Salary ÷ divisor is the price of one cut day. Open months follow a change; closed months keep their figures.",
+      "confirmTitle": "Change the divisor?",
+      "confirmDescription": "The price of a cut day for every employee in every open month will be recalculated, from salary ÷ {from} to salary ÷ {to}. Closed months keep their figures.",
+      "save": "Save",
+      "successTitle": "Divisor updated",
+      "errorTitle": "Could not update the divisor"
+    },
+    "closed": "Closed",
+    "open": "Open",
+    "closedBy": "Closed by {name}",
+    "estimate": "Estimate, not final",
+    "total": "Total",
+    "empty": "No leave in this month.",
+    "beforeLaunch": "This month is before launch: over-quota leave was refused then, so nothing is cut.",
+    "pending": {
+      "title": "Leave Awaiting a Decision",
+      "description": "Decide these before closing the month."
+    },
+    "columns": {
+      "employee": "Employee",
+      "cutDays": "Cut Days",
+      "total": "Total",
+      "date": "Date",
+      "type": "Type",
+      "request": "Request",
+      "status": "Status",
+      "salary": "Salary",
+      "rate": "Daily Rate",
+      "amount": "Amount"
+    },
+    "free": "Free",
+    "cut": "Cut",
+    "partial": "Free {free}, Cut {cut}",
+    "detail": {
+      "open": "Show the leave days of {name}",
+      "description": "Day by day: free or cut, the salary used, the daily rate and the amount."
     }
   },
   "calendarMarkers": {

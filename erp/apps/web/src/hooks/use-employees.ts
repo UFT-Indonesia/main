@@ -6,6 +6,7 @@ import {
   deleteEmployee,
   getEmployee,
   listEmployees,
+  setLeaveDeductionException,
   setLeaveQuota,
   setProbationEnd,
   updateEmployee,
@@ -14,6 +15,7 @@ import type {
   CreateEmployeeBody,
   DeleteEmployeeBody,
   ListEmployeesParams,
+  SetLeaveDeductionExceptionBody,
   SetLeaveQuotaBody,
   SetProbationEndBody,
   UpdateEmployeeBody,
@@ -87,6 +89,18 @@ export function useSetLeaveQuota(id: string) {
     onSuccess: (data) => {
       qc.setQueryData(employeeKeys.detail(id), data);
       qc.invalidateQueries({ queryKey: ['leave'] });
+    },
+  });
+}
+
+export function useSetLeaveDeductionException(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SetLeaveDeductionExceptionBody) => setLeaveDeductionException(id, body),
+    onSuccess: (data) => {
+      qc.setQueryData(employeeKeys.detail(id), data);
+      // The open month's Potongan Cuti follows the exception live.
+      qc.invalidateQueries({ queryKey: ['payroll'] });
     },
   });
 }

@@ -46,6 +46,10 @@ export interface Employee {
   probationEndsOnOverride: string | null;
   /** Leave type to overridden entitlement; types left on the default are absent. */
   leaveQuotaOverrides: Partial<Record<LeaveType, number>> | null;
+  /** Owner-only. Flat rupiah per cut leave day (0 exempts the employee). Null when none is set. */
+  leaveDeductionFlatAmount: number | null;
+  /** Owner-only. Custom divisor for pricing a cut leave day. Null when none is set. */
+  leaveDeductionDivisor: number | null;
 }
 
 export interface ListEmployeesResponse {
@@ -392,6 +396,11 @@ export interface LeaveRequest {
   endHour: number | null;
   /** Quota this request actually spends. Null when the caller may not read this request's details. */
   chargedDays: number | null;
+  /**
+   * Days of this request past the quota, cut from salary. As they stand for an approved request, as
+   * they would fall if a pending one were approved now. Days only, never rupiah. Null when hidden.
+   */
+  overQuotaDays: number | null;
   /** Set only once status is Cancelled. */
   cancellationReason: LeaveCancellationReason | null;
   /** Total approved quota spent this year, all types. Null when the caller may not read the balance. */
@@ -436,6 +445,8 @@ export interface LeaveQuota {
   entitledDays: number | null;
   usedDays: number;
   remainingDays: number | null;
+  /** Days of this type past the cap this year. They cost salary and do not spend the cap. */
+  overQuotaDays: number;
 }
 
 export interface LeaveBalance {
@@ -768,4 +779,79 @@ export interface DayMarker {
   /** "YYYY-MM-DD". */
   date: string;
   kind: DayMarkerKind;
+}
+
+
+export interface SetLeaveDeductionExceptionBody {
+  /** Flat rupiah per cut day; 0 exempts the employee. Leave both empty to clear. */
+  flatAmountPerDay: number | null;
+  /** Custom divisor instead of the company's. Not together with a flat amount. */
+  divisor: number | null;
+}
+
+export interface LeaveOverQuotaParams {
+  employeeId: string;
+  type: LeaveType;
+  startDate: string;
+  endDate: string;
+  halfDay: boolean;
+  startHour: number | null;
+  endHour: number | null;
+}
+
+// Potongan Cuti (Owner only) -----------------------------------------------
+
+/** One leave day of one request: how much of it is free and how much is cut. Amounts are exact. */
+export interface LeaveDeductionDay {
+  date: string;
+  leaveType: LeaveType;
+  leaveRequestId: string;
+  requestStart: string;
+  requestEnd: string;
+  freeDays: number;
+  cutDays: number;
+  salary: number;
+  dailyRate: number;
+  amount: number;
+}
+
+export interface LeaveDeductionEmployeeRow {
+  employeeId: string;
+  fullName: string;
+  /** Cut days per leave type; only types with something cut are present. */
+  cutDaysByType: Partial<Record<LeaveType, number>>;
+  cutDays: number;
+  /** Day amounts summed, rounded down to Rp 1.000 once. */
+  total: number;
+  days: LeaveDeductionDay[];
+}
+
+export interface PendingLeaveItem {
+  leaveRequestId: string;
+  employeeId: string;
+  fullName: string;
+  leaveType: LeaveType;
+  start: string;
+  end: string;
+}
+
+export interface LeaveDeductionMonth {
+  /** First day of the month, "YYYY-MM-DD". */
+  month: string;
+  closed: boolean;
+  closedAtUtc: string | null;
+  closedByName: string | null;
+  canClose: boolean;
+  divisor: number;
+  /** The launch month: the first one that can be closed. */
+  firstMonth: string;
+  total: number;
+  rows: LeaveDeductionEmployeeRow[];
+  /** Undecided leave with a workday in the month; closing is blocked until each is decided. */
+  pending: PendingLeaveItem[];
+}
+
+export interface PayrollSettings {
+  divisor: number;
+  firstMonth: string;
 }

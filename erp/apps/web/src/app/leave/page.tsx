@@ -203,7 +203,16 @@ export default function LeavePage() {
                     <TableCell className="tabular-nums">
                       {formatLeaveDate(item.startDate)} – {formatLeaveDate(item.endDate)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{item.workdayCount}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {item.workdayCount}
+                      {/* Days only, never rupiah. Shown for requests that are or would be approved. */}
+                      {!!item.overQuotaDays && item.overQuotaDays > 0
+                        && (item.status === 'Pending' || item.status === 'Approved') && (
+                        <div className="text-xs font-normal text-destructive">
+                          {t('overQuota.badge', { count: item.overQuotaDays })}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {item.approvedWorkdaysThisYear ?? t('details.hidden')}
                     </TableCell>
