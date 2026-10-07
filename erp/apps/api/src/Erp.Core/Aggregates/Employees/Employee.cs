@@ -422,6 +422,16 @@ public sealed class Employee : AggregateRoot<EmployeeId>
         RaiseDomainEvent(new EmployeeLeaveQuotaChanged(Id.Value, type, old, entitledDays));
     }
 
+    /// <summary>How this employee's cut leave days are priced, or null for the company divisor.</summary>
+    public LeaveDeductionException? LeaveDeductionException { get; private set; }
+
+    /// <summary>Owner-only. Both null clears the exception (GSS03 decision 11).</summary>
+    public void SetLeaveDeductionException(decimal? flatAmountPerDay, int? divisor)
+    {
+        EnsureActive();
+        LeaveDeductionException = LeaveDeductionException.Create(flatAmountPerDay, divisor);
+    }
+
     private void EnsureActive()
     {
         if (Status == EmployeeStatus.Terminated)
