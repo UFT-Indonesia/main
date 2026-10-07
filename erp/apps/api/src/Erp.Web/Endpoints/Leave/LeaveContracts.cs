@@ -68,6 +68,22 @@ public sealed class GetBlockedLeaveDatesRequest
     public int? EndHour { get; init; }
 }
 
+public sealed class GetLeaveOverQuotaRequest
+{
+    public Guid EmployeeId { get; init; }
+    public string Type { get; init; } = default!;
+    public DateOnly StartDate { get; init; }
+    public DateOnly EndDate { get; init; }
+    public bool HalfDay { get; init; }
+    public int? StartHour { get; init; }
+    public int? EndHour { get; init; }
+}
+
+public sealed class LeaveOverQuotaResponse
+{
+    public decimal OverQuotaDays { get; init; }
+}
+
 public sealed class BlockedLeaveDatesResponse
 {
     public IReadOnlyList<DateOnly> BlockedDates { get; init; } = [];
@@ -86,12 +102,16 @@ public sealed class LeaveQuotaResponse
     public decimal UsedDays { get; init; }
     public decimal? RemainingDays { get; init; }
 
+    /// <summary>Days of this type past the cap this year; they are cut from salary and do not spend the cap.</summary>
+    public decimal OverQuotaDays { get; init; }
+
     public static LeaveQuotaResponse From(LeaveQuotaResult result) => new()
     {
         Type = result.Type,
         EntitledDays = result.EntitledDays,
         UsedDays = result.UsedDays,
         RemainingDays = result.RemainingDays,
+        OverQuotaDays = result.OverQuotaDays,
     };
 }
 
@@ -172,6 +192,9 @@ public sealed class LeaveRequestResponse
     /// <summary>Quota this request actually spends — see LeaveRequestResult.ChargedDays.</summary>
     public decimal? ChargedDays { get; init; }
 
+    /// <summary>Days of this request past the quota, cut from salary — see LeaveRequestResult.OverQuotaDays. Days only, never rupiah.</summary>
+    public decimal? OverQuotaDays { get; init; }
+
     /// <summary>Set only once Status is Cancelled.</summary>
     public string? CancellationReason { get; init; }
     /// <summary>Null when the caller may not read this employee's leave balance.</summary>
@@ -217,6 +240,7 @@ public sealed class LeaveRequestResponse
         StartHour = result.StartHour,
         EndHour = result.EndHour,
         ChargedDays = result.ChargedDays,
+        OverQuotaDays = result.OverQuotaDays,
         Status = result.Status,
         RequestedAtUtc = result.RequestedAtUtc,
         DecidedByName = result.DecidedByName,

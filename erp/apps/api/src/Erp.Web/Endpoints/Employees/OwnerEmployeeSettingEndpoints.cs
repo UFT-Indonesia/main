@@ -2,6 +2,7 @@ using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
 using Erp.UseCases.Common;
 using Erp.UseCases.Employees.Common;
+using Erp.UseCases.Employees.SetLeaveDeductionException;
 using Erp.UseCases.Employees.SetLeaveQuota;
 using Erp.UseCases.Employees.SetProbationEnd;
 using FastEndpoints;
@@ -100,4 +101,19 @@ public sealed class SetLeaveQuotaEndpoint : OwnerEmployeeSettingEndpointBase<Set
 
     protected override object BuildCommand(SetLeaveQuotaRouteRequest req, Caller caller) =>
         new SetLeaveQuotaCommand(req.Id, req.Type, req.Days, caller);
+}
+
+/// <summary>
+/// Per-employee pricing of a cut leave day (GSS03 decision 11): a flat amount or a custom divisor,
+/// covering every leave type. Both empty clears it.
+/// </summary>
+public sealed class SetLeaveDeductionExceptionEndpoint
+    : OwnerEmployeeSettingEndpointBase<SetLeaveDeductionExceptionRouteRequest>
+{
+    public SetLeaveDeductionExceptionEndpoint(IMessageBus bus) : base(bus) { }
+
+    protected override string Segment => "deduction-exception";
+
+    protected override object BuildCommand(SetLeaveDeductionExceptionRouteRequest req, Caller caller) =>
+        new SetLeaveDeductionExceptionCommand(req.Id, req.FlatAmountPerDay, req.Divisor, caller);
 }

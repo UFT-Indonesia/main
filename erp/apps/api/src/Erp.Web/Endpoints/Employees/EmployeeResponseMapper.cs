@@ -31,6 +31,8 @@ internal static class EmployeeResponseMapper
             ProbationEndsOn = showDetails ? result.ProbationEndsOn : null,
             ProbationEndsOnOverride = showDetails ? result.ProbationEndsOnOverride : null,
             LeaveQuotaOverrides = showDetails ? result.LeaveQuotaOverrides : null,
+            LeaveDeductionFlatAmount = showWage ? result.LeaveDeductionFlatAmount : null,
+            LeaveDeductionDivisor = showWage ? result.LeaveDeductionDivisor : null,
         };
     }
 }

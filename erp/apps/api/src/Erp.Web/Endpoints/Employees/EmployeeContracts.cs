@@ -48,6 +48,17 @@ public sealed class SetLeaveQuotaRouteRequest
     public decimal? Days { get; init; }
 }
 
+public sealed class SetLeaveDeductionExceptionRouteRequest
+{
+    public Guid Id { get; init; }
+
+    /// <summary>Flat rupiah per cut day; 0 exempts the employee. Leave empty with no divisor to clear.</summary>
+    public decimal? FlatAmountPerDay { get; init; }
+
+    /// <summary>Custom divisor instead of the company's. Not together with a flat amount.</summary>
+    public int? Divisor { get; init; }
+}
+
 public sealed class DeleteEmployeeRouteRequest
 {
     public Guid Id { get; init; }
@@ -96,6 +107,12 @@ public sealed class EmployeeResponse
     public DateOnly? ProbationEndsOnOverride { get; init; }
     /// <summary>Leave type to overridden entitlement; types on the default are absent.</summary>
     public IReadOnlyDictionary<string, decimal>? LeaveQuotaOverrides { get; init; }
+
+    /// <summary>Owner-only, like pay. Flat rupiah per cut leave day (0 = exempt); null when none is set.</summary>
+    public decimal? LeaveDeductionFlatAmount { get; init; }
+
+    /// <summary>Owner-only. Custom divisor for pricing a cut leave day; null when none is set.</summary>
+    public int? LeaveDeductionDivisor { get; init; }
 }
 
 public sealed class ListEmployeesResponse

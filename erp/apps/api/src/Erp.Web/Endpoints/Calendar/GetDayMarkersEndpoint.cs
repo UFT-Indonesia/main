@@ -1,6 +1,5 @@
 using Erp.UseCases.Calendar;
 using Erp.UseCases.Common;
-using Erp.Web.Endpoints.Overtime;
 using FastEndpoints;
 using Wolverine;
 
