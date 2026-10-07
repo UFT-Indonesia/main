@@ -105,7 +105,7 @@ public class LeaveQuotaEnforcementTests
                 subject.Id.Value, type.ToString(), start, end, "alasan", AttachmentFor(type),
                 HalfDayPeriod: null, StartHour: null, EndHour: null, HalfDay: false,
                 Caller: caller ?? _managerCaller),
-            _employees, _leaveRequests, TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+            _employees, _leaveRequests, TestPayroll.NoMonths(), TestPayroll.NoLines(), TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
 
     [Fact]
     public async Task Unpaid_is_rejected_for_a_confirmed_employee()
@@ -170,17 +170,17 @@ public class LeaveQuotaEnforcementTests
     }
 
     [Fact]
-    public async Task A_request_past_the_remaining_days_is_rejected_by_the_number()
+    public async Task A_request_past_the_remaining_days_is_allowed_and_reports_the_cut_days()
     {
-        // 8 annual days for 2026; 6 already taken, so 2 remain.
+        // 8 annual days for 2026; 6 already taken, so 2 remain. A 5-day request is no longer refused:
+        // its last 3 days are cut from salary (GSS03 decision 5).
         Approved(ApprovedLeave(_staff, LeaveType.Annual, new LocalDate(2026, 5, 4), new LocalDate(2026, 5, 11)));
 
         var result = await FileAsync(
             _staff, LeaveType.Annual, new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 9));
 
-        var error = result.Should().BeOfType<Result<LeaveRequestResult>.Error>().Subject;
-        error.Code.Should().Be("leave.quota_exceeded");
-        error.Message.Should().Contain("2").And.Contain("2026").And.Contain("5");
+        result.Should().BeOfType<Result<LeaveRequestResult>.Success>()
+            .Which.Value.OverQuotaDays.Should().Be(3);
     }
 
     [Fact]
@@ -206,18 +206,62 @@ public class LeaveQuotaEnforcementTests
     }
 
     [Fact]
-    public async Task A_request_over_new_year_must_fit_the_far_side_too()
+    public async Task A_request_over_new_year_is_cut_only_in_the_year_that_ran_out()
     {
         // 2027 is a full 12 days and 2026 has 8, but the 2026 half is what runs out first.
         Approved(ApprovedLeave(_staff, LeaveType.Annual, new LocalDate(2026, 5, 4), new LocalDate(2026, 5, 13)));
 
-        // Mon 28 Dec 2026 – Fri 8 Jan 2027: 4 workdays in 2026, 6 in 2027.
+        // Mon 28 Dec 2026 – Fri 8 Jan 2027: 4 workdays in 2026 (all cut, 8 are gone), 6 in 2027 (free).
         var result = await FileAsync(
             _staff, LeaveType.Annual, new DateOnly(2026, 12, 28), new DateOnly(2027, 1, 8));
 
-        var error = result.Should().BeOfType<Result<LeaveRequestResult>.Error>().Subject;
-        error.Code.Should().Be("leave.quota_exceeded");
-        error.Message.Should().Contain("2026");
+        result.Should().BeOfType<Result<LeaveRequestResult>.Success>()
+            .Which.Value.OverQuotaDays.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Unpaid_stays_hard_capped()
+    {
+        var probationer = NewEmployee(
+            "Staff Baru", EmployeeRole.Staff, _manager.Id, "3201234567890126", new LocalDate(2026, 9, 1));
+        _employees.GetByIdAsync(probationer.Id, Arg.Any<CancellationToken>()).Returns(probationer);
+        Approved(ApprovedLeave(probationer, LeaveType.Unpaid, new LocalDate(2026, 9, 14), new LocalDate(2026, 9, 30)));
+
+        // 13 workdays taken of 30, then 18 more would pass the cap.
+        var result = await FileAsync(
+            probationer, LeaveType.Unpaid, new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 30));
+
+        result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
+            .Which.Code.Should().Be("leave.quota_exceeded");
+    }
+
+    [Fact]
+    public async Task Leave_that_would_be_cut_inside_a_closed_month_is_refused()
+    {
+        Approved(ApprovedLeave(_staff, LeaveType.Annual, new LocalDate(2026, 5, 4), new LocalDate(2026, 5, 13)));
+
+        var result = await CreateLeaveRequestHandler.Handle(
+            new CreateLeaveRequestCommand(
+                _staff.Id.Value, "Annual", new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 15), "alasan", null,
+                false, null, null, null, _managerCaller),
+            _employees, _leaveRequests, TestPayroll.Closed(new LocalDate(2026, 9, 1)), TestPayroll.NoLines(),
+            TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+
+        result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
+            .Which.Code.Should().Be("leave.payroll_closed");
+    }
+
+    [Fact]
+    public async Task Free_leave_inside_a_closed_month_is_still_allowed()
+    {
+        var result = await CreateLeaveRequestHandler.Handle(
+            new CreateLeaveRequestCommand(
+                _staff.Id.Value, "Annual", new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 15), "alasan", null,
+                false, null, null, null, _managerCaller),
+            _employees, _leaveRequests, TestPayroll.Closed(new LocalDate(2026, 9, 1)), TestPayroll.NoLines(),
+            TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+
+        result.Should().BeOfType<Result<LeaveRequestResult>.Success>();
     }
 
     [Fact]
@@ -246,14 +290,14 @@ public class LeaveQuotaEnforcementTests
     }
 
     [Fact]
-    public async Task A_zero_override_blocks_that_type_outright()
+    public async Task A_zero_override_cuts_every_day_of_that_type()
     {
         _staff.SetLeaveQuota(LeaveType.Permission, 0);
 
         var result = await FileAsync(
             _staff, LeaveType.Permission, new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 5));
 
-        result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
-            .Which.Code.Should().Be("leave.quota_exceeded");
+        result.Should().BeOfType<Result<LeaveRequestResult>.Success>()
+            .Which.Value.OverQuotaDays.Should().Be(1);
     }
 }

@@ -1,3 +1,4 @@
+using Ardalis.Specification;
 using System.Text.Json;
 using Erp.Core.Aggregates.Common;
 using Erp.Core.Aggregates.Employees;
@@ -20,12 +21,15 @@ public class EmployeeAuditLogHandlersTests
 
     private readonly IRepository<EmployeeAuditLog> _auditLogs = Substitute.For<IRepository<EmployeeAuditLog>>();
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
+    private readonly IRepository<EmployeeSalaryHistory> _salaries = Substitute.For<IRepository<EmployeeSalaryHistory>>();
     private readonly Envelope _envelope = EnvelopeWithActor(ActorUserId, "Owner Utama");
 
     private EmployeeAuditLog? Captured;
 
     public EmployeeAuditLogHandlersTests()
     {
+        _salaries.ListAsync(Arg.Any<ISpecification<EmployeeSalaryHistory>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<EmployeeSalaryHistory>());
         _auditLogs.AddAsync(Arg.Do<EmployeeAuditLog>(log => Captured = log), Arg.Any<CancellationToken>())
             .Returns(callInfo => callInfo.Arg<EmployeeAuditLog>());
     }
@@ -100,7 +104,7 @@ public class EmployeeAuditLogHandlersTests
             employeeId, Money.Idr(5_000_000m), new LocalDate(2025, 1, 1),
             Money.Idr(5_500_000m), new LocalDate(2026, 1, 1));
 
-        await EmployeeSalaryChangedHandler.Handle(message, _auditLogs, _envelope, CancellationToken.None);
+        await EmployeeSalaryChangedHandler.Handle(message, _auditLogs, _salaries, _envelope, CancellationToken.None);
 
         Captured.Should().NotBeNull();
         Captured!.EventType.Should().Be("employee.salary_changed");
@@ -201,7 +205,7 @@ public class EmployeeAuditLogHandlersTests
             Money.Idr(5_500_000m), new LocalDate(2026, 1, 1));
 
         await EmployeeSalaryChangedHandler.Handle(
-            message, _auditLogs, EnvelopeWithActor(null, null), CancellationToken.None);
+            message, _auditLogs, _salaries, EnvelopeWithActor(null, null), CancellationToken.None);
 
         Captured.Should().NotBeNull();
         Captured!.ActorUserId.Should().BeNull();
