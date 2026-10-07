@@ -3,6 +3,7 @@ using Erp.Core.Aggregates.Auth;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Aggregates.Overtime;
+using Erp.Core.Aggregates.Payroll;
 using Erp.Core.Aggregates.Probation;
 using Erp.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -41,6 +42,14 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<GajiPremiPeriod> GajiPremiPeriods => Set<GajiPremiPeriod>();
 
     public DbSet<Rapel> Rapels => Set<Rapel>();
+
+    public DbSet<EmployeeSalaryHistory> EmployeeSalaryHistories => Set<EmployeeSalaryHistory>();
+
+    public DbSet<PayrollSettings> PayrollSettings => Set<PayrollSettings>();
+
+    public DbSet<LeaveDeductionMonth> LeaveDeductionMonths => Set<LeaveDeductionMonth>();
+
+    public DbSet<LeaveDeductionLine> LeaveDeductionLines => Set<LeaveDeductionLine>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 

@@ -119,6 +119,17 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
                 .IsRequired();
         });
 
+        // Optional: both columns null means the company divisor applies.
+        builder.OwnsOne(employee => employee.LeaveDeductionException, exception =>
+        {
+            exception.Property(value => value.FlatAmountPerDay)
+                .HasColumnName("deduction_flat_amount")
+                .HasPrecision(18, 0);
+
+            exception.Property(value => value.Divisor)
+                .HasColumnName("deduction_divisor");
+        });
+
         builder.Navigation(employee => employee.LeaveQuotas)
             .HasField("_leaveQuotas")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
