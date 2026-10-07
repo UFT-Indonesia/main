@@ -1,11 +1,13 @@
 using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
+using Erp.Core.Aggregates.Payroll;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
+using Erp.UseCases.Payroll.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Leave.GetLeaveBalance;
@@ -20,6 +22,7 @@ public static class GetLeaveBalanceHandler
         GetLeaveBalanceQuery query,
         IReadRepository<Employee> employees,
         IReadRepository<LeaveRequest> leaveRequests,
+        IReadRepository<LeaveDeductionLine> lines,
         AttendanceDayPolicy policy,
         IClock clock,
         CancellationToken ct)
@@ -42,6 +45,14 @@ public static class GetLeaveBalanceHandler
         var approved = await leaveRequests.ListAsync(
             new ApprovedLeaveForYearSpec([employee.Id], year), ct);
 
+        // Days past a cap are cut from salary, and only the free ones spend what is left (GSS03).
+        var allocation = LeaveDeductionEngine.Allocate(
+            employee,
+            approved.Select(request => LeaveDeductionEngine.ToRequest(request, policy)),
+            await lines.ListAsync(new DeductionLinesForEmployeesSpec([employee.Id.Value], year, year), ct),
+            policy,
+            today);
+
         return new Result<LeaveBalanceResult>.Success(new LeaveBalanceResult
         {
             EmployeeId = employee.Id.Value,
@@ -50,7 +61,7 @@ public static class GetLeaveBalanceHandler
             OnProbation = employee.IsOnProbation(today),
             ProbationEndsOn = employee.ProbationEndsOn?.ToDateOnly(),
             Quotas = Enum.GetValues<LeaveType>()
-                .Select(type => LeaveQuotaResult.For(employee, type, year, today, approved, policy))
+                .Select(type => LeaveQuotaResult.For(employee, type, year, today, approved, policy, allocation))
                 .ToList(),
         });
     }

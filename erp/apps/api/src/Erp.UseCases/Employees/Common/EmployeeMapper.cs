@@ -23,5 +23,7 @@ internal static class EmployeeMapper
         ProbationEndsOnOverride = employee.ProbationEndsOnOverride?.ToDateOnly(),
         LeaveQuotaOverrides = employee.LeaveQuotas.ToDictionary(
             quota => quota.Type.ToString(), quota => quota.EntitledDays),
+        LeaveDeductionFlatAmount = employee.LeaveDeductionException?.FlatAmountPerDay,
+        LeaveDeductionDivisor = employee.LeaveDeductionException?.Divisor,
     };
 }

@@ -2,6 +2,7 @@ using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.Core.Aggregates.Overtime;
+using Erp.Core.Aggregates.Payroll;
 using Erp.Core.Interfaces;
 using Erp.SharedKernel.Domain.Errors;
 using Erp.SharedKernel.Domain.Results;
@@ -20,6 +21,8 @@ public static class CreateLeaveRequestHandler
         CreateLeaveRequestCommand command,
         IReadRepository<Employee> employees,
         IRepository<LeaveRequest> leaveRequests,
+        IReadRepository<LeaveDeductionMonth> months,
+        IReadRepository<LeaveDeductionLine> lines,
         IReadRepository<OvertimeAssignment> overtime,
         AttendanceDayPolicy policy,
         IClock clock,
@@ -122,10 +125,10 @@ public static class CreateLeaveRequestHandler
 
         // Fast feedback on the way in. The authoritative check is on approval — a quota lowered
         // while this request sits pending must not be approvable past.
-        var overQuota = await LeaveQuotaGuard.CheckAsync(
+        var quotaCheck = await LeaveQuotaGuard.CheckAsync(
             employee, type, startDate, endDate, command.HalfDay, command.StartHour, command.EndHour, policy,
-            leaveRequests, today, ct);
-        if (overQuota is { } violation)
+            leaveRequests, months, lines, today, clock.GetCurrentInstant(), ct);
+        if (quotaCheck.Violation is { } violation)
         {
             return new Result<LeaveRequestResult>.Error(violation.Code, violation.Message);
         }
@@ -181,6 +184,7 @@ public static class CreateLeaveRequestHandler
                 canCancel: canCancel,
                 canEdit: canEdit,
                 // CanFileFor already passed, which implies the filer may read what they wrote.
-                canReadDetails: true));
+                canReadDetails: true,
+                overQuotaDays: quotaCheck.OverQuotaDays));
     }
 }

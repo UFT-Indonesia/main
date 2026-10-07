@@ -44,6 +44,13 @@ public sealed class LeaveRequestResult
     public decimal? ChargedDays { get; init; }
 
     /// <summary>
+    /// How many of this request's days go past the quota and cost salary — as they stand for an
+    /// approved one, as they would fall if approved now for a pending one (GSS03 decision 10). Days
+    /// only, never rupiah. Null when the caller may not read the details, or the request is neither.
+    /// </summary>
+    public decimal? OverQuotaDays { get; init; }
+
+    /// <summary>
     /// Set only once Cancelled. Unlike Reason/DecisionNote, not gated behind canReadDetails —
     /// it's no more sensitive than the Cancelled status itself, which is already visible to
     /// everyone the request is visible to.
@@ -104,7 +111,8 @@ public sealed class LeaveRequestResult
         bool canCancel = false,
         bool canEdit = false,
         bool canReadDetails = false,
-        LeaveQuotaResult? quota = null) => new()
+        LeaveQuotaResult? quota = null,
+        decimal? overQuotaDays = null) => new()
     {
         Id = request.Id.Value,
         EmployeeId = request.EmployeeId.Value,
@@ -127,6 +135,7 @@ public sealed class LeaveRequestResult
         StartHour = canReadDetails ? request.StartHour : null,
         EndHour = canReadDetails ? request.EndHour : null,
         ChargedDays = canReadDetails ? request.TotalCharge(policy) : null,
+        OverQuotaDays = canReadDetails ? overQuotaDays : null,
         Status = request.Status.ToString(),
         RequestedByUserId = request.RequestedByUserId,
         RequestedAtUtc = request.RequestedAtUtc.ToDateTimeOffset(),
