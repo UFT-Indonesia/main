@@ -22,7 +22,14 @@ import {
 } from '@/components/leave/leave-dialogs';
 import { useAttendancePolicy, useHolidayCalendar } from '@/hooks/use-attendance-settings';
 import { markedDates, useDayMarkers } from '@/hooks/use-day-markers';
-import { useBlockedLeaveDates } from '@/hooks/use-leave';
+import { useBlockedLeaveDates, useLeaveCorrectionPreview, useLeaveOverQuota } from '@/hooks/use-leave';
+import { useHasRole } from '@/lib/auth/store';
+import { extractApiError } from '@/lib/api/client';
+import {
+  CorrectionBanner,
+  CorrectionEffect,
+  CorrectionReasonField,
+} from '@/components/leave/payroll-correction';
 import type { EditLeaveRequestBody, HalfDayPeriod, LeaveRequest } from '@/lib/api/types';
 
 interface EditLeaveDialogProps {
@@ -55,6 +62,8 @@ export function EditLeaveDialog({
   const [hourly, setHourly] = useState(false);
   const [startHour, setStartHour] = useState<number | ''>('');
   const [endHour, setEndHour] = useState<number | ''>('');
+  const [reason, setReason] = useState('');
+  const isOwner = useHasRole('Owner');
 
   const policy = useAttendancePolicy();
   const maxIzinHours = policy.data?.maxIzinHours ?? Infinity;
@@ -87,9 +96,8 @@ export function EditLeaveDialog({
     setHourly(request.startHour !== null);
     setStartHour(request.startHour ?? '');
     setEndHour(request.endHour ?? '');
+    setReason('');
   }, [request]);
-
-  if (!request) return null;
 
   const workdays = countWorkdays(startDate, endDate, holidays.dates);
   const hourlyValid =
@@ -97,14 +105,54 @@ export function EditLeaveDialog({
     || (startHour !== '' && endHour !== '' && startHour < endHour
       && endHour - startHour <= maxIzinHours);
   const unchanged =
-    startDate === request.startDate
-    && endDate === request.endDate
-    && halfDay === request.halfDay
-    && (!halfDay || halfDayPeriod === request.halfDayPeriod)
-    && (hourly ? startHour === request.startHour && endHour === request.endHour
-      : request.startHour === null);
+    !request
+    || (startDate === request.startDate
+      && endDate === request.endDate
+      && halfDay === request.halfDay
+      && (!halfDay || halfDayPeriod === request.halfDayPeriod)
+      && (hourly ? startHour === request.startHour && endHour === request.endHour
+        : request.startHour === null));
+  const shape = {
+    startDate,
+    endDate,
+    halfDay,
+    halfDayPeriod: halfDay ? halfDayPeriod : null,
+    startHour: hourly && startHour !== '' ? startHour : null,
+    endHour: hourly && endHour !== '' ? endHour : null,
+  };
+  const shapeReady = !!request && workdays > 0 && hourlyValid && !unchanged;
 
-  const canSubmit = workdays > 0 && hourlyValid && !unchanged;
+  // The Owner may correct leave in a closed payroll month; the server says whether this edit is one —
+  // it either already touches a closed month, or the new dates move into one (GSS03 follow-up Q16).
+  const preview = useLeaveCorrectionPreview(
+    request?.id,
+    isOwner && shapeReady ? { cancel: false, ...shape } : null,
+  );
+  const previewError = preview.error ? extractApiError(preview.error) : null;
+  const correction = !!request && (request.isCorrection || (!!preview.data && !previewError));
+  const correctionMonth = preview.data?.closedMonth ?? request?.payrollClosedMonth ?? null;
+
+  // Everyone else (and the Owner outside a closed month) sees the plain before → after days (Q2).
+  const after = useLeaveOverQuota(
+    request?.type && shapeReady && !correction
+      ? {
+          employeeId: request.employeeId,
+          type: request.type,
+          startDate,
+          endDate,
+          halfDay,
+          startHour: shape.startHour,
+          endHour: shape.endHour,
+          excludeRequestId: request.id,
+        }
+      : null,
+  );
+
+  if (!request) return null;
+
+  const before = request.overQuotaDays ?? 0;
+  const afterDays = after.data ?? before;
+  const canSubmit = shapeReady && (!correction || reason.trim() !== '');
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -227,6 +275,29 @@ export function EditLeaveDialog({
         <p className="text-sm text-muted-foreground">
           {t('create.workdayPreview', { count: workdays })}
         </p>
+
+        {!correction && !unchanged && (before > 0 || afterDays > 0) && (
+          <p className="rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 text-sm" role="status">
+            {t('edit.overQuota', { before, after: afterDays })}
+          </p>
+        )}
+
+        {correction && correctionMonth && (
+          <>
+            <CorrectionBanner month={correctionMonth} />
+            <CorrectionReasonField
+              value={reason}
+              onChange={setReason}
+              employee={request.employeeFullName}
+              disabled={submitting}
+            />
+            <CorrectionEffect
+              preview={unchanged ? undefined : preview.data}
+              loading={preview.isFetching}
+              error={previewError && previewError.code !== 'leave.not_correction' ? previewError.message : null}
+            />
+          </>
+        )}
       </div>
 
       <DialogFooter>
@@ -235,18 +306,11 @@ export function EditLeaveDialog({
         </Button>
         <Button
           onClick={() =>
-            onConfirm({
-              startDate,
-              endDate,
-              halfDay,
-              halfDayPeriod: halfDay ? halfDayPeriod : null,
-              startHour: hourly && startHour !== '' ? startHour : null,
-              endHour: hourly && endHour !== '' ? endHour : null,
-            })
+            onConfirm({ ...shape, correctionReason: correction ? reason.trim() : null })
           }
           disabled={submitting || !canSubmit}
         >
-          {submitting ? tCommon('loading') : t('edit.confirm')}
+          {submitting ? tCommon('loading') : correction ? t('correction.save') : t('edit.confirm')}
         </Button>
       </DialogFooter>
     </Dialog>

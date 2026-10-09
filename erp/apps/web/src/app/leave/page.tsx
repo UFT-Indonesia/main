@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, ChevronLeft, ChevronRight, Check, X, Ban, Eye, Pencil } from 'lucide-react';
+import Link from 'next/link';
+import type { Route } from 'next';
+import { Plus, ChevronLeft, ChevronRight, Check, X, Ban, Eye, Pencil, Lock } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,8 +30,10 @@ import {
   useCreateLeaveRequest,
   useDecideLeaveRequest,
   useEditLeaveRequest,
+  useLeaveCloseBlockers,
 } from '@/hooks/use-leave';
 import { EditLeaveDialog } from '@/components/leave/edit-leave-dialog';
+import { PayrollLockNote, useFormatMonth, usePayrollLockReason } from '@/components/leave/payroll-correction';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/api/client';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
@@ -79,6 +83,24 @@ export default function LeavePage() {
     pageSize: PAGE_SIZE,
     filter: filters.filter,
   });
+  // Pending leave this caller could decide that holds up a payroll close (GSS03 follow-up Q7B).
+  const closeBlockers = useLeaveCloseBlockers(canDecideSomething);
+  const isOwner = useHasRole('Owner');
+  const formatMonth = useFormatMonth();
+  const lockReason = usePayrollLockReason();
+
+  /** Opens the list on the pending requests with a workday in the given month. */
+  const showBlockers = (month: string) => {
+    const [year = 0, mon = 1] = month.split('-').map(Number);
+    const dayBefore = new Date(Date.UTC(year, mon - 1, 0)).toISOString().slice(0, 10);
+    const dayAfter = new Date(Date.UTC(year, mon, 1)).toISOString().slice(0, 10);
+    filters.replace([
+      { field: 'status', op: 'in', value: ['Pending'] },
+      { field: 'startDate', op: 'before', value: dayAfter },
+      { field: 'endDate', op: 'after', value: dayBefore },
+    ]);
+  };
+
   const createMutation = useCreateLeaveRequest();
   const decideMutation = useDecideLeaveRequest();
   const editMutation = useEditLeaveRequest();
@@ -155,6 +177,33 @@ export default function LeavePage() {
           </Button>
         </header>
 
+        {(closeBlockers.data ?? []).map((blocker) => (
+          <div
+            key={blocker.month}
+            className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 text-sm"
+            role="status"
+          >
+            <Lock className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="flex-1">
+              {t(isOwner ? 'closeBanner.owner' : 'closeBanner.manager', {
+                count: blocker.count,
+                month: formatMonth(blocker.month),
+              })}
+            </span>
+            <Button size="sm" variant="outline" onClick={() => showBlockers(blocker.month)}>
+              {t('closeBanner.show')}
+            </Button>
+            {isOwner && (
+              <Link
+                href={'/payroll/potongan-cuti' as Route}
+                className="px-2 text-sm font-medium underline-offset-4 hover:underline"
+              >
+                {t('closeBanner.payroll')}
+              </Link>
+            )}
+          </div>
+        ))}
+
         <FilterBuilder
           fields={filterFields}
           rows={filters.rows}
@@ -220,6 +269,7 @@ export default function LeavePage() {
                       <Badge variant={LEAVE_STATUS_VARIANT[item.status]}>
                         {t(`status.${item.status}`)}
                       </Badge>
+                      <PayrollLockNote request={item} />
                       {item.status === 'Cancelled' && item.cancellationReason && (
                         <div className="mt-1 text-xs text-muted-foreground">
                           {t(`cancellationReason.${item.cancellationReason}`)}
@@ -232,15 +282,19 @@ export default function LeavePage() {
                             that knows the subject's role and reporting line. */}
                         {item.canDecide && (
                           <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDecision({ request: item, action: 'approve' })}
-                              aria-label={t('decide.approve.title')}
-                              title={t('decide.approve.title')}
-                            >
-                              <Check className="h-4 w-4 text-success" />
-                            </Button>
+                            {/* Approving would cut a day in a closed month: refused, so shown disabled
+                                with the reason (follow-up Q4). Deny stays available. */}
+                            <span title={item.approveBlockedMonth ? lockReason(item) ?? undefined : t('decide.approve.title')}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDecision({ request: item, action: 'approve' })}
+                                aria-label={t('decide.approve.title')}
+                                disabled={!!item.approveBlockedMonth}
+                              >
+                                <Check className="h-4 w-4 text-success" />
+                              </Button>
+                            </span>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -252,6 +306,13 @@ export default function LeavePage() {
                             </Button>
                           </>
                         )}
+                        {item.cancelBlockedByPayroll && (
+                          <span title={lockReason(item) ?? undefined}>
+                            <Button variant="ghost" size="icon" disabled aria-label={t('decide.cancel.title')}>
+                              <Ban className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </span>
+                        )}
                         {item.canCancel && (
                           <Button
                             variant="ghost"
@@ -262,6 +323,13 @@ export default function LeavePage() {
                           >
                             <Ban className="h-4 w-4 text-muted-foreground" />
                           </Button>
+                        )}
+                        {item.editBlockedByPayroll && (
+                          <span title={lockReason(item) ?? undefined}>
+                            <Button variant="ghost" size="icon" disabled aria-label={t('edit.title')}>
+                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </span>
                         )}
                         {item.canEdit && (
                           <Button
