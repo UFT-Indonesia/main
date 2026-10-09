@@ -1,7 +1,14 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { closeLeaveDeductionMonth, getLeaveDeductionMonth, setPayrollDivisor } from '@/lib/api/payroll';
+import {
+  addLeaveDeductionAdjustment,
+  closeLeaveDeductionMonth,
+  deleteLeaveDeductionAdjustment,
+  getDivisorHistory,
+  getLeaveDeductionMonth,
+  setPayrollDivisor,
+} from '@/lib/api/payroll';
 
 const payrollKeys = {
   month: (month?: string) => ['payroll', 'leave-deductions', month ?? 'current'] as const,
@@ -23,7 +30,7 @@ export function useCloseLeaveDeductionMonth() {
     mutationFn: closeLeaveDeductionMonth,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['payroll'] });
-      // A closed month locks leave and holidays inside it.
+      // A closed month locks leave and holidays inside it, and clears the Leave page's close banner.
       qc.invalidateQueries({ queryKey: ['leave'] });
     },
   });
@@ -33,6 +40,31 @@ export function useSetPayrollDivisor() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: setPayrollDivisor,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll'] }),
+  });
+}
+
+/** Every divisor change, newest first (Owner only). Fetched only while the history is open. */
+export function useDivisorHistory(enabled: boolean) {
+  return useQuery({
+    queryKey: ['payroll', 'divisor-history'] as const,
+    queryFn: getDivisorHistory,
+    enabled,
+  });
+}
+
+export function useAddLeaveDeductionAdjustment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: addLeaveDeductionAdjustment,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll'] }),
+  });
+}
+
+export function useDeleteLeaveDeductionAdjustment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteLeaveDeductionAdjustment,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll'] }),
   });
 }

@@ -5,6 +5,9 @@ import type {
   BlockedLeaveDatesResponse,
   CreateLeaveRequestBody,
   LeaveBalance,
+  LeaveCloseBlocker,
+  LeaveCorrectionPreview,
+  LeaveCorrectionPreviewBody,
   LeaveOverQuotaParams,
   LeaveRequest,
   ListLeaveRequestsParams,
@@ -126,4 +129,25 @@ export async function getBlockedLeaveDates(
 export async function getLeaveOverQuota(params: LeaveOverQuotaParams): Promise<number> {
   const { data } = await apiClient.get<{ overQuotaDays: number }>('/api/leave/over-quota', { params });
   return data.overQuotaDays;
+}
+
+/** One request, exactly as the list would show it to this caller. */
+export async function getLeaveRequest(id: string): Promise<LeaveRequest> {
+  const { data } = await apiClient.get<LeaveRequest>(`/api/leave/${id}`);
+  return data;
+}
+
+/** Owner-only: what a correction after close would do, without saving it. */
+export async function previewLeaveCorrection(
+  id: string,
+  body: LeaveCorrectionPreviewBody,
+): Promise<LeaveCorrectionPreview> {
+  const { data } = await apiClient.post<LeaveCorrectionPreview>(`/api/leave/${id}/correction-preview`, body);
+  return data;
+}
+
+/** Ended, unclosed months whose pending leave the caller could decide. Empty for Staff. */
+export async function getLeaveCloseBlockers(): Promise<LeaveCloseBlocker[]> {
+  const { data } = await apiClient.get<LeaveCloseBlocker[]>('/api/leave/close-blockers');
+  return data;
 }

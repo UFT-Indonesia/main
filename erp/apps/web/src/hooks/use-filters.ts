@@ -89,5 +89,11 @@ export function useFilters(
   const filter = useMemo(() => serializeFilters(rows, fields), [rows, fields]);
   const activeCount = useMemo(() => rows.filter(isComplete).length, [rows]);
 
-  return { rows, filter, activeCount, addRow, removeRow, clear, setField, setOp, setValue };
+  /** Swap every row at once — for a link that opens the list on a ready-made view. */
+  const replace = useCallback(
+    (next: Array<Omit<FilterRow, 'id'>>) => update(next.map((row) => ({ ...row, id: `row-${nextRowId++}` }))),
+    [update],
+  );
+
+  return { rows, filter, activeCount, addRow, removeRow, clear, setField, setOp, setValue, replace };
 }

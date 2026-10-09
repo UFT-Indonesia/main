@@ -7,13 +7,17 @@ import {
   editLeaveRequest,
   getBlockedLeaveDates,
   getLeaveBalance,
+  getLeaveCloseBlockers,
   getLeaveOverQuota,
+  getLeaveRequest,
   listLeaveRequests,
+  previewLeaveCorrection,
 } from '@/lib/api/leave';
 import type {
   BlockedLeaveDatesParams,
   CreateLeaveRequestBody,
   EditLeaveRequestBody,
+  LeaveCorrectionPreviewBody,
   LeaveOverQuotaParams,
   ListLeaveRequestsParams,
 } from '@/lib/api/types';
@@ -130,5 +134,37 @@ export function useLeaveOverQuota(params: LeaveOverQuotaParams | null) {
     queryFn: () => getLeaveOverQuota(params!),
     enabled: !!params,
     placeholderData: (prev) => prev,
+  });
+}
+
+/** One request by id, as the list would show it. Disabled until an id is given. */
+export function useLeaveRequest(id: string | null | undefined) {
+  return useQuery({
+    queryKey: [...leaveKeys.all, 'one', id ?? ''] as const,
+    queryFn: () => getLeaveRequest(id!),
+    enabled: !!id,
+  });
+}
+
+/**
+ * Owner-only preview of a correction after close: over-quota days before → after and the rupiah that
+ * moves to the first open month. Disabled until the dialog is in correction mode with a complete shape.
+ */
+export function useLeaveCorrectionPreview(id: string | null | undefined, body: LeaveCorrectionPreviewBody | null) {
+  return useQuery({
+    queryKey: [...leaveKeys.all, 'correction-preview', id ?? '', body] as const,
+    queryFn: () => previewLeaveCorrection(id!, body!),
+    enabled: !!id && !!body,
+    placeholderData: (prev) => prev,
+    retry: false,
+  });
+}
+
+/** Pending leave the caller could decide that blocks a payroll close. Empty for Staff. */
+export function useLeaveCloseBlockers(enabled: boolean) {
+  return useQuery({
+    queryKey: [...leaveKeys.all, 'close-blockers'] as const,
+    queryFn: getLeaveCloseBlockers,
+    enabled,
   });
 }
