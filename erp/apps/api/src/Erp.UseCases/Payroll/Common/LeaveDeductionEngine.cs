@@ -33,7 +33,8 @@ internal static class LeaveDeductionEngine
 
     internal static IReadOnlyDictionary<(Guid, LocalDate), (decimal, decimal)> FrozenLabels(
         IEnumerable<LeaveDeductionLine> lines) =>
-        lines.ToDictionary(l => (l.LeaveRequestId, l.Date), l => (l.FreeDays, l.CutDays));
+        // A superseded line is history (what was paid); only live ones keep a day's label.
+        lines.Where(l => l.IsActive).ToDictionary(l => (l.LeaveRequestId, l.Date), l => (l.FreeDays, l.CutDays));
 
     /// <summary>Every workday of an employee's approved leave split into free and cut, in approval order.</summary>
     internal static IReadOnlyList<LeaveDeductionDay> Allocate(

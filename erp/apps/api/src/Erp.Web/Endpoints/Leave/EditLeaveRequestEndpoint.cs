@@ -59,7 +59,8 @@ public sealed class EditLeaveRequestEndpoint : Endpoint<EditLeaveRequestRequest,
             halfDayPeriod,
             req.StartHour,
             req.EndHour,
-            caller), ct);
+            caller,
+            req.CorrectionReason), ct);
 
         if (result is Result<LeaveRequestResult>.Success s)
         {

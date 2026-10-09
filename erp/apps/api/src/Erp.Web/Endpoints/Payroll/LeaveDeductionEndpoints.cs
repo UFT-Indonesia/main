@@ -20,6 +20,19 @@ public sealed class SetPayrollDivisorRequest
     public int Divisor { get; init; }
 }
 
+public sealed class AddLeaveDeductionAdjustmentRequest
+{
+    public DateOnly Month { get; init; }
+    public Guid EmployeeId { get; init; }
+    public decimal Amount { get; init; }
+    public string Reason { get; init; } = default!;
+}
+
+public sealed class DeleteLeaveDeductionAdjustmentRequest
+{
+    public Guid Id { get; init; }
+}
+
 public sealed class GetLeaveDeductionMonthEndpoint(IMessageBus bus)
     : BusEndpoint<LeaveDeductionMonthRequest, LeaveDeductionMonthResult>(bus)
 {
@@ -57,4 +70,42 @@ public sealed class SetPayrollDivisorEndpoint(IMessageBus bus)
 
     protected override object Build(SetPayrollDivisorRequest r, Caller caller) =>
         new SetPayrollDivisorCommand(r.Divisor, caller);
+}
+
+public sealed class GetPayrollDivisorHistoryEndpoint(IMessageBus bus)
+    : BusEndpoint<EmptyRequest, IReadOnlyList<DivisorChangeResult>>(bus)
+{
+    public override void Configure()
+    {
+        Get("/leave-deductions/divisor-history");
+        Group<PayrollGroup>();
+    }
+
+    protected override object Build(EmptyRequest r, Caller caller) => new GetPayrollDivisorHistoryQuery(caller);
+}
+
+public sealed class AddLeaveDeductionAdjustmentEndpoint(IMessageBus bus)
+    : BusEndpoint<AddLeaveDeductionAdjustmentRequest, LeaveDeductionAdjustmentResult>(bus)
+{
+    public override void Configure()
+    {
+        Post("/leave-deductions/adjustments");
+        Group<PayrollGroup>();
+    }
+
+    protected override object Build(AddLeaveDeductionAdjustmentRequest r, Caller caller) =>
+        new AddLeaveDeductionAdjustmentCommand(r.Month, r.EmployeeId, r.Amount, r.Reason, caller);
+}
+
+public sealed class DeleteLeaveDeductionAdjustmentEndpoint(IMessageBus bus)
+    : BusEndpoint<DeleteLeaveDeductionAdjustmentRequest, bool>(bus)
+{
+    public override void Configure()
+    {
+        Delete("/leave-deductions/adjustments/{id:guid}");
+        Group<PayrollGroup>();
+    }
+
+    protected override object Build(DeleteLeaveDeductionAdjustmentRequest r, Caller caller) =>
+        new DeleteLeaveDeductionAdjustmentCommand(r.Id, caller);
 }

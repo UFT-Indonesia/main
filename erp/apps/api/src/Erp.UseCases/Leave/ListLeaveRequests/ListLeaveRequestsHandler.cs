@@ -23,6 +23,7 @@ public static class ListLeaveRequestsHandler
         ListLeaveRequestsQuery query,
         IReadRepository<LeaveRequest> leaveRequests,
         IReadRepository<LeaveDeductionLine> lines,
+        IReadRepository<LeaveDeductionMonth> months,
         AttendanceDayPolicy policy,
         IClock clock,
         CancellationToken ct)
@@ -66,6 +67,7 @@ public static class ListLeaveRequestsHandler
                 .GroupBy(line => line.EmployeeId)
                 .ToDictionary(group => group.Key, group => (IReadOnlyList<LeaveDeductionLine>)[.. group]);
         var now = clock.GetCurrentInstant();
+        var closedMonths = await LeaveDeductionEngine.ClosedMonthsAsync(months, ct);
         var standing = new Dictionary<Erp.SharedKernel.Identity.EmployeeId, IReadOnlyList<LeaveDeductionDay>>();
 
         return new Result<ListLeaveRequestsResult>.Success(new ListLeaveRequestsResult
@@ -74,8 +76,10 @@ public static class ListLeaveRequestsHandler
                 .Select(request =>
                 {
                     var subject = request.Employee;
+                    var closedMonth = ClosedMonthLedger.FirstClosedMonth(
+                        request.StartDate, request.EndDate, closedMonths, policy);
                     var (canDecide, canCancel, canEdit) =
-                        LeaveRequestResult.PermissionsFor(query.Caller, request, subject);
+                        LeaveRequestResult.PermissionsFor(query.Caller, request, subject, closedMonth);
 
                     // No subject means no way to judge authority, so nothing sensitive is shown.
                     var canReadDetails = subject is not null
@@ -89,6 +93,7 @@ public static class ListLeaveRequestsHandler
                     // Days that cost salary, in days only: as they stand for an approved request, as they
                     // would fall if a pending one were approved now.
                     decimal? overQuotaDays = null;
+                    LocalDate? approveBlockedMonth = null;
                     IReadOnlyList<LeaveDeductionDay>? allocation = null;
                     if (canReadDetails && subject is not null)
                     {
@@ -105,11 +110,19 @@ public static class ListLeaveRequestsHandler
                         else if (request.Status == LeaveRequestStatus.Pending)
                         {
                             var hypothetical = LeaveDeductionEngine.ToRequest(request, policy) with { EffectiveAt = now };
-                            overQuotaDays = LeaveDeductionEngine.Allocate(
+                            var ifApproved = LeaveDeductionEngine.Allocate(
                                     subject,
                                     approved.Select(r => LeaveDeductionEngine.ToRequest(r, policy)).Append(hypothetical),
                                     frozen, policy, today)
-                                .Where(d => d.RequestId == request.Id.Value).Sum(d => d.CutDays);
+                                .Where(d => d.RequestId == request.Id.Value)
+                                .ToList();
+                            overQuotaDays = ifApproved.Sum(d => d.CutDays);
+
+                            // Approving would cut inside a closed month: refused, so shown disabled (follow-up Q4).
+                            approveBlockedMonth = ifApproved
+                                .Where(d => d.CutDays > 0 && closedMonths.Contains(LeaveDeductionMonth.MonthOf(d.Date)))
+                                .Select(d => (LocalDate?)LeaveDeductionMonth.MonthOf(d.Date))
+                                .Min();
                         }
                     }
 
@@ -126,7 +139,9 @@ public static class ListLeaveRequestsHandler
                         quota: canReadBalance && canReadDetails && subject is not null
                             ? LeaveQuotaResult.For(subject, request.Type, year, today, approved, policy, allocation)
                             : null,
-                        overQuotaDays: overQuotaDays);
+                        overQuotaDays: overQuotaDays,
+                        payroll: LeaveRequestResult.PayrollStateFor(
+                            query.Caller, request, subject, closedMonth, approveBlockedMonth));
                 })
                 .ToList(),
             Page = page,

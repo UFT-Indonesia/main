@@ -16,5 +16,5 @@ public sealed class GetLeaveOverQuotaEndpoint(IMessageBus bus)
     }
 
     protected override object Build(GetLeaveOverQuotaRequest r, Caller caller) =>
-        new GetLeaveOverQuotaQuery(r.EmployeeId, r.Type, r.StartDate, r.EndDate, r.HalfDay, r.StartHour, r.EndHour, caller);
+        new GetLeaveOverQuotaQuery(r.EmployeeId, r.Type, r.StartDate, r.EndDate, r.HalfDay, r.StartHour, r.EndHour, caller, r.ExcludeRequestId);
 }

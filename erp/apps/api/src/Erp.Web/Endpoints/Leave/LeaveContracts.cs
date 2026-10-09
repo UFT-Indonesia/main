@@ -77,6 +77,9 @@ public sealed class GetLeaveOverQuotaRequest
     public bool HalfDay { get; init; }
     public int? StartHour { get; init; }
     public int? EndHour { get; init; }
+
+    /// <summary>The request being edited, left out so its own approved days aren't counted twice.</summary>
+    public Guid? ExcludeRequestId { get; init; }
 }
 
 public sealed class LeaveOverQuotaResponse
@@ -149,6 +152,27 @@ public sealed class EditLeaveRequestRequest
     public string? HalfDayPeriod { get; init; }
     public int? StartHour { get; init; }
     public int? EndHour { get; init; }
+
+    /// <summary>Required when the request touches a closed payroll month (Owner-only correction after close).</summary>
+    public string? CorrectionReason { get; init; }
+}
+
+/// <summary>Preview of an Owner's correction after close. <see cref="Cancel"/> previews cancelling instead of the edit.</summary>
+public sealed class PreviewLeaveCorrectionRequest
+{
+    public Guid Id { get; init; }
+    public bool Cancel { get; init; }
+    public DateOnly? StartDate { get; init; }
+    public DateOnly? EndDate { get; init; }
+    public bool HalfDay { get; init; }
+    public string? HalfDayPeriod { get; init; }
+    public int? StartHour { get; init; }
+    public int? EndHour { get; init; }
+}
+
+public sealed class GetLeaveRequestRequest
+{
+    public Guid Id { get; init; }
 }
 
 public sealed class DecideLeaveRequestRequest
@@ -217,6 +241,19 @@ public sealed class LeaveRequestResponse
     public DateOnly? PreviousStartDate { get; init; }
     public DateOnly? PreviousEndDate { get; init; }
 
+    /// <summary>Earliest closed payroll month this request has a workday in, or null. See LeaveRequestResult.</summary>
+    public DateOnly? PayrollClosedMonth { get; init; }
+    public DateOnly? ApproveBlockedMonth { get; init; }
+    public bool EditBlockedByPayroll { get; init; }
+    public bool CancelBlockedByPayroll { get; init; }
+    public bool IsCorrection { get; init; }
+
+    /// <summary>The latest correction after close: reason, who, when, and which closed month. Never rupiah.</summary>
+    public string? CorrectionReason { get; init; }
+    public string? CorrectedByName { get; init; }
+    public DateTimeOffset? CorrectedAtUtc { get; init; }
+    public DateOnly? CorrectedMonth { get; init; }
+
     public static LeaveRequestResponse From(LeaveRequestResult result) => new()
     {
         Id = result.Id,
@@ -256,6 +293,15 @@ public sealed class LeaveRequestResponse
         EditedAtUtc = result.EditedAtUtc,
         PreviousStartDate = result.PreviousStartDate,
         PreviousEndDate = result.PreviousEndDate,
+        PayrollClosedMonth = result.PayrollClosedMonth,
+        ApproveBlockedMonth = result.ApproveBlockedMonth,
+        EditBlockedByPayroll = result.EditBlockedByPayroll,
+        CancelBlockedByPayroll = result.CancelBlockedByPayroll,
+        IsCorrection = result.IsCorrection,
+        CorrectionReason = result.CorrectionReason,
+        CorrectedByName = result.CorrectedByName,
+        CorrectedAtUtc = result.CorrectedAtUtc,
+        CorrectedMonth = result.CorrectedMonth,
     };
 }
 

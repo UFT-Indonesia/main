@@ -7,6 +7,7 @@ using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
+using Erp.UseCases.Payroll.Common;
 using NodaTime;
 using Wolverine;
 
@@ -27,6 +28,7 @@ public static class ApproveLeaveRequestHandler
         IClock clock,
         IMessageBus bus,
         IPayrollLock payrollLock,
+        ClosedMonthLedger ledger,
         CancellationToken ct)
     {
         // Waits out a month being closed, then reads the closed months fresh.
@@ -42,6 +44,7 @@ public static class ApproveLeaveRequestHandler
             policy,
             clock,
             bus,
+            ledger,
             ct,
             // Authoritative quota check. The same request passed this on the way in, but an
             // override lowered or a probation extended since then must still stop it here.
@@ -61,6 +64,7 @@ public static class DenyLeaveRequestHandler
         AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
+        ClosedMonthLedger ledger,
         CancellationToken ct) =>
         DecideLeaveRequestService.DecideAsync(
             command.LeaveRequestId,
@@ -72,6 +76,7 @@ public static class DenyLeaveRequestHandler
             policy,
             clock,
             bus,
+            ledger,
             ct);
 }
 
@@ -81,11 +86,11 @@ public static class CancelLeaveRequestHandler
         CancelLeaveRequestCommand command,
         IRepository<LeaveRequest> leaveRequests,
         IReadRepository<Employee> employees,
-        IReadRepository<LeaveDeductionMonth> months,
         AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
         IPayrollLock payrollLock,
+        ClosedMonthLedger ledger,
         CancellationToken ct)
     {
         // Waits out a month being closed, then reads the closed months fresh.
@@ -111,12 +116,13 @@ public static class CancelLeaveRequestHandler
             policy,
             clock,
             bus,
+            ledger,
             ct,
-            // Approved leave in a closed payroll month is frozen. A Pending one costs nothing yet, so
+            // Approved leave in a closed payroll month is frozen; only the Owner may cancel it, as a
+            // correction with a reason (GSS03 follow-up Q8). A Pending one costs nothing yet, so
             // withdrawing it stays allowed.
-            isLocked: request => request.Status == LeaveRequestStatus.Approved
-                ? LeavePayrollLock.TouchesClosedMonthAsync(request.StartDate, request.EndDate, policy, months, ct)
-                : Task.FromResult(false));
+            correctionReason: command.Note,
+            lockedByPayroll: request => request.Status == LeaveRequestStatus.Approved);
     }
 }
 
@@ -141,9 +147,11 @@ internal static class DecideLeaveRequestService
         AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
+        ClosedMonthLedger ledger,
         CancellationToken ct,
         Func<LeaveRequest, Employee, LocalDate, Task<QuotaCheck>>? guard = null,
-        Func<LeaveRequest, Task<bool>>? isLocked = null)
+        string? correctionReason = null,
+        Func<LeaveRequest, bool>? lockedByPayroll = null)
     {
         var request = await leaveRequests.FirstOrDefaultAsync(
             new LeaveRequestByIdSpec(new LeaveRequestId(leaveRequestId)), ct);
@@ -171,9 +179,21 @@ internal static class DecideLeaveRequestService
                 ResultErrors.Forbidden, "You cannot decide this leave request.");
         }
 
-        if (isLocked is not null && await isLocked(request))
+        var closedMonth = await ledger.FirstClosedMonthAsync(request.StartDate, request.EndDate, ct);
+        LocalDate? correctionMonth = null;
+        if (closedMonth is { } locked && lockedByPayroll is not null && lockedByPayroll(request))
         {
-            return new Result<LeaveRequestResult>.Error(LeavePayrollLock.Code, LeavePayrollLock.Message);
+            if (caller.Role != EmployeeRole.Owner)
+            {
+                return new Result<LeaveRequestResult>.Error(LeavePayrollLock.Code, LeavePayrollLock.OwnerOnlyMessage(locked));
+            }
+
+            if (string.IsNullOrWhiteSpace(correctionReason))
+            {
+                return new Result<LeaveRequestResult>.Error(LeavePayrollLock.ReasonCode, LeavePayrollLock.ReasonMessage);
+            }
+
+            correctionMonth = locked;
         }
 
         decimal? overQuotaDays = null;
@@ -188,11 +208,32 @@ internal static class DecideLeaveRequestService
             overQuotaDays = check.OverQuotaDays;
         }
 
-        decide(request, subject, clock.GetCurrentInstant());
+        var now = clock.GetCurrentInstant();
+        decide(request, subject, now);
+
+        if (correctionMonth is { } month)
+        {
+            request.RecordCorrection(correctionReason!, caller.Name, now, month);
+        }
+
         await leaveRequests.UpdateAsync(request, ct);
+
+        // Days landing in an already-closed month are stamped there (follow-up Q6); a correction also
+        // supersedes what it removed and moves the money to the first open month (Q8/Q9).
+        if (closedMonth is not null)
+        {
+            var plan = await ledger.PlanAsync(subject, request, DisplayZone.Today(clock), tracked: true, ct);
+            await ledger.ApplyAsync(
+                plan,
+                request,
+                correctionMonth is null ? null : new PayrollCorrection(correctionReason!, caller.UserId, caller.Name),
+                now,
+                ct);
+        }
+
         await LeaveRequestEventPublisher.PublishAsync(request, bus);
 
-        var (canDecide, canCancel, canEdit) = LeaveRequestResult.PermissionsFor(caller, request, subject);
+        var (canDecide, canCancel, canEdit) = LeaveRequestResult.PermissionsFor(caller, request, subject, closedMonth);
         return new Result<LeaveRequestResult>.Success(
             LeaveRequestResult.From(
                 request,
@@ -205,6 +246,7 @@ internal static class DecideLeaveRequestService
                 canEdit: canEdit,
                 // Only reachable once authority to decide or cancel has been established.
                 canReadDetails: true,
-                overQuotaDays: overQuotaDays));
+                overQuotaDays: overQuotaDays,
+                payroll: LeaveRequestResult.PayrollStateFor(caller, request, subject, closedMonth)));
     }
 }
