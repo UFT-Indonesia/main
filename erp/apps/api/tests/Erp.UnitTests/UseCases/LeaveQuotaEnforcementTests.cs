@@ -105,7 +105,7 @@ public class LeaveQuotaEnforcementTests
                 subject.Id.Value, type.ToString(), start, end, "alasan", AttachmentFor(type),
                 HalfDayPeriod: null, StartHour: null, EndHour: null, HalfDay: false,
                 Caller: caller ?? _managerCaller),
-            _employees, _leaveRequests, TestPayroll.NoMonths(), TestPayroll.NoLines(), TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+            _employees, _leaveRequests, TestPayroll.NoMonths(), TestPayroll.NoLines(), TestOvertime.None(), _policy, _clock, _bus, Substitute.For<IPayrollLock>(), TestPayroll.Ledger(), CancellationToken.None);
 
     [Fact]
     public async Task Unpaid_is_rejected_for_a_confirmed_employee()
@@ -245,7 +245,7 @@ public class LeaveQuotaEnforcementTests
                 _staff.Id.Value, "Annual", new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 15), "alasan", null,
                 false, null, null, null, _managerCaller),
             _employees, _leaveRequests, TestPayroll.Closed(new LocalDate(2026, 9, 1)), TestPayroll.NoLines(),
-            TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+            TestOvertime.None(), _policy, _clock, _bus, Substitute.For<IPayrollLock>(), TestPayroll.Ledger(), CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Error>()
             .Which.Code.Should().Be("leave.payroll_closed");
@@ -259,7 +259,7 @@ public class LeaveQuotaEnforcementTests
                 _staff.Id.Value, "Annual", new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 15), "alasan", null,
                 false, null, null, null, _managerCaller),
             _employees, _leaveRequests, TestPayroll.Closed(new LocalDate(2026, 9, 1)), TestPayroll.NoLines(),
-            TestOvertime.None(), _policy, _clock, _bus, CancellationToken.None);
+            TestOvertime.None(), _policy, _clock, _bus, Substitute.For<IPayrollLock>(), TestPayroll.Ledger(), CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Success>();
     }

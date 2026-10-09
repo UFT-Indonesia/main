@@ -52,7 +52,9 @@ public class PayrollHandlersTests
     private readonly IReadRepository<LeaveRequest> _leave = Substitute.For<IReadRepository<LeaveRequest>>();
     private readonly IReadRepository<Employee> _employees = Substitute.For<IReadRepository<Employee>>();
     private readonly IReadRepository<EmployeeSalaryHistory> _salaries = Substitute.For<IReadRepository<EmployeeSalaryHistory>>();
+    private readonly IRepository<LeaveDeductionMonthException> _monthExceptions = Substitute.For<IRepository<LeaveDeductionMonthException>>();
     private readonly List<LeaveDeductionLine> _written = [];
+    private readonly LeaveDeductionReaders _read;
 
     public PayrollHandlersTests()
     {
@@ -76,6 +78,13 @@ public class PayrollHandlersTests
             .Returns(new List<LeaveRequest>());
         _monthsRead.ListAsync(Arg.Any<ISpecification<LeaveDeductionMonth>>(), Arg.Any<CancellationToken>())
             .Returns(new List<LeaveDeductionMonth>());
+
+        _read = new LeaveDeductionReaders(
+            _monthsRead, _linesRead,
+            TestPayroll.Empty<IReadRepository<LeaveDeductionCorrection>, LeaveDeductionCorrection>(),
+            TestPayroll.Empty<IReadRepository<LeaveDeductionAdjustment>, LeaveDeductionAdjustment>(),
+            TestPayroll.Empty<IReadRepository<PayrollSettingsChange>, PayrollSettingsChange>(),
+            _leave, _employees, _salaries);
 
         _lines.AddRangeAsync(Arg.Do<IEnumerable<LeaveDeductionLine>>(lines => _written.AddRange(lines)), Arg.Any<CancellationToken>())
             .Returns(callInfo => callInfo.Arg<IEnumerable<LeaveDeductionLine>>());
@@ -106,7 +115,7 @@ public class PayrollHandlersTests
     private Task<Result<LeaveDeductionMonthResult>> CloseAsync(LocalDate month, Caller? caller = null) =>
         CloseLeaveDeductionMonthHandler.Handle(
             new CloseLeaveDeductionMonthCommand(month.ToDateOnly(), caller ?? _ownerCaller),
-            _settings, _months, _monthsRead, _lines, _linesRead, _leave, _employees, _salaries, _policy, _clock, _lock, CancellationToken.None);
+            _settings, _months, _lines, _monthExceptions, _read, _policy, _clock, _lock, CancellationToken.None);
 
     // ---- the page -------------------------------------------------------
 
@@ -117,7 +126,7 @@ public class PayrollHandlersTests
 
         var result = await GetLeaveDeductionMonthHandler.Handle(
             new GetLeaveDeductionMonthQuery(March.ToDateOnly(), _ownerCaller),
-            _settings, _monthsRead, _linesRead, _leave, _employees, _salaries, _policy, _clock, CancellationToken.None);
+            _settings, _read, _policy, _clock, CancellationToken.None);
 
         var month = result.Should().BeOfType<Result<LeaveDeductionMonthResult>.Success>().Subject.Value;
         var budi = month.Rows.Should().ContainSingle().Subject;
@@ -132,7 +141,7 @@ public class PayrollHandlersTests
     {
         var result = await GetLeaveDeductionMonthHandler.Handle(
             new GetLeaveDeductionMonthQuery(March.ToDateOnly(), _managerCaller),
-            _settings, _monthsRead, _linesRead, _leave, _employees, _salaries, _policy, _clock, CancellationToken.None);
+            _settings, _read, _policy, _clock, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveDeductionMonthResult>.Error>()
             .Which.Code.Should().Be(ResultErrors.Forbidden);
@@ -146,7 +155,7 @@ public class PayrollHandlersTests
 
         var result = await GetLeaveDeductionMonthHandler.Handle(
             new GetLeaveDeductionMonthQuery(March.ToDateOnly(), _ownerCaller),
-            _settings, _monthsRead, _linesRead, _leave, _employees, _salaries, _policy, _clock, CancellationToken.None);
+            _settings, _read, _policy, _clock, CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveDeductionMonthResult>.Success>()
             .Which.Value.Rows.Single().Total.Should().Be(400_000m);
@@ -168,7 +177,24 @@ public class PayrollHandlersTests
         _written.Where(l => l.CutDays > 0).Select(l => l.Date.Day).Should().Equal(11, 12);
         _written.Should().OnlyContain(l => l.Salary == 5_000_000m && l.DailyRate == 250_000m);
         await _months.Received(1).AddAsync(
-            Arg.Is<LeaveDeductionMonth>(m => m.Month == March), Arg.Any<CancellationToken>());
+            Arg.Is<LeaveDeductionMonth>(m => m.Month == March && m.Divisor == 20), Arg.Any<CancellationToken>());
+        _written.Should().OnlyContain(l => l.PaidAtClose);
+    }
+
+    [Fact]
+    public async Task Closing_records_each_employees_exception_as_it_stands()
+    {
+        WorkedExample();
+        _settings.GetByIdAsync(PayrollSettings.SingletonId, Arg.Any<CancellationToken>())
+            .Returns(new PayrollSettings(March));
+        _staff.SetLeaveDeductionException(null, 25);
+
+        await CloseAsync(March);
+
+        await _monthExceptions.Received(1).AddRangeAsync(
+            Arg.Is<IEnumerable<LeaveDeductionMonthException>>(rows =>
+                rows.Single().EmployeeId == _staff.Id.Value && rows.Single().Divisor == 25 && rows.Single().Month == March),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -202,7 +228,7 @@ public class PayrollHandlersTests
     public async Task A_closed_month_cannot_be_closed_again()
     {
         _monthsRead.ListAsync(Arg.Any<ISpecification<LeaveDeductionMonth>>(), Arg.Any<CancellationToken>())
-            .Returns(new List<LeaveDeductionMonth> { new(March, Guid.NewGuid(), "Owner", Now) });
+            .Returns(new List<LeaveDeductionMonth> { new(March, 20, Guid.NewGuid(), "Owner", Now) });
 
         var result = await CloseAsync(March);
 
@@ -237,7 +263,7 @@ public class PayrollHandlersTests
     // ---- locks ----------------------------------------------------------
 
     [Fact]
-    public async Task Approved_leave_in_a_closed_month_cannot_be_edited_or_cancelled()
+    public async Task Only_the_owner_may_change_approved_leave_in_a_closed_month_and_only_with_a_reason()
     {
         var request = Approved(_staff, new LocalDate(2026, 3, 9), new LocalDate(2026, 3, 10), Instant.FromUtc(2026, 3, 1, 3, 0));
         var requests = Substitute.For<IRepository<LeaveRequest>>();
@@ -246,20 +272,29 @@ public class PayrollHandlersTests
         staffRepo.GetByIdAsync(_staff.Id, Arg.Any<CancellationToken>()).Returns(_staff);
         var closed = TestPayroll.Closed(March);
 
-        var edit = await EditLeaveRequestHandler.Handle(
-            new EditLeaveRequestCommand(
-                request.Id.Value, new DateOnly(2026, 3, 9), new DateOnly(2026, 3, 11), false, null, null, null, _ownerCaller),
-            requests, staffRepo, Substitute.For<IRepository<AttendanceDay>>(), closed, TestPayroll.NoLines(),
-            TestOvertime.None(), _policy, Substitute.For<IReadRepository<LeaveRequest>>(), _clock, Substitute.For<IPayrollLock>(), CancellationToken.None);
-
         var employees = Substitute.For<IReadRepository<Employee>>();
         employees.GetByIdAsync(_staff.Id, Arg.Any<CancellationToken>()).Returns(_staff);
-        var cancel = await CancelLeaveRequestHandler.Handle(
-            new CancelLeaveRequestCommand(request.Id.Value, _ownerCaller, null),
-            requests, employees, closed, _policy, _clock, Substitute.For<IMessageBus>(), Substitute.For<IPayrollLock>(), CancellationToken.None);
 
-        edit.Should().BeOfType<Result<LeaveRequestResult>.Error>().Which.Code.Should().Be("leave.payroll_closed");
-        cancel.Should().BeOfType<Result<LeaveRequestResult>.Error>().Which.Code.Should().Be("leave.payroll_closed");
+        Task<Result<LeaveRequestResult>> Edit(Caller caller, string? reason) => EditLeaveRequestHandler.Handle(
+            new EditLeaveRequestCommand(
+                request.Id.Value, new DateOnly(2026, 3, 9), new DateOnly(2026, 3, 11), false, null, null, null, caller, reason),
+            requests, staffRepo, Substitute.For<IRepository<AttendanceDay>>(), closed, TestPayroll.NoLines(),
+            TestOvertime.None(), _policy, Substitute.For<IReadRepository<LeaveRequest>>(), _clock,
+            Substitute.For<IPayrollLock>(), TestPayroll.Ledger(closed), CancellationToken.None);
+
+        Task<Result<LeaveRequestResult>> Cancel(Caller caller, string? note) => CancelLeaveRequestHandler.Handle(
+            new CancelLeaveRequestCommand(request.Id.Value, caller, note),
+            requests, employees, _policy, _clock, Substitute.For<IMessageBus>(), Substitute.For<IPayrollLock>(),
+            TestPayroll.Ledger(closed), CancellationToken.None);
+
+        (await Edit(_managerCaller, "typo")).Should().BeOfType<Result<LeaveRequestResult>.Error>()
+            .Which.Code.Should().Be("leave.payroll_closed");
+        (await Cancel(_managerCaller, "typo")).Should().BeOfType<Result<LeaveRequestResult>.Error>()
+            .Which.Code.Should().Be("leave.payroll_closed");
+        (await Edit(_ownerCaller, null)).Should().BeOfType<Result<LeaveRequestResult>.Error>()
+            .Which.Code.Should().Be("leave.correction_reason");
+        (await Cancel(_ownerCaller, " ")).Should().BeOfType<Result<LeaveRequestResult>.Error>()
+            .Which.Code.Should().Be("leave.correction_reason");
         request.Status.Should().Be(LeaveRequestStatus.Approved);
     }
 
@@ -331,9 +366,9 @@ public class PayrollHandlersTests
         employees.GetByIdAsync(_staff.Id, Arg.Any<CancellationToken>()).Returns(_staff);
 
         var asManager = await SetLeaveDeductionExceptionHandler.Handle(
-            new SetLeaveDeductionExceptionCommand(_staff.Id.Value, 0m, null, _managerCaller), employees, CancellationToken.None);
+            new SetLeaveDeductionExceptionCommand(_staff.Id.Value, 0m, null, _managerCaller), employees, Substitute.For<IMessageBus>(), CancellationToken.None);
         var asOwner = await SetLeaveDeductionExceptionHandler.Handle(
-            new SetLeaveDeductionExceptionCommand(_staff.Id.Value, 0m, null, _ownerCaller), employees, CancellationToken.None);
+            new SetLeaveDeductionExceptionCommand(_staff.Id.Value, 0m, null, _ownerCaller), employees, Substitute.For<IMessageBus>(), CancellationToken.None);
 
         asManager.Should().BeOfType<Result<EmployeeResult>.Error>().Which.Code.Should().Be(ResultErrors.Forbidden);
         asOwner.Should().BeOfType<Result<EmployeeResult>.Success>()
@@ -373,7 +408,7 @@ public class PayrollHandlersTests
         employees.GetByIdAsync(_staff.Id, Arg.Any<CancellationToken>()).Returns(_staff);
 
         var result = await SetLeaveDeductionExceptionHandler.Handle(
-            new SetLeaveDeductionExceptionCommand(_staff.Id.Value, 1m, 20, _ownerCaller), employees, CancellationToken.None);
+            new SetLeaveDeductionExceptionCommand(_staff.Id.Value, 1m, 20, _ownerCaller), employees, Substitute.For<IMessageBus>(), CancellationToken.None);
 
         result.Should().BeOfType<Result<EmployeeResult>.Error>().Which.Code.Should().Be("employee.deduction_exception");
     }

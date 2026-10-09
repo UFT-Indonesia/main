@@ -256,6 +256,25 @@ public class LeaveDeductionCalculatorTests
     }
 
     [Fact]
+    public void A_refund_rounds_toward_zero()
+    {
+        // Follow-up Q14: −122.222,25 is a refund of Rp 122.000, not 123.000.
+        LeaveDeductionCalculator.MonthTotal([227_777.75m, -250_000m, -100_000m]).Should().Be(-122_000m);
+    }
+
+    [Fact]
+    public void An_uncapped_unpaid_day_is_never_cut()
+    {
+        var request = new LeaveDeductionRequest(
+            Guid.NewGuid(), LeaveType.Unpaid, new LocalDate(2026, 3, 9), new LocalDate(2026, 3, 9), 1m,
+            Instant.FromUtc(2026, 3, 1, 0, 0));
+
+        var days = LeaveDeductionCalculator.Allocate([request], (_, _) => null, TestPolicies.Standard);
+
+        days.Single().CutDays.Should().Be(0m);
+    }
+
+    [Fact]
     public void Month_total_rounds_down_once()
     {
         // Salary 4.555.555 / 20 = 227.777,75; one full and one half day = 341.666,625 → 341.000.

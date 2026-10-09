@@ -110,7 +110,7 @@ public class EditLeaveRequestHandlerTests
                 caller),
             _leaveRequests, _employees, _attendanceDays, TestPayroll.NoMonths(), TestPayroll.NoLines(),
             TestOvertime.None(), TestPolicies.Standard,
-            _leaveRequestsRead, _clock, Substitute.For<IPayrollLock>(), CancellationToken.None);
+            _leaveRequestsRead, _clock, Substitute.For<IPayrollLock>(), TestPayroll.Ledger(), CancellationToken.None);
 
     // ---- authority --------------------------------------------------------
 
