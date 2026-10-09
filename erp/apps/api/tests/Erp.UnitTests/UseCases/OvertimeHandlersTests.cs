@@ -146,7 +146,7 @@ public class OvertimeHandlersTests
         var result = await CreateLeaveRequestHandler.Handle(
             new CreateLeaveRequestCommand(
                 _staff.Id.Value, "Annual", Tuesday.ToDateOnly(), Tuesday.ToDateOnly(), "cuti", null, false, null, null, null, CallerOf(_staff)),
-            _employees, leaveRequests, TestPayroll.NoMonths(), TestPayroll.NoLines(), overtime, TestPolicies.Standard, _clock, Substitute.For<IMessageBus>(), CancellationToken.None);
+            _employees, leaveRequests, TestPayroll.NoMonths(), TestPayroll.NoLines(), overtime, TestPolicies.Standard, _clock, Substitute.For<IMessageBus>(), Substitute.For<IPayrollLock>(), TestPayroll.Ledger(), CancellationToken.None);
 
         result.Should().BeOfType<Result<LeaveRequestResult>.Error>().Which.Code.Should().Be("leave.overtime_on_date");
     }
