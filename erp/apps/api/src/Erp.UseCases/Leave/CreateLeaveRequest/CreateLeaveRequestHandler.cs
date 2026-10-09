@@ -10,6 +10,7 @@ using Erp.SharedKernel.Identity;
 using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
 using Erp.UseCases.Overtime.Common;
+using Erp.UseCases.Payroll.Common;
 using NodaTime;
 using Wolverine;
 
@@ -27,8 +28,13 @@ public static class CreateLeaveRequestHandler
         AttendanceDayPolicy policy,
         IClock clock,
         IMessageBus bus,
+        IPayrollLock payrollLock,
+        ClosedMonthLedger ledger,
         CancellationToken ct)
     {
+        // Owner-filed leave is approved on the spot, so it must not slip into a month while it closes.
+        await payrollLock.AcquireSharedAsync(ct);
+
         if (!Enum.TryParse<LeaveType>(command.Type, ignoreCase: true, out var type)
             || !Enum.IsDefined(type))
         {
@@ -168,11 +174,21 @@ public static class CreateLeaveRequestHandler
 
         await leaveRequests.AddAsync(request, ct);
 
+        // Auto-approved into an already-closed month: stamp those days there, as approval does (GSS03
+        // follow-up Q6). The guard above already refused it if any of them would be cut.
+        var closedMonth = await ledger.FirstClosedMonthAsync(request.StartDate, request.EndDate, ct);
+        if (closedMonth is not null && request.Status == LeaveRequestStatus.Approved)
+        {
+            var plan = await ledger.PlanAsync(employee, request, today, tracked: true, ct);
+            await ledger.ApplyAsync(plan, request, correction: null, clock.GetCurrentInstant(), ct);
+        }
+
         // Auto-approved leave is approved right here rather than by a later decision, so this
         // is the only place its approval can reach attendance from.
         await LeaveRequestEventPublisher.PublishAsync(request, bus);
 
-        var (canDecide, canCancel, canEdit) = LeaveRequestResult.PermissionsFor(command.Caller, request, employee);
+        var (canDecide, canCancel, canEdit) =
+            LeaveRequestResult.PermissionsFor(command.Caller, request, employee, closedMonth);
         return new Result<LeaveRequestResult>.Success(
             LeaveRequestResult.From(
                 request,
@@ -185,6 +201,7 @@ public static class CreateLeaveRequestHandler
                 canEdit: canEdit,
                 // CanFileFor already passed, which implies the filer may read what they wrote.
                 canReadDetails: true,
-                overQuotaDays: quotaCheck.OverQuotaDays));
+                overQuotaDays: quotaCheck.OverQuotaDays,
+                payroll: LeaveRequestResult.PayrollStateFor(command.Caller, request, employee, closedMonth)));
     }
 }

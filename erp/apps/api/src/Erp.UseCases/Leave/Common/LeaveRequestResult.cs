@@ -2,6 +2,7 @@ using Erp.Core.Aggregates.Attendance;
 using Erp.Core.Aggregates.Employees;
 using Erp.Core.Aggregates.Leave;
 using Erp.UseCases.Common;
+using NodaTime;
 
 namespace Erp.UseCases.Leave.Common;
 
@@ -102,6 +103,35 @@ public sealed class LeaveRequestResult
     /// </summary>
     public LeaveAttachmentResult? Attachment { get; init; }
 
+    /// <summary>
+    /// The earliest closed payroll month holding a workday of this request, or null. Drives the
+    /// disabled-with-reason state of Edit and Cancel (GSS03 follow-up Q3).
+    /// </summary>
+    public DateOnly? PayrollClosedMonth { get; init; }
+
+    /// <summary>
+    /// Pending only, and only for someone who may decide it: the closed month in which approving now
+    /// would cut a day — Approve is refused (follow-up Q4).
+    /// </summary>
+    public DateOnly? ApproveBlockedMonth { get; init; }
+
+    /// <summary>Edit / Cancel would be allowed but for a closed payroll month — shown disabled, with the reason.</summary>
+    public bool EditBlockedByPayroll { get; init; }
+
+    public bool CancelBlockedByPayroll { get; init; }
+
+    /// <summary>The caller is the Owner and Edit/Cancel here is a correction after close (follow-up Q8/Q16).</summary>
+    public bool IsCorrection { get; init; }
+
+    /// <summary>The latest correction after close, gated like Reason (follow-up Q13). Never any rupiah.</summary>
+    public string? CorrectionReason { get; init; }
+
+    public string? CorrectedByName { get; init; }
+
+    public DateTimeOffset? CorrectedAtUtc { get; init; }
+
+    public DateOnly? CorrectedMonth { get; init; }
+
     public static LeaveRequestResult From(
         LeaveRequest request,
         AttendanceDayPolicy policy,
@@ -112,7 +142,8 @@ public sealed class LeaveRequestResult
         bool canEdit = false,
         bool canReadDetails = false,
         LeaveQuotaResult? quota = null,
-        decimal? overQuotaDays = null) => new()
+        decimal? overQuotaDays = null,
+        LeavePayrollState? payroll = null) => new()
     {
         Id = request.Id.Value,
         EmployeeId = request.EmployeeId.Value,
@@ -152,10 +183,60 @@ public sealed class LeaveRequestResult
         EditedAtUtc = request.EditedAtUtc?.ToDateTimeOffset(),
         PreviousStartDate = request.PreviousStartDate?.ToDateOnly(),
         PreviousEndDate = request.PreviousEndDate?.ToDateOnly(),
+        PayrollClosedMonth = payroll?.ClosedMonth?.ToDateOnly(),
+        ApproveBlockedMonth = canDecide ? payroll?.ApproveBlockedMonth?.ToDateOnly() : null,
+        EditBlockedByPayroll = payroll?.EditBlocked ?? false,
+        CancelBlockedByPayroll = payroll?.CancelBlocked ?? false,
+        IsCorrection = payroll?.IsCorrection ?? false,
+        CorrectionReason = canReadDetails ? request.CorrectionReason : null,
+        CorrectedByName = canReadDetails ? request.CorrectedByName : null,
+        CorrectedAtUtc = canReadDetails ? request.CorrectedAtUtc?.ToDateTimeOffset() : null,
+        CorrectedMonth = canReadDetails ? request.CorrectedMonth?.ToDateOnly() : null,
     };
+
+    /// <summary>
+    /// The payroll side of one request for one caller. A closed month locks Edit (any status) and Cancel
+    /// (Approved) for everyone but the Owner, whose Edit/Cancel becomes a correction after close.
+    /// </summary>
+    public static LeavePayrollState PayrollStateFor(
+        Caller caller,
+        LeaveRequest request,
+        Employee? subject,
+        LocalDate? closedMonth,
+        LocalDate? approveBlockedMonth = null)
+    {
+        if (subject is null || closedMonth is null)
+        {
+            return new LeavePayrollState(closedMonth, approveBlockedMonth, false, false, false);
+        }
+
+        var open = request.Status is LeaveRequestStatus.Pending or LeaveRequestStatus.Approved;
+        var isOwner = caller.Role == EmployeeRole.Owner;
+        var wouldEdit = open && LeaveRules.CanDecideFor(caller, subject);
+        var wouldCancel = open && LeaveRules.CanCancel(caller, subject);
+        var cancelLocks = request.Status == LeaveRequestStatus.Approved;
+
+        return new LeavePayrollState(
+            closedMonth,
+            approveBlockedMonth,
+            EditBlocked: wouldEdit && !isOwner,
+            CancelBlocked: wouldCancel && cancelLocks && !isOwner,
+            IsCorrection: isOwner && (wouldEdit || (wouldCancel && cancelLocks)));
+    }
 
     /// <summary>Permission flags for one request, given who is asking and who it is about.</summary>
     public static (bool CanDecide, bool CanCancel, bool CanEdit) PermissionsFor(
+        Caller caller,
+        LeaveRequest request,
+        Employee? subject,
+        LocalDate? payrollClosedMonth = null)
+    {
+        var (canDecide, canCancel, canEdit) = BasePermissionsFor(caller, request, subject);
+        var payroll = PayrollStateFor(caller, request, subject, payrollClosedMonth);
+        return (canDecide, canCancel && !payroll.CancelBlocked, canEdit && !payroll.EditBlocked);
+    }
+
+    private static (bool CanDecide, bool CanCancel, bool CanEdit) BasePermissionsFor(
         Caller caller,
         LeaveRequest request,
         Employee? subject)
@@ -188,3 +269,7 @@ public sealed class LeaveAttachmentResult
     public string ContentType { get; init; } = default!;
     public long SizeBytes { get; init; }
 }
+
+/// <summary>See <see cref="LeaveRequestResult.PayrollStateFor"/>.</summary>
+public sealed record LeavePayrollState(
+    LocalDate? ClosedMonth, LocalDate? ApproveBlockedMonth, bool EditBlocked, bool CancelBlocked, bool IsCorrection);

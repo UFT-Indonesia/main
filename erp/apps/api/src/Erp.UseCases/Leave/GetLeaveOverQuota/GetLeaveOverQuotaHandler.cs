@@ -15,7 +15,9 @@ namespace Erp.UseCases.Leave.GetLeaveOverQuota;
 /// <summary>The form's own shape, before anything is filed — see <see cref="GetLeaveOverQuotaHandler"/>.</summary>
 public sealed record GetLeaveOverQuotaQuery(
     Guid EmployeeId, string Type, DateOnly StartDate, DateOnly EndDate, bool HalfDay, int? StartHour, int? EndHour,
-    Caller Caller);
+    Caller Caller,
+    // The request being edited: its own approved days are left out so they aren't counted twice (follow-up Q2).
+    Guid? ExcludeRequestId = null);
 
 /// <summary>Days only, never rupiah (GSS03 decision 10).</summary>
 public sealed record LeaveOverQuotaResult(decimal OverQuotaDays);
@@ -63,7 +65,8 @@ public static class GetLeaveOverQuotaHandler
         var days = await LeaveDeductionEngine.CandidateDaysAsync(
             employee, type, start, end,
             LeaveRequest.ChargePerWorkday(query.HalfDay, query.StartHour, query.EndHour, policy),
-            clock.GetCurrentInstant(), policy, DisplayZone.Today(clock), leaveRequests, lines, ct);
+            clock.GetCurrentInstant(), policy, DisplayZone.Today(clock), leaveRequests, lines, ct,
+            query.ExcludeRequestId is { } exclude ? new LeaveRequestId(exclude) : null);
 
         return new Result<LeaveOverQuotaResult>.Success(new LeaveOverQuotaResult(days.Sum(d => d.CutDays)));
     }

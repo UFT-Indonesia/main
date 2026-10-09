@@ -1,28 +1,21 @@
-using Ardalis.Specification;
-using Erp.Core.Aggregates.Attendance;
-using Erp.Core.Aggregates.Leave;
-using Erp.Core.Aggregates.Payroll;
-using Erp.UseCases.Payroll.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Leave.Common;
 
 /// <summary>
-/// Leave with a workday in a month the Owner has closed on the Potongan Cuti page cannot be edited or
-/// cancelled once approved (GSS03 decision 3): that month's figures are frozen and paid out.
+/// Leave with a workday in a month the Owner has closed on the Potongan Cuti page is frozen (GSS03
+/// decision 3): only the Owner may edit it, or cancel it once approved, as a correction after close with
+/// a reason (follow-up Q8). Everyone else is refused.
 /// </summary>
 internal static class LeavePayrollLock
 {
     internal const string Code = "leave.payroll_closed";
 
-    internal const string Message = "This leave has days in a month whose payroll is already closed.";
+    internal const string ReasonCode = "leave.correction_reason";
 
-    internal static async Task<bool> TouchesClosedMonthAsync(
-        LocalDate start, LocalDate end, AttendanceDayPolicy policy,
-        IReadRepositoryBase<LeaveDeductionMonth> months, CancellationToken ct)
-    {
-        var closed = await LeaveDeductionEngine.ClosedMonthsAsync(months, ct);
-        return closed.Count > 0
-            && LeaveRequest.Workdays(start, end, policy).Any(date => closed.Contains(LeaveDeductionMonth.MonthOf(date)));
-    }
+    internal const string ReasonMessage =
+        "This leave is in a closed payroll month. Changing it is a correction after close and needs a reason.";
+
+    internal static string OwnerOnlyMessage(LocalDate month) =>
+        $"Payroll for {month:MMMM yyyy} is closed. Only the Owner can correct this leave.";
 }

@@ -5,6 +5,7 @@ using Erp.SharedKernel.Domain.Results;
 using Erp.SharedKernel.Identity;
 using Erp.UseCases.Common;
 using Erp.UseCases.Employees.Common;
+using Wolverine;
 
 namespace Erp.UseCases.Employees.SetLeaveDeductionException;
 
@@ -17,6 +18,7 @@ public static class SetLeaveDeductionExceptionHandler
     public static async Task<Result<EmployeeResult>> Handle(
         SetLeaveDeductionExceptionCommand command,
         IRepository<Employee> employees,
+        IMessageBus bus,
         CancellationToken ct)
     {
         if (command.Caller.Role != EmployeeRole.Owner)
@@ -41,6 +43,8 @@ public static class SetLeaveDeductionExceptionHandler
         }
 
         await employees.UpdateAsync(employee, ct);
+        await EmployeeDomainEventPublisher.PublishAsync(employee.DomainEvents, bus, command.Caller);
+
         return new Result<EmployeeResult>.Success(EmployeeMapper.ToResult(employee));
     }
 }

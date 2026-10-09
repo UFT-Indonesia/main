@@ -16,4 +16,7 @@ public sealed record EditLeaveRequestCommand(
     HalfDayPeriod? HalfDayPeriod,
     int? StartHour,
     int? EndHour,
-    Caller Caller);
+    Caller Caller,
+    // Required when the request touches a closed payroll month: only the Owner may then edit it, as a
+    // correction after close (GSS03 follow-up Q8). Shown to the employee and their manager.
+    string? CorrectionReason = null);

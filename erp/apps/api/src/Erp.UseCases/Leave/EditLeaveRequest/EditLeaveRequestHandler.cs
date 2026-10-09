@@ -11,6 +11,7 @@ using Erp.UseCases.Attendance.Common;
 using Erp.UseCases.Common;
 using Erp.UseCases.Leave.Common;
 using Erp.UseCases.Overtime.Common;
+using Erp.UseCases.Payroll.Common;
 using NodaTime;
 
 namespace Erp.UseCases.Leave.EditLeaveRequest;
@@ -40,6 +41,7 @@ public static class EditLeaveRequestHandler
         IReadRepository<LeaveRequest> leaveRequestsRead,
         IClock clock,
         IPayrollLock payrollLock,
+        ClosedMonthLedger ledger,
         CancellationToken ct)
     {
         await payrollLock.AcquireSharedAsync(ct);
@@ -69,12 +71,23 @@ public static class EditLeaveRequestHandler
         var endDate = LocalDate.FromDateOnly(command.EndDate);
         var today = DisplayZone.Today(clock);
 
-        // A closed payroll month is frozen: neither the dates it was filed on nor the ones it moves to
-        // may touch it (GSS03 decision 3).
-        if (await LeavePayrollLock.TouchesClosedMonthAsync(request.StartDate, request.EndDate, policy, months, ct)
-            || await LeavePayrollLock.TouchesClosedMonthAsync(startDate, endDate, policy, months, ct))
+        // A closed payroll month is frozen: if the dates it was filed on or the ones it moves to touch one,
+        // only the Owner may make the change, as a correction after close with a reason (GSS03 decision 3,
+        // follow-up Q8).
+        var closedBefore = await ledger.FirstClosedMonthAsync(request.StartDate, request.EndDate, ct);
+        var closedAfter = await ledger.FirstClosedMonthAsync(startDate, endDate, ct);
+        var correctionMonth = closedBefore is { } b && closedAfter is { } a ? (b < a ? b : a) : closedBefore ?? closedAfter;
+        if (correctionMonth is { } locked)
         {
-            return new Result<LeaveRequestResult>.Error(LeavePayrollLock.Code, LeavePayrollLock.Message);
+            if (command.Caller.Role != EmployeeRole.Owner)
+            {
+                return new Result<LeaveRequestResult>.Error(LeavePayrollLock.Code, LeavePayrollLock.OwnerOnlyMessage(locked));
+            }
+
+            if (string.IsNullOrWhiteSpace(command.CorrectionReason))
+            {
+                return new Result<LeaveRequestResult>.Error(LeavePayrollLock.ReasonCode, LeavePayrollLock.ReasonMessage);
+            }
         }
 
         // Every gate a new request clears, the edited shape clears too — otherwise editing is a
@@ -110,7 +123,10 @@ public static class EditLeaveRequestHandler
             subject, request.Type, startDate, endDate,
             command.HalfDay, command.StartHour, command.EndHour, policy,
             leaveRequests, months, lines, today, clock.GetCurrentInstant(), ct, excludeRequestId: requestId);
-        if (quotaCheck.Violation is { } violation)
+        // A correction may cut days inside a closed month — that money moves to the first open month
+        // instead (follow-up Q9) — so only the other refusals apply to it.
+        if (quotaCheck.Violation is { } violation
+            && !(correctionMonth is not null && violation.Code == LeavePayrollLock.Code))
         {
             return new Result<LeaveRequestResult>.Error(violation.Code, violation.Message);
         }
@@ -140,6 +156,11 @@ public static class EditLeaveRequestHandler
             {
                 request.Approve(command.Caller.UserId, command.Caller.Name, now);
             }
+
+            if (correctionMonth is { } month)
+            {
+                request.RecordCorrection(command.CorrectionReason!, command.Caller.Name, now, month);
+            }
         }
         catch (DomainException ex)
         {
@@ -147,6 +168,17 @@ public static class EditLeaveRequestHandler
         }
 
         await leaveRequests.UpdateAsync(request, ct);
+
+        if (correctionMonth is not null)
+        {
+            var plan = await ledger.PlanAsync(subject, request, today, tracked: true, ct);
+            await ledger.ApplyAsync(
+                plan,
+                request,
+                new PayrollCorrection(command.CorrectionReason!, command.Caller.UserId, command.Caller.Name),
+                clock.GetCurrentInstant(),
+                ct);
+        }
 
         // The dates this was materialized against have moved. Release what the old ones put in
         // attendance, then materialize the new ones — the same two operations cancel and approve
@@ -172,7 +204,8 @@ public static class EditLeaveRequestHandler
             leaveRequestsRead,
             ct);
 
-        var (canDecide, canCancel, canEdit) = LeaveRequestResult.PermissionsFor(command.Caller, request, subject);
+        var (canDecide, canCancel, canEdit) =
+            LeaveRequestResult.PermissionsFor(command.Caller, request, subject, closedAfter);
         return new Result<LeaveRequestResult>.Success(
             LeaveRequestResult.From(
                 request,
@@ -185,6 +218,7 @@ public static class EditLeaveRequestHandler
                 canEdit: canEdit,
                 // Standing to edit implies standing to read what was edited.
                 canReadDetails: true,
-                overQuotaDays: quotaCheck.OverQuotaDays));
+                overQuotaDays: quotaCheck.OverQuotaDays,
+                payroll: LeaveRequestResult.PayrollStateFor(command.Caller, request, subject, closedAfter)));
     }
 }

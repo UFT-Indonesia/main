@@ -13,6 +13,7 @@ namespace Erp.UseCases.Leave.ListLeaveRequests;
 public static class LeaveRequestFilterFields
 {
     public static readonly FilterFieldMap<LeaveRequest> Fields = new FilterFieldMap<LeaveRequest>()
+        .Relation("id", request => request.Id, id => new LeaveRequestId(id))
         .Relation("employeeId", request => request.EmployeeId, id => new EmployeeId(id))
         .Text("employeeName", request => request.Employee!.FullName)
         .Enum("status", request => request.Status)

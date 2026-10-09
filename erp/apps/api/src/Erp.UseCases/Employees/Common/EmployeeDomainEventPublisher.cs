@@ -46,6 +46,9 @@ internal static class EmployeeDomainEventPublisher
                 case EmployeeLeaveQuotaChanged employeeLeaveQuotaChanged:
                     await bus.PublishAsync(employeeLeaveQuotaChanged, options);
                     break;
+                case EmployeeLeaveDeductionExceptionChanged exceptionChanged:
+                    await bus.PublishAsync(exceptionChanged, options);
+                    break;
             }
         }
     }

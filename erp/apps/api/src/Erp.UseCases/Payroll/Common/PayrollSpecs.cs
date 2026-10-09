@@ -104,3 +104,66 @@ internal sealed class EmployeesByIdsSpec : Specification<Employee>
         Query.AsNoTracking();
     }
 }
+
+/// <summary>A request's live (not superseded) frozen days. Tracked when they are about to be superseded.</summary>
+internal sealed class ActiveLinesOfRequestSpec : Specification<LeaveDeductionLine>
+{
+    public ActiveLinesOfRequestSpec(Guid leaveRequestId, bool tracked)
+    {
+        Query.Where(l => l.LeaveRequestId == leaveRequestId && l.SupersededAtUtc == null);
+        if (!tracked)
+        {
+            Query.AsNoTracking();
+        }
+    }
+}
+
+internal sealed class MonthExceptionsSpec : Specification<LeaveDeductionMonthException>
+{
+    public MonthExceptionsSpec(IReadOnlyCollection<LocalDate> months, Guid employeeId)
+    {
+        Query.Where(x => months.Contains(x.Month) && x.EmployeeId == employeeId);
+        Query.AsNoTracking();
+    }
+}
+
+internal sealed class CorrectionsTargetingMonthSpec : Specification<LeaveDeductionCorrection>
+{
+    public CorrectionsTargetingMonthSpec(LocalDate month)
+    {
+        Query.Where(c => c.TargetMonth == month);
+        Query.AsNoTracking();
+    }
+}
+
+internal sealed class AdjustmentsOfMonthSpec : Specification<LeaveDeductionAdjustment>
+{
+    public AdjustmentsOfMonthSpec(LocalDate month)
+    {
+        Query.Where(a => a.Month == month);
+        Query.AsNoTracking();
+    }
+}
+
+internal sealed class DivisorChangesSpec : Specification<PayrollSettingsChange>
+{
+    public DivisorChangesSpec(int? take = null)
+    {
+        Query.OrderByDescending(c => c.ChangedAtUtc);
+        if (take is { } n)
+        {
+            Query.Take(n);
+        }
+
+        Query.AsNoTracking();
+    }
+}
+
+internal sealed class NonOwnerEmployeesSpec : Specification<Employee>
+{
+    public NonOwnerEmployeesSpec()
+    {
+        Query.Where(e => e.Role != EmployeeRole.Owner);
+        Query.AsNoTracking();
+    }
+}
