@@ -9,6 +9,7 @@ export const AUDIT_EVENT_TYPES = [
   'employee.hire_date_changed',
   'employee.probation_end_changed',
   'employee.leave_quota_changed',
+  'employee.leave_deduction_exception_changed',
 ] as const;
 
 /**

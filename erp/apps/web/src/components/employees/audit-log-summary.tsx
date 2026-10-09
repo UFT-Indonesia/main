@@ -1,4 +1,5 @@
 import { useTranslations } from 'next-intl';
+import { formatIdr } from '@/lib/utils';
 import { useFormatLeaveDate } from '@/components/leave/leave-dialogs';
 import type { EmployeeAuditLogEntry } from '@/lib/api/types';
 
@@ -38,6 +39,12 @@ interface HireDateValue {
 
 interface ProbationEndValue {
   probationEndsOn: string | null;
+}
+
+/** Both null: the company divisor applies. */
+interface LeaveDeductionValue {
+  flatAmountPerDay: number | null;
+  divisor: number | null;
 }
 
 interface LeaveQuotaValue {
@@ -156,6 +163,18 @@ export function AuditLogSummary({ entry }: { entry: EmployeeAuditLogEntry }) {
           })}
         </span>
       );
+    }
+    case 'employee.leave_deduction_exception_changed': {
+      const oldValue = parse<LeaveDeductionValue>(entry.oldValueJson);
+      const newValue = parse<LeaveDeductionValue>(entry.newValueJson);
+      if (!oldValue || !newValue) return null;
+      const describe = (value: LeaveDeductionValue) =>
+        value.flatAmountPerDay != null
+          ? t('deductionFlat', { amount: formatIdr(value.flatAmountPerDay) })
+          : value.divisor != null
+            ? t('deductionDivisor', { divisor: value.divisor })
+            : t('deductionCompany');
+      return <span>{t('leaveDeduction', { from: describe(oldValue), to: describe(newValue) })}</span>;
     }
     default:
       return <span>{entry.eventType}</span>;

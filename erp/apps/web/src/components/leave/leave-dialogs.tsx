@@ -19,7 +19,14 @@ import { EmployeePicker } from '@/components/employees/employee-picker';
 import { DateRangePickerField } from '@/components/ui/date-picker';
 import { FileDropzone } from '@/components/ui/file-dropzone';
 import { Switch } from '@/components/ui/switch';
-import { useBlockedLeaveDates, useLeaveBalance, useLeaveOverQuota } from '@/hooks/use-leave';
+import { useBlockedLeaveDates, useLeaveBalance, useLeaveCorrectionPreview, useLeaveOverQuota } from '@/hooks/use-leave';
+import {
+  CorrectionBanner,
+  CorrectionEffect,
+  CorrectionReasonField,
+  useFormatMonth,
+  usePayrollLockReason,
+} from '@/components/leave/payroll-correction';
 import { markedDates, useDayMarkers } from '@/hooks/use-day-markers';
 import { useAttendancePolicy, useHolidayCalendar } from '@/hooks/use-attendance-settings';
 import { useAuthStore, useHasRole } from '@/lib/auth/store';
@@ -546,6 +553,13 @@ export function DecideLeaveDialog({
 
   const open = !!request && !!action;
 
+  // Cancelling approved leave in a closed payroll month is the Owner's correction after close: the
+  // note becomes the required reason, and the Effect panel shows the refund (GSS03 follow-up Q16).
+  const correction = open && action === 'cancel' && request.isCorrection && request.status === 'Approved';
+  const preview = useLeaveCorrectionPreview(request?.id, correction ? { cancel: true } : null);
+  const lockReason = usePayrollLockReason();
+  const approveBlocked = open && action === 'approve' && !!request.approveBlockedMonth;
+
   // `open` going false doesn't unmount this component (render just returns null
   // below), so state would otherwise leak into the next request/action shown.
   useEffect(() => {
@@ -569,13 +583,38 @@ export function DecideLeaveDialog({
         </DialogDescription>
       </DialogHeader>
 
+      {approveBlocked && (
+        <p className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+          {lockReason(request)}
+        </p>
+      )}
+
+      {correction && request.payrollClosedMonth && (
+        <>
+          <CorrectionBanner month={request.payrollClosedMonth} />
+          <div className="mt-4 space-y-3">
+            <CorrectionReasonField
+              value={note}
+              onChange={setNote}
+              employee={request.employeeFullName}
+              disabled={submitting}
+            />
+            <CorrectionEffect
+              preview={preview.data}
+              loading={preview.isFetching}
+              error={preview.error ? extractApiError(preview.error).message : null}
+            />
+          </div>
+        </>
+      )}
+
       {action === 'approve' && !!request.overQuotaDays && request.overQuotaDays > 0 && (
         <p className="mt-3 rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 text-sm" role="status">
           {t('overQuota.badge', { count: request.overQuotaDays })}
         </p>
       )}
 
-      {action !== 'approve' && (
+      {action !== 'approve' && !correction && (
         <div className="mt-4 flex flex-col gap-1.5">
           <Label>{t('decide.note')}</Label>
           <Input
@@ -593,10 +632,10 @@ export function DecideLeaveDialog({
         </Button>
         <Button
           variant={action === 'approve' ? 'default' : 'destructive'}
-          onClick={() => onConfirm(note || null)}
-          disabled={submitting}
+          onClick={() => onConfirm(note.trim() || null)}
+          disabled={submitting || approveBlocked || (correction && note.trim() === '')}
         >
-          {submitting ? tCommon('loading') : t(`decide.${action}.confirm`)}
+          {submitting ? tCommon('loading') : correction ? t('correction.cancel') : t(`decide.${action}.confirm`)}
         </Button>
       </DialogFooter>
     </Dialog>
@@ -613,8 +652,11 @@ export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialog
   const formatLeaveDate = useFormatLeaveDate();
   const dateLocale = useDateLocale();
   const dateTimeFormatter = new Intl.DateTimeFormat(dateLocale, { dateStyle: 'medium', timeStyle: 'short' });
+  const formatMonth = useFormatMonth();
+  const lockReason = usePayrollLockReason();
 
   if (!request) return null;
+  const payrollLock = lockReason(request);
 
   // The server strips type, reason and note together, so a null type is the tell that this
   // row's details are withheld. "Not shown" and "none given" are different claims — a blank
@@ -673,6 +715,20 @@ export function LeaveDetailsDialog({ request, onOpenChange }: LeaveDetailsDialog
           }),
         ]] as [string, string][])
       : []),
+    // The reason for a correction after close is about this employee's own record (follow-up Q13).
+    // Never any rupiah — the money side lives on the Owner's payroll page.
+    ...(request.correctedAtUtc && request.correctedMonth && request.correctionReason
+      ? ([[
+          t('details.corrected'),
+          t('details.correctedValue', {
+            month: formatMonth(request.correctedMonth),
+            name: request.correctedByName ?? '–',
+            at: dateTimeFormatter.format(new Date(request.correctedAtUtc)),
+            reason: request.correctionReason,
+          }),
+        ]] as [string, string][])
+      : []),
+    ...(payrollLock ? ([[t('details.payroll'), payrollLock]] as [string, string][]) : []),
     // Not gated behind detailsHidden — no more sensitive than the Cancelled status itself.
     ...(request.status === 'Cancelled' && request.cancellationReason
       ? ([[t('details.cancellationReason'), t(`cancellationReason.${request.cancellationReason}`)]] as [string, string][])
