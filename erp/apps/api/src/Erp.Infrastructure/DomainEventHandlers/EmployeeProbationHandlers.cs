@@ -59,3 +59,21 @@ public static class EmployeeLeaveQuotaChangedHandler
             newValue: new LeaveQuotaAuditValue(message.Type.ToString(), message.NewEntitledDays),
             ct);
 }
+
+public static class EmployeeLeaveDeductionExceptionChangedHandler
+{
+    public static Task Handle(
+        EmployeeLeaveDeductionExceptionChanged message,
+        IRepository<EmployeeAuditLog> auditLogs,
+        Envelope envelope,
+        CancellationToken ct) =>
+        EmployeeAuditLogWriter.WriteAsync(
+            auditLogs,
+            envelope,
+            new EmployeeId(message.EmployeeId),
+            message.EventType,
+            message.RaisedAt,
+            oldValue: new LeaveDeductionExceptionAuditValue(message.OldFlatAmountPerDay, message.OldDivisor),
+            newValue: new LeaveDeductionExceptionAuditValue(message.NewFlatAmountPerDay, message.NewDivisor),
+            ct);
+}

@@ -66,13 +66,14 @@ public static class LeaveDeductionCalculator
                     free = label.Free;
                     charge = label.Free + label.Cut;
                 }
+                else if (capFor(request.Type, date.Year) is not { } cap)
+                {
+                    // Uncapped (an Owner) is never cut, Unpaid included (decision 5).
+                    free = charge;
+                }
                 else if (request.Type == LeaveType.Unpaid)
                 {
                     free = 0m;
-                }
-                else if (capFor(request.Type, date.Year) is not { } cap)
-                {
-                    free = charge;
                 }
                 else
                 {
@@ -115,7 +116,10 @@ public static class LeaveDeductionCalculator
     public static decimal DailyRate(decimal salary, int companyDivisor, LeaveDeductionException? exception) =>
         Math.Round(exception?.FlatAmountPerDay ?? salary / (exception?.Divisor ?? companyDivisor), RateDecimals);
 
-    /// <summary>An employee's month total: exact day amounts summed, then rounded down once (decision 9).</summary>
-    public static decimal MonthTotal(IEnumerable<decimal> exactDayAmounts) =>
-        Math.Floor(exactDayAmounts.Sum() / RoundingUnit) * RoundingUnit;
+    /// <summary>
+    /// An employee's month total: exact amounts summed, then rounded toward zero to Rp 1.000 once
+    /// (decision 9; GSS03 follow-up Q14). A cut rounds down; a refund (negative) rounds to the smaller refund.
+    /// </summary>
+    public static decimal MonthTotal(IEnumerable<decimal> exactAmounts) =>
+        Math.Truncate(exactAmounts.Sum() / RoundingUnit) * RoundingUnit;
 }

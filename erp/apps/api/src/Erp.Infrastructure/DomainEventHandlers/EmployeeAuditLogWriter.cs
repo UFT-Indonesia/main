@@ -79,6 +79,9 @@ internal sealed record ProbationEndAuditValue(DateOnly? ProbationEndsOn);
 /// <summary>Null days means no override — the default entitlement applies.</summary>
 internal sealed record LeaveQuotaAuditValue(string LeaveType, decimal? EntitledDays);
 
+/// <summary>Both null: the company divisor applies.</summary>
+internal sealed record LeaveDeductionExceptionAuditValue(decimal? FlatAmountPerDay, int? Divisor);
+
 internal sealed record CreatedAuditValue(
     string FullName,
     string Nik,

@@ -158,6 +158,24 @@ public sealed class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRe
             .HasConversion(LocalDateConverter)
             .HasColumnType("date");
 
+        builder.Property(request => request.CorrectionReason)
+            .HasColumnName("correction_reason")
+            .HasMaxLength(1000);
+
+        builder.Property(request => request.CorrectedByName)
+            .HasColumnName("corrected_by_name")
+            .HasMaxLength(200);
+
+        builder.Property(request => request.CorrectedAtUtc)
+            .HasColumnName("corrected_at_utc")
+            .HasConversion(InstantConverter)
+            .HasColumnType("timestamp with time zone");
+
+        builder.Property(request => request.CorrectedMonth)
+            .HasColumnName("corrected_month")
+            .HasConversion(LocalDateConverter)
+            .HasColumnType("date");
+
         builder.HasIndex(request => new { request.EmployeeId, request.Status });
 
         builder.HasOne(request => request.Employee)

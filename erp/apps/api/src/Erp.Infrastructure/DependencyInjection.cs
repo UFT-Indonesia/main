@@ -107,6 +107,8 @@ public static class DependencyInjection
         services.AddScoped(typeof(IReadRepository<>), typeof(EfRepository<>));
         services.AddScoped<IEmployeeHierarchyLookup, PgEmployeeHierarchyLookup>();
         services.AddScoped<IPayrollLock, PayrollLock>();
+        services.AddScoped<Erp.UseCases.Payroll.Common.ClosedMonthLedger>();
+        services.AddScoped<Erp.UseCases.Payroll.LeaveDeductionReaders>();
 
         // Hangfire: background job runner used to recompute AttendanceDay rows when the
         // attendance policy changes. Packages were already referenced but never wired up.
