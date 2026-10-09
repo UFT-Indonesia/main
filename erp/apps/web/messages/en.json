@@ -452,7 +452,10 @@
       "chargedDays": "Type Detail",
       "editedBy": "Edited By",
       "editedValue": "{name} on {at} — previously {from} – {to}",
-      "overQuota": "Over Quota"
+      "overQuota": "Over Quota",
+      "corrected": "Corrected After Close",
+      "correctedValue": "After {month} payroll closed, by {name} on {at}: {reason}",
+      "payroll": "Payroll"
     },
     "pagination": {
       "summary": "Showing {from}-{to} of {total}"
@@ -469,12 +472,41 @@
       "confirm": "Save Changes",
       "successTitle": "Leave updated",
       "successDescription": "The leave dates were updated.",
-      "errorTitle": "Could not update leave"
+      "errorTitle": "Could not update leave",
+      "overQuota": "Over quota: {before} → {after} {after, plural, one {day} other {days}} (salary cut)"
     },
     "overQuota": {
       "form": "{count, plural, one {# of these days is} other {# of these days are}} over your {type} quota and will be cut from your salary.",
       "formOther": "{count, plural, one {# of these days is} other {# of these days are}} over {employee}'s {type} quota and will be cut from their salary.",
       "badge": "{count, plural, one {# day} other {# days}} over quota (salary cut)"
+    },
+    "payrollLock": {
+      "approve": "Approving would cut a day in {month}, whose payroll is closed. Deny it, or ask {employee} to withdraw it.",
+      "ownerOnly": "Payroll for {month} is closed. Only the Owner can correct this leave.",
+      "correction": "Payroll for {month} is closed. Changes here are corrections after close."
+    },
+    "correction": {
+      "banner": "Payroll for {month} is closed. This is a correction after close: the figures already paid for {month} won't change.",
+      "reasonLabel": "Reason (required, shown to {employee} and their manager)",
+      "reasonPlaceholder": "e.g. Worked on 18 March, confirmed by the manager",
+      "effect": "Effect",
+      "calculating": "Calculating…",
+      "pickDates": "Change the dates to see the effect.",
+      "overQuota": "Over-quota days on this leave",
+      "lateCorrection": "Late correction in {month}",
+      "refund": "Refund {amount}",
+      "charge": "Extra cut {amount}",
+      "lineRefund": "{date}: refund {amount}, at {month}'s rate",
+      "lineCharge": "{date}: cut {amount}, at {month}'s rate",
+      "noMoney": "No salary change.",
+      "save": "Save Correction",
+      "cancel": "Cancel Leave (Correction)"
+    },
+    "closeBanner": {
+      "manager": "{count, plural, one {# leave request} other {# leave requests}} in {month} {count, plural, one {is} other {are}} waiting for your decision. {month} payroll can't be closed until {count, plural, one {it is} other {they are}} decided.",
+      "owner": "{count, plural, one {# leave request} other {# leave requests}} in {month} {count, plural, one {is} other {are}} still pending, so {month} payroll can't be closed yet.",
+      "show": "Show them",
+      "payroll": "Open Potongan Cuti"
     }
   },
   "changePassword": {
@@ -624,7 +656,8 @@
         "terminated": "Terminated",
         "hire_date_changed": "Hire date changed",
         "probation_end_changed": "Probation end changed",
-        "leave_quota_changed": "Leave quota changed"
+        "leave_quota_changed": "Leave quota changed",
+        "leave_deduction_exception_changed": "Leave deduction changed"
       }
     },
     "summary": {
@@ -640,7 +673,11 @@
       "hireDate": "Hire date: {from} → {to}",
       "probationEnd": "Probation ends: {from} → {to}",
       "leaveQuota": "{type} quota: {from} → {to}",
-      "quotaDefault": "default"
+      "quotaDefault": "default",
+      "leaveDeduction": "Leave deduction: {from} → {to}",
+      "deductionCompany": "company divisor",
+      "deductionFlat": "flat {amount} per day",
+      "deductionDivisor": "salary ÷ {divisor}"
     }
   },
   "probation": {
@@ -982,11 +1019,10 @@
     "title": "Potongan Cuti",
     "subtitle": "Leave that costs salary, per month. Rupiah is visible to Owners only.",
     "month": "Month",
-    "cannotClose": "A month closes only after it ends, after the earlier ones, and with no leave waiting for a decision.",
     "close": {
       "button": "Close Month",
       "title": "Close This Month?",
-      "description": "{month} will be frozen: every leave day is stamped free or cut, the amounts are fixed, and approved leave, new cuts and holidays in it can no longer change. This cannot be undone.",
+      "description": "{month} will be frozen: every leave day is stamped free or cut and the amounts are fixed. Holidays in it can no longer change, and its approved leave can only be changed by the Owner as a correction, with the difference charged or refunded in the next open month. This cannot be undone.",
       "confirm": "Close Month",
       "successTitle": "Month closed",
       "successDescription": "Cut days and amounts are now frozen.",
@@ -999,7 +1035,17 @@
       "confirmDescription": "The price of a cut day for every employee in every open month will be recalculated, from salary ÷ {from} to salary ÷ {to}. Closed months keep their figures.",
       "save": "Save",
       "successTitle": "Divisor updated",
-      "errorTitle": "Could not update the divisor"
+      "errorTitle": "Could not update the divisor",
+      "closedWith": "This month was closed with divisor {divisor}.",
+      "lastChange": "Last changed from {from} to {to} by {name} on {at}.",
+      "history": "History",
+      "historyTitle": "Divisor History",
+      "historyDescription": "Every change of the company divisor. Closed months keep the divisor they were closed with.",
+      "columns": {
+        "change": "Change",
+        "by": "By",
+        "at": "When"
+      }
     },
     "closed": "Closed",
     "open": "Open",
@@ -1029,7 +1075,53 @@
     "partial": "Free {free}, Cut {cut}",
     "detail": {
       "open": "Show the leave days of {name}",
-      "description": "Day by day: free or cut, the salary used, the daily rate and the amount."
+      "description": "Day by day: free or cut, the salary used, the daily rate and the amount.",
+      "total": "Total",
+      "leaveLink": "Open the Leave page"
+    },
+    "refund": "Refund {amount}",
+    "cutsTotal": "Cuts {amount}",
+    "refundsTotal": "Refunds {amount}",
+    "row": {
+      "corrections": "{count, plural, one {# late correction} other {# late corrections}}",
+      "adjustments": "{count, plural, one {# adjustment} other {# adjustments}}"
+    },
+    "blockers": {
+      "pending": "Waiting on {count, plural, one {# pending leave request} other {# pending leave requests}} — decide {count, plural, one {it} other {them}} below",
+      "earlier_open": "Close {month} first",
+      "not_ended": "{month} hasn't ended yet",
+      "before_launch": "Before launch — nothing to close"
+    },
+    "adjustment": {
+      "add": "Add Adjustment",
+      "title": "Add Adjustment — {month}",
+      "description": "A refund or an extra deduction for one employee, counted in this month's total and frozen when it closes. Only you can see it.",
+      "employee": "Employee",
+      "direction": "Type",
+      "refund": "Refund",
+      "deduct": "Extra deduction",
+      "amount": "Amount (Rp)",
+      "reason": "Reason (required)",
+      "reasonPlaceholder": "e.g. Refund 20 Mar cut — January corrected",
+      "hint": "Missed days should be filed as leave so the quota stays right.",
+      "save": "Add Adjustment",
+      "successTitle": "Adjustment added",
+      "errorTitle": "Could not save the adjustment",
+      "listTitle": "Adjustments",
+      "delete": "Remove adjustment",
+      "deletedTitle": "Adjustment removed"
+    },
+    "marker": {
+      "corrected": "Corrected after close by {name} on {at}",
+      "correctedMoved": "Corrected after close by {name} on {at} — settled in {month}",
+      "added": "Added after close",
+      "addedCharged": "Added after close — charged in {month}"
+    },
+    "corrections": {
+      "title": "Late Corrections",
+      "line": "From {month}: {date}, {type}",
+      "by": "by {name} on {at}",
+      "view": "View {month}"
     }
   },
   "calendarMarkers": {
