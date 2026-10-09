@@ -452,7 +452,10 @@
       "chargedDays": "Rincian Jenis",
       "editedBy": "Diubah Oleh",
       "editedValue": "{name} pada {at} — sebelumnya {from} – {to}",
-      "overQuota": "Melebihi Kuota"
+      "overQuota": "Melebihi Kuota",
+      "corrected": "Dikoreksi Setelah Tutup",
+      "correctedValue": "Setelah payroll {month} ditutup, oleh {name} pada {at}: {reason}",
+      "payroll": "Payroll"
     },
     "pagination": {
       "summary": "Menampilkan {from}-{to} dari {total}"
@@ -469,12 +472,41 @@
       "confirm": "Simpan Perubahan",
       "successTitle": "Cuti diubah",
       "successDescription": "Tanggal cuti berhasil diperbarui.",
-      "errorTitle": "Gagal mengubah cuti"
+      "errorTitle": "Gagal mengubah cuti",
+      "overQuota": "Melebihi kuota: {before} → {after} hari (potong gaji)"
     },
     "overQuota": {
       "form": "{count, plural, other {# hari dari cuti ini}} melebihi kuota {type} Anda dan akan dipotong dari gaji.",
       "formOther": "{count, plural, other {# hari dari cuti ini}} melebihi kuota {type} {employee} dan akan dipotong dari gajinya.",
       "badge": "{count, plural, other {# hari}} melebihi kuota (potong gaji)"
+    },
+    "payrollLock": {
+      "approve": "Menyetujui akan memotong satu hari di {month}, yang payroll-nya sudah ditutup. Tolak, atau minta {employee} menariknya.",
+      "ownerOnly": "Payroll {month} sudah ditutup. Hanya Owner yang bisa mengoreksi cuti ini.",
+      "correction": "Payroll {month} sudah ditutup. Perubahan di sini adalah koreksi setelah tutup."
+    },
+    "correction": {
+      "banner": "Payroll {month} sudah ditutup. Ini koreksi setelah tutup: angka yang sudah dibayar untuk {month} tidak berubah.",
+      "reasonLabel": "Alasan (wajib, terlihat oleh {employee} dan atasannya)",
+      "reasonPlaceholder": "mis. Masuk kerja tanggal 18 Maret, dikonfirmasi atasan",
+      "effect": "Dampak",
+      "calculating": "Menghitung…",
+      "pickDates": "Ubah tanggal untuk melihat dampaknya.",
+      "overQuota": "Hari melebihi kuota pada cuti ini",
+      "lateCorrection": "Koreksi susulan di {month}",
+      "refund": "Pengembalian {amount}",
+      "charge": "Potongan tambahan {amount}",
+      "lineRefund": "{date}: kembali {amount}, dengan tarif {month}",
+      "lineCharge": "{date}: dipotong {amount}, dengan tarif {month}",
+      "noMoney": "Gaji tidak berubah.",
+      "save": "Simpan Koreksi",
+      "cancel": "Batalkan Cuti (Koreksi)"
+    },
+    "closeBanner": {
+      "manager": "{count} pengajuan cuti di {month} menunggu keputusan Anda. Payroll {month} belum bisa ditutup sampai diputuskan.",
+      "owner": "{count} pengajuan cuti di {month} masih menunggu, jadi payroll {month} belum bisa ditutup.",
+      "show": "Tampilkan",
+      "payroll": "Buka Potongan Cuti"
     }
   },
   "changePassword": {
@@ -624,7 +656,8 @@
         "terminated": "Diberhentikan",
         "hire_date_changed": "Tanggal masuk diubah",
         "probation_end_changed": "Akhir masa percobaan diubah",
-        "leave_quota_changed": "Kuota cuti diubah"
+        "leave_quota_changed": "Kuota cuti diubah",
+        "leave_deduction_exception_changed": "Potongan cuti diubah"
       }
     },
     "summary": {
@@ -640,7 +673,11 @@
       "hireDate": "Tanggal masuk: {from} → {to}",
       "probationEnd": "Akhir masa percobaan: {from} → {to}",
       "leaveQuota": "Kuota {type}: {from} → {to}",
-      "quotaDefault": "bawaan"
+      "quotaDefault": "bawaan",
+      "leaveDeduction": "Potongan cuti: {from} → {to}",
+      "deductionCompany": "pembagi perusahaan",
+      "deductionFlat": "tetap {amount} per hari",
+      "deductionDivisor": "gaji ÷ {divisor}"
     }
   },
   "probation": {
@@ -982,11 +1019,10 @@
     "title": "Potongan Cuti",
     "subtitle": "Cuti yang memotong gaji, per bulan. Rupiah hanya terlihat oleh Owner.",
     "month": "Bulan",
-    "cannotClose": "Bulan baru bisa ditutup setelah berakhir, setelah bulan sebelumnya ditutup, dan tanpa cuti yang menunggu keputusan.",
     "close": {
       "button": "Tutup Bulan",
       "title": "Tutup Bulan Ini?",
-      "description": "{month} akan dibekukan: setiap hari cuti diberi label gratis atau dipotong, nominal dikunci, dan cuti yang disetujui, potongan baru, serta hari libur di bulan ini tidak bisa diubah lagi. Tidak bisa dibatalkan.",
+      "description": "{month} akan dibekukan: setiap hari cuti diberi label gratis atau dipotong dan nominal dikunci. Hari libur di bulan ini tidak bisa diubah lagi, dan cuti yang disetujui hanya bisa diubah Owner sebagai koreksi, dengan selisihnya dipotong atau dikembalikan di bulan terbuka berikutnya. Tidak bisa dibatalkan.",
       "confirm": "Tutup Bulan",
       "successTitle": "Bulan ditutup",
       "successDescription": "Hari dipotong dan nominal kini dibekukan.",
@@ -999,7 +1035,17 @@
       "confirmDescription": "Harga satu hari cuti yang dipotong untuk semua karyawan di semua bulan terbuka akan dihitung ulang, dari gaji ÷ {from} menjadi gaji ÷ {to}. Bulan yang sudah ditutup tetap.",
       "save": "Simpan",
       "successTitle": "Pembagi diperbarui",
-      "errorTitle": "Gagal memperbarui pembagi"
+      "errorTitle": "Gagal memperbarui pembagi",
+      "closedWith": "Bulan ini ditutup dengan pembagi {divisor}.",
+      "lastChange": "Terakhir diubah dari {from} menjadi {to} oleh {name} pada {at}.",
+      "history": "Riwayat",
+      "historyTitle": "Riwayat Pembagi",
+      "historyDescription": "Setiap perubahan pembagi perusahaan. Bulan yang ditutup tetap memakai pembagi saat ditutup.",
+      "columns": {
+        "change": "Perubahan",
+        "by": "Oleh",
+        "at": "Waktu"
+      }
     },
     "closed": "Ditutup",
     "open": "Terbuka",
@@ -1029,7 +1075,53 @@
     "partial": "Gratis {free}, Dipotong {cut}",
     "detail": {
       "open": "Lihat hari cuti {name}",
-      "description": "Per hari: gratis atau dipotong, gaji yang dipakai, tarif harian dan nominal."
+      "description": "Per hari: gratis atau dipotong, gaji yang dipakai, tarif harian dan nominal.",
+      "total": "Total",
+      "leaveLink": "Buka halaman Cuti"
+    },
+    "refund": "Pengembalian {amount}",
+    "cutsTotal": "Potongan {amount}",
+    "refundsTotal": "Pengembalian {amount}",
+    "row": {
+      "corrections": "{count} koreksi susulan",
+      "adjustments": "{count} penyesuaian"
+    },
+    "blockers": {
+      "pending": "Menunggu {count} pengajuan cuti — putuskan di bawah",
+      "earlier_open": "Tutup {month} terlebih dahulu",
+      "not_ended": "{month} belum berakhir",
+      "before_launch": "Sebelum peluncuran — tidak ada yang ditutup"
+    },
+    "adjustment": {
+      "add": "Tambah Penyesuaian",
+      "title": "Tambah Penyesuaian — {month}",
+      "description": "Pengembalian atau potongan tambahan untuk satu karyawan, dihitung di total bulan ini dan dibekukan saat ditutup. Hanya Anda yang bisa melihatnya.",
+      "employee": "Karyawan",
+      "direction": "Jenis",
+      "refund": "Pengembalian",
+      "deduct": "Potongan tambahan",
+      "amount": "Nominal (Rp)",
+      "reason": "Alasan (wajib)",
+      "reasonPlaceholder": "mis. Pengembalian potongan 20 Mar — Januari dikoreksi",
+      "hint": "Hari tidak masuk sebaiknya diajukan sebagai cuti agar kuota tetap benar.",
+      "save": "Tambah Penyesuaian",
+      "successTitle": "Penyesuaian ditambahkan",
+      "errorTitle": "Gagal menyimpan penyesuaian",
+      "listTitle": "Penyesuaian",
+      "delete": "Hapus penyesuaian",
+      "deletedTitle": "Penyesuaian dihapus"
+    },
+    "marker": {
+      "corrected": "Dikoreksi setelah tutup oleh {name} pada {at}",
+      "correctedMoved": "Dikoreksi setelah tutup oleh {name} pada {at} — diselesaikan di {month}",
+      "added": "Ditambahkan setelah tutup",
+      "addedCharged": "Ditambahkan setelah tutup — dipotong di {month}"
+    },
+    "corrections": {
+      "title": "Koreksi Susulan",
+      "line": "Dari {month}: {date}, {type}",
+      "by": "oleh {name} pada {at}",
+      "view": "Lihat {month}"
     }
   },
   "calendarMarkers": {
