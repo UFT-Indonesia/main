@@ -42,3 +42,32 @@ public sealed class PayrollSettings
         Divisor = divisor;
     }
 }
+
+/// <summary>One change of the company divisor (GSS03 follow-up Q5): what it was, what it became, who and when.</summary>
+public sealed class PayrollSettingsChange
+{
+    // EF Core constructor.
+    private PayrollSettingsChange() { }
+
+    public PayrollSettingsChange(int oldDivisor, int newDivisor, Guid changedByUserId, string changedByName, Instant changedAtUtc)
+    {
+        Id = Guid.NewGuid();
+        OldDivisor = oldDivisor;
+        NewDivisor = newDivisor;
+        ChangedByUserId = changedByUserId;
+        ChangedByName = changedByName;
+        ChangedAtUtc = changedAtUtc;
+    }
+
+    public Guid Id { get; private set; }
+
+    public int OldDivisor { get; private set; }
+
+    public int NewDivisor { get; private set; }
+
+    public Guid ChangedByUserId { get; private set; }
+
+    public string ChangedByName { get; private set; } = default!;
+
+    public Instant ChangedAtUtc { get; private set; }
+}

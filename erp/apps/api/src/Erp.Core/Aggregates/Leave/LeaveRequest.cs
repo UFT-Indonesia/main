@@ -156,6 +156,34 @@ public sealed class LeaveRequest : AggregateRoot<LeaveRequestId>
 
     public LocalDate? PreviousEndDate { get; private set; }
 
+    /// <summary>
+    /// Set when an Owner edits or cancels this request although it has a day in a closed payroll month
+    /// (GSS03 follow-up Q8). The reason is shown to the employee and their manager, never any rupiah
+    /// (Q13). Only the latest correction is kept, like <see cref="EditedByName"/>.
+    /// </summary>
+    public string? CorrectionReason { get; private set; }
+
+    public string? CorrectedByName { get; private set; }
+
+    public Instant? CorrectedAtUtc { get; private set; }
+
+    /// <summary>The closed month the latest correction reached into (earliest one, if several).</summary>
+    public LocalDate? CorrectedMonth { get; private set; }
+
+    public void RecordCorrection(string reason, string byName, Instant atUtc, LocalDate closedMonth)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new DomainException(
+                "leave.correction_reason", "A correction after the payroll month closed needs a reason.");
+        }
+
+        CorrectionReason = reason.Trim();
+        CorrectedByName = byName;
+        CorrectedAtUtc = atUtc;
+        CorrectedMonth = closedMonth;
+    }
+
     public static LeaveRequest Create(
         EmployeeId employeeId,
         LeaveType type,

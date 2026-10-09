@@ -51,6 +51,14 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
 
     public DbSet<LeaveDeductionLine> LeaveDeductionLines => Set<LeaveDeductionLine>();
 
+    public DbSet<LeaveDeductionMonthException> LeaveDeductionMonthExceptions => Set<LeaveDeductionMonthException>();
+
+    public DbSet<LeaveDeductionCorrection> LeaveDeductionCorrections => Set<LeaveDeductionCorrection>();
+
+    public DbSet<LeaveDeductionAdjustment> LeaveDeductionAdjustments => Set<LeaveDeductionAdjustment>();
+
+    public DbSet<PayrollSettingsChange> PayrollSettingsChanges => Set<PayrollSettingsChange>();
+
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();

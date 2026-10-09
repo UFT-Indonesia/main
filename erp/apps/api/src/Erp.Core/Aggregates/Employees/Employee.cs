@@ -429,7 +429,16 @@ public sealed class Employee : AggregateRoot<EmployeeId>
     public void SetLeaveDeductionException(decimal? flatAmountPerDay, int? divisor)
     {
         EnsureActive();
-        LeaveDeductionException = LeaveDeductionException.Create(flatAmountPerDay, divisor);
+        var old = LeaveDeductionException;
+        var next = LeaveDeductionException.Create(flatAmountPerDay, divisor);
+        if (old == next)
+        {
+            return;
+        }
+
+        LeaveDeductionException = next;
+        RaiseDomainEvent(new EmployeeLeaveDeductionExceptionChanged(
+            Id.Value, old?.FlatAmountPerDay, old?.Divisor, next?.FlatAmountPerDay, next?.Divisor));
     }
 
     private void EnsureActive()
