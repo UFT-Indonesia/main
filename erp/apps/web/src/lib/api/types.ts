@@ -420,6 +420,20 @@ export interface LeaveRequest {
   editedAtUtc: string | null;
   previousStartDate: string | null;
   previousEndDate: string | null;
+  /** Earliest closed payroll month ("YYYY-MM-01") with a workday of this request, or null. */
+  payrollClosedMonth: string | null;
+  /** Pending only, for whoever may decide it: approving now would cut a day in this closed month. */
+  approveBlockedMonth: string | null;
+  /** Edit / Cancel would be allowed but for a closed payroll month — shown disabled with the reason. */
+  editBlockedByPayroll: boolean;
+  cancelBlockedByPayroll: boolean;
+  /** The caller is the Owner and Edit / Cancel here is a correction after close. */
+  isCorrection: boolean;
+  /** The latest correction after close. Never any rupiah. */
+  correctionReason: string | null;
+  correctedByName: string | null;
+  correctedAtUtc: string | null;
+  correctedMonth: string | null;
 }
 
 export interface ListLeaveRequestsResponse {
@@ -525,6 +539,8 @@ export interface EditLeaveRequestBody {
   halfDayPeriod?: HalfDayPeriod | null;
   startHour?: number | null;
   endHour?: number | null;
+  /** Required when the request touches a closed payroll month (Owner-only correction after close). */
+  correctionReason?: string | null;
 }
 
 /** What the API says about a stored attachment. The bytes come from a separate download call. */
@@ -797,6 +813,44 @@ export interface LeaveOverQuotaParams {
   halfDay: boolean;
   startHour: number | null;
   endHour: number | null;
+  /** The request being edited, left out so its own approved days aren't counted twice. */
+  excludeRequestId?: string | null;
+}
+
+/** Owner-only preview of a correction after close. Amounts are signed: negative refunds. */
+export interface LeaveCorrectionPreviewLine {
+  sourceMonth: string;
+  date: string;
+  leaveType: LeaveType;
+  cutDays: number;
+  dailyRate: number;
+  amount: number;
+}
+
+export interface LeaveCorrectionPreview {
+  closedMonth: string;
+  overQuotaDaysBefore: number;
+  overQuotaDaysAfter: number;
+  /** The open month that takes the money; null when nothing moves. */
+  targetMonth: string | null;
+  lines: LeaveCorrectionPreviewLine[];
+  netAmount: number;
+}
+
+export interface LeaveCorrectionPreviewBody {
+  cancel: boolean;
+  startDate?: string;
+  endDate?: string;
+  halfDay?: boolean;
+  halfDayPeriod?: HalfDayPeriod | null;
+  startHour?: number | null;
+  endHour?: number | null;
+}
+
+/** An ended, unclosed month with pending leave the caller could decide. */
+export interface LeaveCloseBlocker {
+  month: string;
+  count: number;
 }
 
 // Potongan Cuti (Owner only) -----------------------------------------------
@@ -813,6 +867,38 @@ export interface LeaveDeductionDay {
   salary: number;
   dailyRate: number;
   amount: number;
+  /** False when the day was added to a closed month after it closed; its money went to `lateTargetMonth`. */
+  paidAtClose: boolean;
+  lateTargetMonth: string | null;
+  /** Set when a correction after close removed or reshaped this day. */
+  supersededAtUtc: string | null;
+  supersededByName: string | null;
+  supersededTargetMonth: string | null;
+}
+
+/** Money moved into this month by a correction of a closed month. Signed: negative refunds. */
+export interface LateCorrection {
+  id: string;
+  sourceMonth: string;
+  date: string;
+  leaveType: LeaveType;
+  leaveRequestId: string;
+  cutDays: number;
+  dailyRate: number;
+  amount: number;
+  reason: string;
+  byName: string;
+  atUtc: string;
+}
+
+/** An Owner's manual line. Signed whole rupiah: positive deducts, negative refunds. */
+export interface LeaveDeductionAdjustment {
+  id: string;
+  employeeId: string;
+  amount: number;
+  reason: string;
+  byName: string;
+  atUtc: string;
 }
 
 export interface LeaveDeductionEmployeeRow {
@@ -821,9 +907,33 @@ export interface LeaveDeductionEmployeeRow {
   /** Cut days per leave type; only types with something cut are present. */
   cutDaysByType: Partial<Record<LeaveType, number>>;
   cutDays: number;
-  /** Day amounts summed, rounded down to Rp 1.000 once. */
+  /** Cut days, late corrections and adjustments summed, rounded toward zero to Rp 1.000. Negative = refund. */
   total: number;
   days: LeaveDeductionDay[];
+  corrections: LateCorrection[];
+  adjustments: LeaveDeductionAdjustment[];
+}
+
+export type CloseBlockerCode = 'pending' | 'earlier_open' | 'not_ended' | 'before_launch';
+
+export interface CloseBlocker {
+  code: CloseBlockerCode;
+  count: number | null;
+  month: string | null;
+}
+
+export interface DivisorChange {
+  oldDivisor: number;
+  newDivisor: number;
+  byName: string;
+  atUtc: string;
+}
+
+export interface AddLeaveDeductionAdjustmentBody {
+  month: string;
+  employeeId: string;
+  amount: number;
+  reason: string;
 }
 
 export interface PendingLeaveItem {
@@ -842,13 +952,21 @@ export interface LeaveDeductionMonth {
   closedAtUtc: string | null;
   closedByName: string | null;
   canClose: boolean;
+  /** Why Close is disabled, in the order to fix them. Empty when it can close. */
+  closeBlockers: CloseBlocker[];
+  /** The month's divisor: as closed, or today's for an open month. */
   divisor: number;
   /** The launch month: the first one that can be closed. */
   firstMonth: string;
+  /** Net of every row. */
   total: number;
+  /** Sum of rows that deduct, and of rows that refund (positive number). */
+  cutsTotal: number;
+  refundsTotal: number;
   rows: LeaveDeductionEmployeeRow[];
   /** Undecided leave with a workday in the month; closing is blocked until each is decided. */
   pending: PendingLeaveItem[];
+  lastDivisorChange: DivisorChange | null;
 }
 
 export interface PayrollSettings {
