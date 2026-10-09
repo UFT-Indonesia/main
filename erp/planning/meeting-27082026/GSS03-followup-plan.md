@@ -4,7 +4,23 @@ Created 2026-10-07 from a grill session (Q1–Q17) on the known gaps left by
 [GSS03](GSS03-payroll-deduction-plan.md) (PR on `feat/owner-payroll-engine`). GSS03 stays the base
 design; this doc only adds to it or changes it, and says so where it does.
 
-**Status: planned, not built.**
+**Status: built** (migration `LeaveDeductionCorrections`). Not yet run against a database — apply both
+GSS03 migrations first. Where the build differs from, or narrows, the text below:
+
+- `LeaveDeductionLine` now has its own id; a filtered unique index keeps one *live* line per leave day, so a
+  superseded line can stay as history and the same day can be stamped again.
+- Late corrections are one `LeaveDeductionCorrection` row per corrected day (target month, source month,
+  signed cut days, rate, reason, who, when).
+- All closed-month writes go through `ClosedMonthLedger` (`Erp.UseCases/Payroll/Common`): approval stamping
+  (Q6) and corrections (Q8–Q10) share one plan/apply path, and the correction preview runs the same plan
+  without writing.
+- An Owner editing a **Pending** request that touches a closed month is also a correction: the edit approves
+  it (existing Owner behaviour), and any cut it lands in the closed month goes to the next open month.
+- `GET /api/leave/{id}` runs the list with an `id` filter, so one request carries exactly the visibility,
+  permissions and payroll state the list would give it.
+- Q7A: each pending row on Potongan Cuti has Approve / Deny buttons that open the Leave page's decide dialog.
+- Not covered by a test against Postgres: the `FOR SHARE` / `FOR UPDATE` payroll lock and the migration's
+  backfill SQL.
 
 ## Cast used in every example
 

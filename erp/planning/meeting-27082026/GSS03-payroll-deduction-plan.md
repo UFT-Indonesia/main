@@ -13,10 +13,12 @@ narrows, the text below:
   day list on the page reads straight from them.
 - Lock (decision 3): editing is refused for any request touching a closed month; cancelling is refused
   only for **Approved** leave. A Pending request costs nothing yet, so withdrawing it stays allowed.
-- A free request approved late into a closed month writes no frozen line. It never carries rupiah, but a
-  later quota adjustment could relabel that one day in the cap count.
+  **Changed by the [follow-up](GSS03-followup-plan.md) (Q8):** the Owner may still edit or cancel, as a
+  correction after close with a reason; the money difference lands on the next open month.
+- A free request approved late into a closed month is stamped there as a frozen free line (follow-up Q6).
 - Holiday (decision 14): declaring and removing are refused in a closed month; renaming an existing one is not.
-- The per-employee exception (decision 11) has no audit-log entry yet.
+- The per-employee exception (decision 11) is written to the employee audit log; divisor changes have a
+  history on the page (follow-up Q5).
 - `leave.payroll_closed` is also returned when filing or approving leave whose cut days would land in a
   closed month; free days there are allowed (decision 8).
 
@@ -70,7 +72,7 @@ Before this feature, step 2 was refused with `leave.quota_exceeded`.
 | 4 | **What costs money:** Annual days beyond the cap, Sick beyond 30, Izin beyond 6, and **every Unpaid day** (Cuti di Luar Tanggungan, probation staff only). Half days and hourly Izin count as their fraction (`LeaveRequest.ChargePerWorkday`). *Reverses 2026-09-02 "Annual only".* |
 | 5 | **Refusals:** Annual, Sick and Izin are no longer refused for running out — the extra days are allowed and cut; the approver is the check. **Unpaid stays hard-capped at 30** (`leave.quota_exceeded` survives for Unpaid only). Annual during probation stays refused (`leave.probation_annual`, eligibility, not quota). Owners have no caps and are never cut |
 | 6 | **Which days are cut: the request that pushed the employee over pays.** Approved requests use the cap in approval order (`DecidedAtUtc`); within a request, its **last** days by date are the cut ones. Approving one request never changes another approved request's cost. **Editing an approved request counts as approving it again at the edit time** (`EditedAtUtc`), so an extension pays for itself |
-| 9 | **Rounding:** exact amounts per day; each employee's month total is rounded **down to the nearest Rp 1.000**, once |
+| 9 | **Rounding:** exact amounts per day; each employee's month total is rounded **down to the nearest Rp 1.000**, once. *A month that nets to a refund rounds toward zero — see follow-up Q14* |
 | 11 | **Per-employee exception**, one setting per employee covering every leave type, Owner-only, on the "Penyesuaian kuota cuti" card (`probation-quota-card.tsx`): **flat amount** per cut day (Rp 0 = exempt), or **custom divisor**, or neither (company divisor). One field, not per type. (Shape kept from 2026-09-02; widened to all types) |
 | 12 | **Salary history.** New table, one row per salary change with its effective date, written by `EmployeeSalaryChangedHandler` (today a TODO). Seeded from every employee's current `MonthlyWage`/`EffectiveSalaryFrom`. Each cut day is priced with the salary in effect **on that date** — a raise entered on 25 Mar effective 1 Apr does not touch March. A same-date correction (allowed by `ChangeSalary`) replaces the row, so a typo fix flows into open months |
 | 13 | **Divisor** is changed on the Potongan Cuti page, Owner-only. A change recalculates open months; closed months keep their frozen figures. *Not on Attendance Settings, which Managers can edit (`settings/page.tsx:42`)* |
