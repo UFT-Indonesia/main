@@ -39,7 +39,7 @@ export default function AttendanceSettingsPage() {
   const toast = useToast();
 
   const user = useAuthStore((s) => s.user);
-  const canEdit = !!user?.roles.some((role) => role === 'Owner' || role === 'Manager');
+  const canEdit = !!user?.roles.includes('Owner');
 
   const { data, isLoading, error } = useAttendancePolicy();
   const updateMutation = useUpdateAttendancePolicy();

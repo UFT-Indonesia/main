@@ -54,6 +54,8 @@ export function useCreateEmployee() {
     mutationFn: (body: CreateEmployeeBody) => createEmployee(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: employeeKeys.lists() });
+      // The create-account dialog's candidate list derives from employees (status, role, parent).
+      qc.invalidateQueries({ queryKey: ['accounts'] });
     },
   });
 }
@@ -64,6 +66,8 @@ export function useUpdateEmployee(id: string) {
     mutationFn: (body: UpdateEmployeeBody) => updateEmployee(id, body),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: employeeKeys.lists() });
+      // The create-account dialog's candidate list derives from employees (status, role, parent).
+      qc.invalidateQueries({ queryKey: ['accounts'] });
       qc.setQueryData(employeeKeys.detail(id), data);
     },
   });
@@ -112,6 +116,8 @@ export function useDeleteEmployee() {
       deleteEmployee(id, body),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: employeeKeys.lists() });
+      // The create-account dialog's candidate list derives from employees (status, role, parent).
+      qc.invalidateQueries({ queryKey: ['accounts'] });
       qc.setQueryData(employeeKeys.detail(data.id), data);
     },
   });

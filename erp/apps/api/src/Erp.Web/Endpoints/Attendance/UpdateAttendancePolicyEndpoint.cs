@@ -9,7 +9,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance;
 
-[Authorize(Roles = "Owner,Manager")]
+[Authorize(Roles = "Owner")]
 public sealed class UpdateAttendancePolicyEndpoint : Endpoint<UpdateAttendancePolicyRequest, AttendancePolicyResponse>
 {
     private readonly IMessageBus _bus;
