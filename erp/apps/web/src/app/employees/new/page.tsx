@@ -22,8 +22,9 @@ export default function NewEmployeePage() {
         fullName: values.fullName,
         nik: values.nik,
         npwp: values.npwp ? values.npwp : null,
-        // Creating employees is Owner-only, so the form always validated these as present.
-        monthlyWageAmount: values.monthlyWageAmount!,
+        // Creating employees is Owner-only; the date always defaults to today. An Owner's wage
+        // field is hidden but the API still stores one, so send 0.
+        monthlyWageAmount: values.monthlyWageAmount ?? 0,
         effectiveSalaryFrom: values.effectiveSalaryFrom!,
         hireDate: values.hireDate!,
         role: values.role,

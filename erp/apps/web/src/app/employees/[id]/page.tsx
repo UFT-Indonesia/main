@@ -57,8 +57,9 @@ export default function EmployeeDetailPage({ params }: PageProps) {
         nik: values.nik,
         npwp: values.npwp ? values.npwp : null,
         // Undefined for a Manager — the API leaves the stored pay untouched.
-        monthlyWageAmount: values.monthlyWageAmount ?? null,
-        effectiveSalaryFrom: values.effectiveSalaryFrom ?? null,
+        // Null for an Owner too: the wage fields are hidden, so leave the stored pay alone.
+        monthlyWageAmount: values.role === 'Owner' ? null : (values.monthlyWageAmount ?? null),
+        effectiveSalaryFrom: values.role === 'Owner' ? null : (values.effectiveSalaryFrom ?? null),
         // Empty for a Manager, and for an Owner who left a legacy record's blank date alone —
         // either way null means "leave it as it is", since a hire date is never cleared.
         hireDate: values.hireDate || null,

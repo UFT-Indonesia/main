@@ -85,7 +85,7 @@ export function EmployeeTable({ employees, onDelete }: EmployeeTableProps) {
               </TableCell>
               {isOwner && (
                 <TableCell className="text-right tabular-nums">
-                  {employee.monthlyWageAmount === null
+                  {employee.role === 'Owner' || employee.monthlyWageAmount === null
                     ? '—'
                     : formatIdr(employee.monthlyWageAmount, employee.monthlyWageCurrency ?? 'IDR')}
                 </TableCell>

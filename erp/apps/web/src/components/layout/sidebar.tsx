@@ -63,7 +63,7 @@ const NAV: NavItem[] = [
     href: '/attendance/settings' as Route,
     labelKey: 'attendanceSettings',
     icon: Settings,
-    roles: ['Owner', 'Manager'],
+    roles: ['Owner'],
   },
   // A device secret can punch for any employee, so registering one is Owner-only.
   {

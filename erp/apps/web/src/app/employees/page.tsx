@@ -30,7 +30,9 @@ export default function EmployeesPage() {
   const [page, setPage] = useState(1);
   const [target, setTarget] = useState<Employee | null>(null);
   const filterFields = useVisibleFilterFields(EMPLOYEE_FILTER_FIELDS);
-  const filters = useFilters(filterFields, () => setPage(1));
+  const filters = useFilters(filterFields, () => setPage(1), () => [
+    { field: 'status', op: 'in', value: ['Active'] },
+  ]);
 
   const params = { page, pageSize: PAGE_SIZE, filter: filters.filter };
   const { data, isLoading, isFetching, error } = useEmployees(params);

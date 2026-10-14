@@ -59,7 +59,8 @@ function buildSchema(canEditWage: boolean, requireHireDate: boolean) {
         path: ['parentId'],
       });
     }
-    if (!canEditWage) return;
+    // An Owner has no pay: the wage fields are hidden for that role.
+    if (!canEditWage || value.role === 'Owner') return;
     if (value.monthlyWageAmount === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -177,23 +178,27 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitting, mode }: 
 
           {isOwner && (
             <>
-              <Field label={t('monthlyWage')} error={errors.monthlyWageAmount?.message}>
-                <Input type="number" step="1" min="0" {...register('monthlyWageAmount')} />
-              </Field>
+              {role !== 'Owner' && (
+                <>
+                  <Field label={t('monthlyWage')} error={errors.monthlyWageAmount?.message}>
+                    <Input type="number" step="1" min="0" {...register('monthlyWageAmount')} />
+                  </Field>
 
-              <Field label={t('effectiveSalaryFrom')} error={errors.effectiveSalaryFrom?.message}>
-                <Controller
-                  name="effectiveSalaryFrom"
-                  control={control}
-                  render={({ field }) => (
-                    <DatePickerField
-                      value={field.value ?? ''}
-                      onChange={field.onChange}
-                      aria-label={t('effectiveSalaryFrom')}
+                  <Field label={t('effectiveSalaryFrom')} error={errors.effectiveSalaryFrom?.message}>
+                    <Controller
+                      name="effectiveSalaryFrom"
+                      control={control}
+                      render={({ field }) => (
+                        <DatePickerField
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                          aria-label={t('effectiveSalaryFrom')}
+                        />
+                      )}
                     />
-                  )}
-                />
-              </Field>
+                  </Field>
+                </>
+              )}
 
               <Field
                 label={t('hireDate')}
