@@ -7,7 +7,7 @@ using Wolverine;
 
 namespace Erp.Web.Endpoints.Attendance.Holidays;
 
-[Authorize(Roles = "Owner,Manager")]
+[Authorize(Roles = "Owner")]
 public sealed class RemoveHolidayEndpoint : Endpoint<RemoveHolidayRequest>
 {
     private readonly IMessageBus _bus;

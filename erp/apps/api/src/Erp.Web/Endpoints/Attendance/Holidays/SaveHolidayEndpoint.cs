@@ -10,7 +10,7 @@ using Wolverine;
 namespace Erp.Web.Endpoints.Attendance.Holidays;
 
 /// <summary>Same audience as the attendance policy: a holiday moves everyone's quota and absences.</summary>
-[Authorize(Roles = "Owner,Manager")]
+[Authorize(Roles = "Owner")]
 public sealed class SaveHolidayEndpoint : Endpoint<SaveHolidayRequest, HolidayResponse>
 {
     private readonly IMessageBus _bus;
